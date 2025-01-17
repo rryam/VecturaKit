@@ -24,23 +24,47 @@ dependencies: [
 import VecturaKit
 ```
 
-2. Initialize the Database
+2. Create Configuration
 
 ```swift
-let vecturaDB = VecturaDatabase()
+let config = VecturaConfig(
+    name: "my-vector-db",
+    dimension: 384, // Set this to match your embedding dimension
+    searchOptions: VecturaConfig.SearchOptions(
+        defaultNumResults: 10,
+        minThreshold: 0.7
+        )
+    )
 ```
 
-3. Add Documents
+3. Initialize the Database
+
+```swift
+let vectorDB = try VecturaKit(config: config)
+```
+
+4. Add Documents
 
 ```swift
 // TO-DO
-let document = "Sample text to be embedded."
+let text = "Sample text to be embedded"
+let embedding = MLXArray([...]) // Your embedding vector here
+let documentId = try await vectorDB.addDocument(
+text: text,
+embedding: embedding
+)
+```
 
-4. Perform a Search
+5. Perform a Search
 
 ```swift
-// TO-DO
-let query = "Relevant search query."
+let queryEmbedding = MLXArray([...])
+
+let results = try await vectorDB.search(
+query: queryEmbedding,
+numResults: 5,
+threshold: 0.8
+)
 ```
 
 ## Contributing
