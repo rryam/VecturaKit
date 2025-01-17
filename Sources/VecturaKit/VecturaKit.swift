@@ -95,8 +95,13 @@ public class VecturaKit: VecturaProtocol {
     // Save all documents in parallel
     try await withThrowingTaskGroup(of: Void.self) { group in
       for document in documentsToSave {
+        let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(document)
+
         group.addTask {
-          try await self.saveDocument(document)
+          try data.write(to: documentURL)
         }
       }
       try await group.waitForAll()
@@ -189,15 +194,6 @@ public class VecturaKit: VecturaProtocol {
     for fileURL in fileURLs {
       try FileManager.default.removeItem(at: fileURL)
     }
-  }
-
-  /// Saves a document to storage.
-  private func saveDocument(_ document: VecturaDocument) async throws {
-    let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
-    let data = try encoder.encode(document)
-    try data.write(to: documentURL)
   }
 
   /// Loads existing documents from storage.
