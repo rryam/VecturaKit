@@ -27,5 +27,3 @@ public enum VecturaError: LocalizedError {
         }
     }
 }
-
-// End of file. No additional code.

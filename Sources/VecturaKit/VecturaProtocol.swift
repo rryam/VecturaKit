@@ -3,8 +3,8 @@ import MLX
 import MLXEmbedders
 
 /// A protocol defining the requirements for a vector database instance.
-@available(macOS 13.0, iOS 16.0, *)
 public protocol VecturaProtocol {
+
     /// Adds a document to the vector store.
     /// - Parameters:
     ///   - text: The text content of the document.
@@ -32,5 +32,3 @@ public protocol VecturaProtocol {
     /// Removes all documents from the store.
     func reset() async throws
 }
-
-// End of file. No additional code.

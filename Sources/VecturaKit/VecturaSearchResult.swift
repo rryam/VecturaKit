@@ -2,6 +2,7 @@ import Foundation
 
 /// Represents a search result from the vector database.
 public struct VecturaSearchResult: Identifiable {
+
     /// The unique identifier of the matching document.
     public let id: UUID
     
@@ -15,6 +16,7 @@ public struct VecturaSearchResult: Identifiable {
     public let createdAt: Date
     
     /// Creates a new search result with the given properties.
+    ///
     /// - Parameters:
     ///   - id: The unique identifier of the matching document.
     ///   - text: The text content of the matching document.
@@ -27,5 +29,3 @@ public struct VecturaSearchResult: Identifiable {
         self.createdAt = createdAt
     }
 }
-
-// End of file. No additional code.

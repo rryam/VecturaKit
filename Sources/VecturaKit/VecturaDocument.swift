@@ -2,8 +2,8 @@ import Foundation
 import MLX
 
 /// A document stored in the vector database.
-@available(macOS 13.0, iOS 16.0, *)
 public struct VecturaDocument: Identifiable, Codable {
+
     /// The unique identifier of the document.
     public let id: UUID
     
@@ -17,6 +17,7 @@ public struct VecturaDocument: Identifiable, Codable {
     public let createdAt: Date
     
     /// Creates a new document with the given properties.
+    ///
     /// - Parameters:
     ///   - id: The unique identifier for the document. If nil, a new UUID will be generated.
     ///   - text: The text content of the document.
@@ -27,9 +28,7 @@ public struct VecturaDocument: Identifiable, Codable {
         self.embedding = embedding
         self.createdAt = Date()
     }
-    
-    // MARK: - Codable Implementation
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case text
@@ -54,5 +53,3 @@ public struct VecturaDocument: Identifiable, Codable {
         self.createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 }
-
-// End of file. No additional code.

@@ -3,7 +3,8 @@ import MLX
 import MLXEmbedders
 
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public actor VecturaKit: VecturaProtocol {
+public class VecturaKit: VecturaProtocol {
+
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
     
@@ -11,6 +12,7 @@ public actor VecturaKit: VecturaProtocol {
     private var documents: [UUID: VecturaDocument]
     
     /// Creates a new vector database instance.
+    ///
     /// - Parameter config: The configuration for the database.
     public init(config: VecturaConfig) {
         self.config = config
@@ -18,6 +20,7 @@ public actor VecturaKit: VecturaProtocol {
     }
     
     /// Adds a document to the vector store.
+    ///
     /// - Parameters:
     ///   - text: The text content of the document.
     ///   - embedding: The vector embedding of the document.
@@ -46,6 +49,7 @@ public actor VecturaKit: VecturaProtocol {
     }
     
     /// Searches for similar documents using a query vector.
+    ///
     /// - Parameters:
     ///   - query: The query vector to search with.
     ///   - numResults: Maximum number of results to return.
@@ -63,7 +67,6 @@ public actor VecturaKit: VecturaProtocol {
             )
         }
         
-        // Normalize query vector
         let queryNorm = sqrt(sum(query * query))
         let normalizedQuery = query / queryNorm
         
@@ -74,7 +77,6 @@ public actor VecturaKit: VecturaProtocol {
             let vectorNorm = sqrt(sum(vector * vector))
             let normalizedVector = vector / vectorNorm
             
-            // Compute cosine similarity
             let similarity = sum(normalizedQuery * normalizedVector)
                 .asArray(Float.self)[0]
             
@@ -93,16 +95,12 @@ public actor VecturaKit: VecturaProtocol {
             )
         }
         
-        // Sort by similarity score and limit results
         results.sort { $0.score > $1.score }
         let limit = numResults ?? config.searchOptions.defaultNumResults
         return Array(results.prefix(limit))
     }
     
-    /// Removes all documents from the store.
     public func reset() async throws {
         documents.removeAll()
     }
 }
-
-// End of file. No additional code.
