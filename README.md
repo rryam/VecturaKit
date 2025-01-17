@@ -14,7 +14,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rudrankriyam/VecturaKit.git", branch: "main"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", branch: "main"),
 ],
 ```
 
