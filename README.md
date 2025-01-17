@@ -1,10 +1,12 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device apps, enabling user experiences through local vector storage and retrieval. Inspired by [Dripfarm’s SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages MLXEmbeddings.
+VecturaKit is a Swift-based vector database designed for on-device apps, enabling user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages MLXEmbeddings.
 
 ## Features
 - On-Device Storage: Maintain data privacy and reduce latency by storing vectors directly on the device.
 - MLXEmbeddings Support: Utilize MLXEmbeddings for accurate and meaningful vector representations.
+- Batch Processing: Efficiently add multiple documents in parallel.
+- Normalized Vectors: Pre-computed normalized embeddings for faster similarity search.
 
 ## Installation
 
@@ -12,7 +14,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rudrankriyam/VecturaKit.git", brach: "main"),
+    .package(url: "https://github.com/rudrankriyam/VecturaKit.git", branch: "main"),
 ],
 ```
 
@@ -33,8 +35,8 @@ let config = VecturaConfig(
     searchOptions: VecturaConfig.SearchOptions(
         defaultNumResults: 10,
         minThreshold: 0.7
-        )
     )
+)
 ```
 
 3. Initialize the Database
@@ -45,26 +47,48 @@ let vectorDB = try VecturaKit(config: config)
 
 4. Add Documents
 
+Single document:
 ```swift
-// TO-DO
 let text = "Sample text to be embedded"
-let embedding = MLXArray([...]) // Your embedding vector here
 let documentId = try await vectorDB.addDocument(
-text: text,
-embedding: embedding
+    text: text,
+    modelConfig: .nomic_text_v1_5  // Optional, this is the default
+)
+```
+
+Multiple documents in batch:
+```swift
+let texts = [
+    "First document text",
+    "Second document text",
+    "Third document text"
+]
+let documentIds = try await vectorDB.addDocuments(
+    texts: texts,
+    modelConfig: .nomic_text_v1_5  // Optional, this is the default
 )
 ```
 
 5. Perform a Search
 
 ```swift
-let queryEmbedding = MLXArray([...])
-
 let results = try await vectorDB.search(
-query: queryEmbedding,
-numResults: 5,
-threshold: 0.8
+    query: queryText,
+    numResults: 5,  // Optional, defaults to config.searchOptions.defaultNumResults
+    threshold: 0.8  // Optional, defaults to config.searchOptions.minThreshold
 )
+
+for result in results {
+    print("Document ID: \(result.id)")
+    print("Text: \(result.text)")
+    print("Similarity Score: \(result.score)")
+}
+```
+
+6. Reset Database (Optional)
+
+```swift
+try await vectorDB.reset()
 ```
 
 ## Contributing
