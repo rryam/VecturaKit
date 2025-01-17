@@ -8,15 +8,15 @@ public protocol VecturaProtocol {
     /// Adds a document to the vector store.
     /// - Parameters:
     ///   - text: The text content of the document.
-    ///   - embedding: The vector embedding of the document.
     ///   - id: Optional unique identifier for the document.
+    ///   - modelConfig: Configuration for the model used for embedding.
     /// - Returns: The ID of the added document.
     func addDocument(
         text: String,
-        embedding: MLXArray,
-        id: UUID?
+        id: UUID?,
+        modelConfig: ModelConfiguration
     ) async throws -> UUID
-    
+
     /// Searches for similar documents using a query vector.
     /// - Parameters:
     ///   - query: The query vector to search with.

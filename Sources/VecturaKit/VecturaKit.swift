@@ -43,14 +43,20 @@ public class VecturaKit: VecturaProtocol {
     ///
     /// - Parameters:
     ///   - text: The text content of the document.
-    ///   - embedding: The vector embedding of the document.
     ///   - id: Optional unique identifier for the document.
+    ///   - modelConfig: The model configuration to use (default: nomic_text_v1_5)
     /// - Returns: The ID of the added document.
     public func addDocument(
         text: String,
-        embedding: MLXArray,
-        id: UUID? = nil
+        id: UUID? = nil,
+        modelConfig: ModelConfiguration = .nomic_text_v1_5
     ) async throws -> UUID {
+        // Create embedding for the text
+        let embeddings = try await createEmbeddings(for: [text], modelConfig: modelConfig)
+        guard let embedding = embeddings.first else {
+            throw VecturaError.loadFailed("Failed to create embedding")
+        }
+
         guard embedding.shape.last == config.dimension else {
             throw VecturaError.dimensionMismatch(
                 expected: config.dimension,
@@ -171,5 +177,50 @@ public class VecturaKit: VecturaProtocol {
         if !loadErrors.isEmpty {
             throw VecturaError.loadFailed(loadErrors.joined(separator: "\n"))
         }
+    }
+
+    /// Creates embeddings for the given texts using the specified model configuration.
+    /// - Parameters:
+    ///   - texts: Array of texts to create embeddings for
+    ///   - modelConfig: The model configuration to use (default: nomic_text_v1_5)
+    /// - Returns: Array of embeddings as MLXArray
+    public func createEmbeddings(
+        for texts: [String],
+        modelConfig: ModelConfiguration = .nomic_text_v1_5
+    ) async throws -> [MLXArray] {
+        let modelContainer = try await MLXEmbedders.loadModelContainer(
+            configuration: modelConfig)
+
+        let embeddings = await modelContainer.perform {
+            (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+
+            let inputs = texts.map {
+                tokenizer.encode(text: $0, addSpecialTokens: true)
+            }
+
+            let maxLength = inputs.reduce(into: 16) { acc, elem in
+                acc = max(acc, elem.count)
+            }
+
+            let padded = stacked(
+                inputs.map { elem in
+                    MLXArray(
+                        elem + Array(
+                            repeating: tokenizer.eosTokenId ?? 0,
+                            count: maxLength - elem.count))
+                })
+
+            let mask = (padded .!= tokenizer.eosTokenId ?? 0)
+            let tokenTypes = MLXArray.zeros(like: padded)
+
+            let result = pooling(
+                model(padded, positionIds: nil, tokenTypeIds: tokenTypes, attentionMask: mask),
+                normalize: true, applyLayerNorm: true
+            )
+
+            return result.map { $0.asArray(Float.self) }
+        }
+
+        return embeddings.map { MLXArray($0) }
     }
 }
