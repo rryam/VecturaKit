@@ -1,269 +1,263 @@
 import Foundation
-import MLX
-import MLXEmbedders
+import Embeddings
+import CoreML
 
 /// A vector database implementation that stores and searches documents using their vector embeddings.
 public class VecturaKit: VecturaProtocol {
 
-  /// The configuration for this vector database instance.
-  private let config: VecturaConfig
+    /// The configuration for this vector database instance.
+    private let config: VecturaConfig
 
-  /// The storage for documents.
-  private var documents: [UUID: VecturaDocument]
+    /// The storage for documents.
+    private var documents: [UUID: VecturaDocument]
 
-  /// The storage directory for documents.
-  private let storageDirectory: URL
+    /// The storage directory for documents.
+    private let storageDirectory: URL
 
-  /// Cached normalized embeddings for faster search
-  private var normalizedEmbeddings: [UUID: MLXArray] = [:]
+    /// Cached normalized embeddings for faster searches.
+    private var normalizedEmbeddings: [UUID: [Float]] = [:]
 
-  /// Creates a new vector database instance.
-  ///
-  /// - Parameter config: The configuration for the database.
-  public init(config: VecturaConfig) throws {
-    self.config = config
-    self.documents = [:]
+    /// Swift-Embeddings model bundle that you can reuse (e.g. BERT, XLM-R, CLIP, etc.)
+    /// In a real scenario, you might have your own logic or accept a user-provided model.
+    private var bertModel: Bert.ModelBundle?
 
-    /// Create storage directory in the app's Documents directory
-    self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-      .first!
-      .appendingPathComponent("VecturaKit")
-      .appendingPathComponent(config.name)
+    // MARK: - Initialization
 
-    /// Try to create directory and load existing documents
-    try FileManager.default.createDirectory(
-      at: storageDirectory,
-      withIntermediateDirectories: true
-    )
+    public init(config: VecturaConfig) throws {
+        self.config = config
+        self.documents = [:]
 
-    try loadDocuments()
-  }
+        // Create storage directory
+        self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+            .first!
+            .appendingPathComponent("VecturaKit")
+            .appendingPathComponent(config.name)
 
-  /// Adds multiple documents to the vector store in batch.
-  ///
-  /// - Parameters:
-  ///   - texts: Array of text contents to add
-  ///   - ids: Optional array of unique identifiers (must match texts.count if provided)
-  ///   - modelConfig: The model configuration to use (default: nomic_text_v1_5)
-  /// - Returns: Array of IDs for the added documents
-  public func addDocuments(
-    texts: [String],
-    ids: [UUID]? = nil,
-    modelConfig: ModelConfiguration = .nomic_text_v1_5
-  ) async throws -> [UUID] {
-    // Validate ids if provided
-    if let ids = ids {
-      guard ids.count == texts.count else {
-        throw VecturaError.invalidInput("Number of IDs must match number of texts")
-      }
+        try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+
+        // Attempt to load existing docs
+        try loadDocuments()
     }
 
-    // Create embeddings for all texts in one batch
-    let embeddings = try await createEmbeddings(for: texts, modelConfig: modelConfig)
+    // MARK: - Public
 
-    // Validate dimensions for all embeddings
-    for embedding in embeddings {
-      guard embedding.shape.last == config.dimension else {
-        throw VecturaError.dimensionMismatch(
-          expected: config.dimension,
-          got: embedding.shape.last ?? 0
-        )
-      }
-    }
-
-    // Create documents and save them
-    var documentIds: [UUID] = []
-    let documentsToSave = zip(texts, embeddings).enumerated().map { index, pair in
-      let (text, embedding) = pair
-      let id = ids?[index] ?? UUID()
-      documentIds.append(id)
-
-      return VecturaDocument(
-        id: id,
-        text: text,
-        embedding: embedding
-      )
-    }
-
-    // Pre-compute normalized embeddings for search
-    for document in documentsToSave {
-      let norm = sqrt(sum(document.embedding * document.embedding))
-      normalizedEmbeddings[document.id] = document.embedding / norm
-      documents[document.id] = document
-    }
-
-    // Save all documents in parallel
-    try await withThrowingTaskGroup(of: Void.self) { group in
-      for document in documentsToSave {
-        let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(document)
-
-        group.addTask {
-          try data.write(to: documentURL)
+    /// Adds multiple documents to the vector store in batch.
+    public func addDocuments(
+        texts: [String],
+        ids: [UUID]? = nil,
+        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    ) async throws -> [UUID] {
+        // 1. Check ID count (if provided)
+        if let ids = ids, ids.count != texts.count {
+            throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
-      }
-      try await group.waitForAll()
+
+        // 2. Load or reuse the embeddings model
+        if bertModel == nil {
+            bertModel = try await Bert.loadModelBundle(from: modelId)
+        }
+        guard let modelBundle = bertModel else {
+            throw VecturaError.invalidInput("Failed to load BERT model: \(modelId)")
+        }
+
+        // 3. Batch-encode embeddings using swift-embeddings
+        let embeddingsTensor = try modelBundle.batchEncode(texts)
+        let shape = embeddingsTensor.shape  // e.g. [batchSize, hiddenSize]
+        if shape.count != 2 {
+            throw VecturaError.invalidInput("Expected shape [N, D], got \(shape)")
+        }
+        // shape[0] == texts.count
+        // shape[1] == config.dimension, presumably
+        if shape[1] != config.dimension {
+            throw VecturaError.dimensionMismatch(
+                expected: config.dimension,
+                got: shape[1]
+            )
+        }
+
+        // 4. Convert MLTensor → Swift [Float]
+        let embeddingShapedArray = await embeddingsTensor.cast(to: Float.self).shapedArray(of: Float.self)
+        // embeddingShapedArray has shape [texts.count, dimension]
+        let allScalars = embeddingShapedArray.scalars
+
+        // 5. Create VecturaDocuments
+        var documentIds = [UUID]()
+        var documentsToSave = [VecturaDocument]()
+
+        for i in 0..<texts.count {
+            let startIndex = i * config.dimension
+            let endIndex = startIndex + config.dimension
+            let embeddingRow = Array(allScalars[startIndex..<endIndex])
+
+            let docId = ids?[i] ?? UUID()
+            let doc = VecturaDocument(
+                id: docId,
+                text: texts[i],
+                embedding: embeddingRow
+            )
+            documentsToSave.append(doc)
+            documentIds.append(docId)
+        }
+
+        // 6. Normalize + store in memory
+        for doc in documentsToSave {
+            let norm = l2Norm(doc.embedding)
+            let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+            normalizedEmbeddings[doc.id] = normalized
+            documents[doc.id] = doc
+        }
+
+        // 7. Persist to disk in parallel
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            // Copy the directory URL into a local constant:
+            let directory = self.storageDirectory
+            
+            // Create isolated copies of documents for concurrent processing
+            for doc in documentsToSave {
+                group.addTask { @Sendable [doc] in
+                    let documentURL = directory.appendingPathComponent("\(doc.id).json")
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = .prettyPrinted
+                    
+                    let data = try encoder.encode(doc)
+                    try data.write(to: documentURL)
+                }
+            }
+            
+            try await group.waitForAll()
+        }
+
+        return documentIds
     }
 
-    return documentIds
-  }
-
-  /// Adds a document to the vector store.
-  ///
-  /// - Parameters:
-  ///   - text: The text content of the document.
-  ///   - id: Optional unique identifier for the document.
-  ///   - modelConfig: The model configuration to use (default: nomic_text_v1_5)
-  /// - Returns: The ID of the added document.
-  public func addDocument(
-    text: String,
-    id: UUID? = nil,
-    modelConfig: ModelConfiguration = .nomic_text_v1_5
-  ) async throws -> UUID {
-    let ids = try await addDocuments(
-      texts: [text],
-      ids: id.map { [$0] },
-      modelConfig: modelConfig
-    )
-    return ids[0]
-  }
-
-  /// Searches for similar documents using a query vector.
-  ///
-  /// - Parameters:
-  ///   - query: The query vector to search with.
-  ///   - numResults: Maximum number of results to return.
-  ///   - threshold: Minimum similarity threshold.
-  /// - Returns: An array of search results ordered by similarity.
-  public func search(
-    query: MLXArray,
-    numResults: Int? = nil,
-    threshold: Float? = nil
-  ) async throws -> [VecturaSearchResult] {
-    guard query.shape.last == config.dimension else {
-      throw VecturaError.dimensionMismatch(
-        expected: config.dimension,
-        got: query.shape.last ?? 0
-      )
-    }
-
-    let queryNorm = sqrt(sum(query * query))
-    let normalizedQuery = query / queryNorm
-
-    var results: [VecturaSearchResult] = []
-
-    for document in documents.values {
-      let normalizedVector = normalizedEmbeddings[document.id]!
-      let similarity = sum(normalizedQuery * normalizedVector)
-        .asArray(Float.self)[0]
-
-      if let minThreshold = threshold ?? config.searchOptions.minThreshold,
-        similarity < minThreshold
-      {
-        continue
-      }
-
-      results.append(
-        VecturaSearchResult(
-          id: document.id,
-          text: document.text,
-          score: similarity,
-          createdAt: document.createdAt
+    /// Adds a single document to the vector store.
+    public func addDocument(
+        text: String,
+        id: UUID? = nil,
+        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    ) async throws -> UUID {
+        let ids = try await addDocuments(
+            texts: [text],
+            ids: id.map { [$0] },
+            modelId: modelId
         )
-      )
+        return ids[0]
     }
 
-    results.sort { $0.score > $1.score }
-    let limit = numResults ?? config.searchOptions.defaultNumResults
-    return Array(results.prefix(limit))
-  }
+    /// Searches for similar documents using a query text. (Text-based version)
+    /// You could also provide a search(queryEmbedding:) variant if you have your own embedding.
+    public func search(
+        query: String,
+        numResults: Int? = nil,
+        threshold: Float? = nil,
+        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    ) async throws -> [VecturaSearchResult] {
+        // Embed the query
+        if bertModel == nil {
+            bertModel = try await Bert.loadModelBundle(from: modelId)
+        }
+        guard let modelBundle = bertModel else {
+            throw VecturaError.invalidInput("Failed to load BERT model: \(modelId)")
+        }
+        let queryEmbeddingTensor = try modelBundle.encode(query)
+        let queryEmbeddingFloatArray = await tensorToArray(queryEmbeddingTensor)
 
-  /// Resets the vector database.
-  public func reset() async throws {
-    documents.removeAll()
-    normalizedEmbeddings.removeAll()
-
-    /// Remove all files from storage
-    let fileURLs = try FileManager.default.contentsOfDirectory(
-      at: storageDirectory,
-      includingPropertiesForKeys: nil
-    )
-
-    for fileURL in fileURLs {
-      try FileManager.default.removeItem(at: fileURL)
-    }
-  }
-
-  /// Loads existing documents from storage.
-  private func loadDocuments() throws {
-    let fileURLs = try FileManager.default.contentsOfDirectory(
-      at: storageDirectory,
-      includingPropertiesForKeys: nil
-    )
-
-    let decoder = JSONDecoder()
-    var loadErrors: [String] = []
-
-    for fileURL in fileURLs where fileURL.pathExtension == "json" {
-      do {
-        let data = try Data(contentsOf: fileURL)
-        let document = try decoder.decode(VecturaDocument.self, from: data)
-        documents[document.id] = document
-      } catch {
-        loadErrors.append("Failed to load document at \(fileURL): \(error.localizedDescription)")
-      }
+        return try await search(query: queryEmbeddingFloatArray, numResults: numResults, threshold: threshold)
     }
 
-    if !loadErrors.isEmpty {
-      throw VecturaError.loadFailed(loadErrors.joined(separator: "\n"))
-    }
-  }
+    /// Searches for similar documents given a pre-computed query embedding.
+    public func search(
+        query queryEmbedding: [Float],
+        numResults: Int? = nil,
+        threshold: Float? = nil
+    ) async throws -> [VecturaSearchResult] {
+        if queryEmbedding.count != config.dimension {
+            throw VecturaError.dimensionMismatch(
+                expected: config.dimension,
+                got: queryEmbedding.count
+            )
+        }
 
-  /// Creates embeddings for the given texts using the specified model configuration.
-  /// - Parameters:
-  ///   - texts: Array of texts to create embeddings for
-  ///   - modelConfig: The model configuration to use (default: nomic_text_v1_5)
-  /// - Returns: Array of embeddings as MLXArray
-  public func createEmbeddings(
-    for texts: [String],
-    modelConfig: ModelConfiguration = .nomic_text_v1_5
-  ) async throws -> [MLXArray] {
-    let modelContainer = try await MLXEmbedders.loadModelContainer(
-      configuration: modelConfig)
+        // Normalize query embedding
+        let norm = l2Norm(queryEmbedding)
+        let normalizedQuery = queryEmbedding.map { $0 / (norm + 1e-9) }
 
-    let embeddings = await modelContainer.perform {
-      (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+        var results: [VecturaSearchResult] = []
 
-      let inputs = texts.map {
-        tokenizer.encode(text: $0, addSpecialTokens: true)
-      }
+        for doc in documents.values {
+            guard let normDoc = normalizedEmbeddings[doc.id] else { continue }
+            let similarity = dotProduct(normalizedQuery, normDoc)
+            // Filter out below threshold
+            if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
+                continue
+            }
+            results.append(
+                VecturaSearchResult(
+                    id: doc.id,
+                    text: doc.text,
+                    score: similarity,
+                    createdAt: doc.createdAt
+                )
+            )
+        }
 
-      let maxLength = inputs.reduce(into: 16) { acc, elem in
-        acc = max(acc, elem.count)
-      }
-
-      let padded = stacked(
-        inputs.map { elem in
-          MLXArray(
-            elem
-              + Array(
-                repeating: tokenizer.eosTokenId ?? 0,
-                count: maxLength - elem.count))
-        })
-
-      let mask = (padded .!= tokenizer.eosTokenId ?? 0)
-      let tokenTypes = MLXArray.zeros(like: padded)
-
-      let result = pooling(
-        model(padded, positionIds: nil, tokenTypeIds: tokenTypes, attentionMask: mask),
-        normalize: true, applyLayerNorm: true
-      )
-
-      return result.map { $0.asArray(Float.self) }
+        results.sort { $0.score > $1.score }
+        let limit = numResults ?? config.searchOptions.defaultNumResults
+        return Array(results.prefix(limit))
     }
 
-    return embeddings.map { MLXArray($0) }
-  }
+    /// Removes all documents from the store.
+    public func reset() async throws {
+        documents.removeAll()
+        normalizedEmbeddings.removeAll()
+
+        // Remove all JSON files
+        let files = try FileManager.default.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil)
+        for fileURL in files {
+            try FileManager.default.removeItem(at: fileURL)
+        }
+    }
+
+    // MARK: - Private
+
+    private func loadDocuments() throws {
+        let fileURLs = try FileManager.default.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil)
+
+        let decoder = JSONDecoder()
+        var loadErrors: [String] = []
+
+        for fileURL in fileURLs where fileURL.pathExtension == "json" {
+            do {
+                let data = try Data(contentsOf: fileURL)
+                let doc = try decoder.decode(VecturaDocument.self, from: data)
+                // Rebuild normalized embeddings
+                let norm = l2Norm(doc.embedding)
+                let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+                normalizedEmbeddings[doc.id] = normalized
+                documents[doc.id] = doc
+            } catch {
+                loadErrors.append("Failed to load \(fileURL.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+
+        if !loadErrors.isEmpty {
+            throw VecturaError.loadFailed(loadErrors.joined(separator: "\n"))
+        }
+    }
+
+    /// Utility to convert a 1D MLTensor → [Float].
+    private func tensorToArray(_ tensor: MLTensor) async -> [Float] {
+        let shaped = await tensor.cast(to: Float.self).shapedArray(of: Float.self)
+        return shaped.scalars
+    }
+
+    /// Dot product of two vectors.
+    private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
+        zip(a, b).reduce(into: 0) { $0 += $1.0 * $1.1 }
+    }
+
+    /// L2 norm of a vector.
+    private func l2Norm(_ v: [Float]) -> Float {
+        sqrt(dotProduct(v, v))
+    }
 }

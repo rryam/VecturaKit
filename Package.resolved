@@ -1,15 +1,6 @@
 {
-  "originHash" : "d8077dc13d79d9e56c768994f061b2d8c11c5904fc67203c399397705189f95e",
+  "originHash" : "0d120b46a5c48b4039f6e95f0d889905c02f41f488647ac93fd29ccf6251d720",
   "pins" : [
-    {
-      "identity" : "gzipswift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/1024jp/GzipSwift",
-      "state" : {
-        "revision" : "731037f6cc2be2ec01562f6597c1d0aa3fe6fd05",
-        "version" : "6.0.1"
-      }
-    },
     {
       "identity" : "jinja",
       "kind" : "remoteSourceControl",
@@ -17,24 +8,6 @@
       "state" : {
         "revision" : "6dbe4c449469fb586d0f7339f900f0dd4d78b167",
         "version" : "1.0.6"
-      }
-    },
-    {
-      "identity" : "mlx-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift",
-      "state" : {
-        "revision" : "70dbb62128a5a1471a5ab80363430adb33470cab",
-        "version" : "0.21.2"
-      }
-    },
-    {
-      "identity" : "mlx-swift-examples",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift-examples/",
-      "state" : {
-        "branch" : "main",
-        "revision" : "2f1928ba903b557eedda90202271785a1f4b233d"
       }
     },
     {
@@ -47,12 +20,30 @@
       }
     },
     {
-      "identity" : "swift-numerics",
+      "identity" : "swift-embeddings",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-numerics",
+      "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "0a5bc04095a675662cf24757cc0640aa2204253b",
-        "version" : "1.0.2"
+        "revision" : "47697a003aa834ead4781ed886ac956bc81a436c",
+        "version" : "0.0.7"
+      }
+    },
+    {
+      "identity" : "swift-safetensors",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jkrukowski/swift-safetensors.git",
+      "state" : {
+        "revision" : "f730309020d5b53e137b30bc10eb1d168954e1e7",
+        "version" : "0.0.6"
+      }
+    },
+    {
+      "identity" : "swift-sentencepiece",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jkrukowski/swift-sentencepiece",
+      "state" : {
+        "revision" : "75d725019ff0b75fbbd7128314fe6710c5a86df0",
+        "version" : "0.0.5"
       }
     },
     {

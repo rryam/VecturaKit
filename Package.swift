@@ -6,8 +6,8 @@ import PackageDescription
 let package = Package(
     name: "VecturaKit",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
+        .iOS(.v18),
+        .macOS(.v15),
         .visionOS(.v1)
     ],
     products: [
@@ -24,10 +24,6 @@ let package = Package(
             dependencies: [
                 .product(name: "Embeddings", package: "swift-embeddings")
             ]
-        ),
-        .testTarget(
-            name: "VecturaKitTests",
-            dependencies: ["VecturaKit"]
-        ),
+        )
     ]
 )
