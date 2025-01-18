@@ -5,6 +5,8 @@ VecturaKit is a Swift-based vector database designed for on-device apps, enablin
 ## Features
 - On-Device Storage: Maintain data privacy and reduce latency by storing vectors directly on the device.
 - Batch Processing: Efficiently add multiple documents in parallel.
+- Persistent Storage: Documents are automatically saved and loaded between sessions.
+- Configurable Search: Customize search results with thresholds and result limits.
 
 ## Installation
 
@@ -24,33 +26,30 @@ dependencies: [
 import VecturaKit
 ```
 
-2. Create Configuration
+2. Create Configuration and Initialize Database
 
 ```swift
 let config = VecturaConfig(
     name: "my-vector-db",
-    dimension: 384, // Set this to match your embedding dimension
+    dimension: 384,  // Matches the default BERT model dimension
     searchOptions: VecturaConfig.SearchOptions(
         defaultNumResults: 10,
         minThreshold: 0.7
     )
 )
-```
 
-3. Initialize the Database
-
-```swift
 let vectorDB = try VecturaKit(config: config)
 ```
 
-4. Add Documents
+3. Add Documents
 
 Single document:
 ```swift
 let text = "Sample text to be embedded"
 let documentId = try await vectorDB.addDocument(
     text: text,
-    modelConfig: .nomic_text_v1_5  // Optional, this is the default
+    id: UUID(),  // Optional, will be generated if not provided
+    modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional, this is the default
 )
 ```
 
@@ -63,27 +62,56 @@ let texts = [
 ]
 let documentIds = try await vectorDB.addDocuments(
     texts: texts,
-    modelConfig: .nomic_text_v1_5  // Optional, this is the default
+    ids: nil,  // Optional array of UUIDs
+    modelId: "sentence-transformers/all-MiniLM-L6-v2"
 )
 ```
 
-5. Perform a Search
+4. Search Documents
 
+Search by text:
 ```swift
 let results = try await vectorDB.search(
-    query: queryText,
-    numResults: 5,  // Optional, defaults to config.searchOptions.defaultNumResults
-    threshold: 0.8  // Optional, defaults to config.searchOptions.minThreshold
+    query: "search query",
+    numResults: 5,  // Optional
+    threshold: 0.8,  // Optional
+    modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional
 )
 
 for result in results {
     print("Document ID: \(result.id)")
     print("Text: \(result.text)")
     print("Similarity Score: \(result.score)")
+    print("Created At: \(result.createdAt)")
 }
 ```
 
-6. Reset Database (Optional)
+Search by vector embedding:
+```swift
+let results = try await vectorDB.search(
+    query: embeddingArray,  // [Float] matching config.dimension
+    numResults: 5,  // Optional
+    threshold: 0.8  // Optional
+)
+```
+
+5. Document Management
+
+Update document:
+```swift
+try await vectorDB.updateDocument(
+    id: documentId,
+    newText: "Updated text",
+    modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional
+)
+```
+
+Delete documents:
+```swift
+try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
+```
+
+Reset database:
 
 ```swift
 try await vectorDB.reset()
