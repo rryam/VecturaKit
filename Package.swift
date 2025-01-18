@@ -16,13 +16,13 @@ let package = Package(
             targets: ["VecturaKit"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift-examples/", branch: "main")
+        .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.7")
     ],
     targets: [
         .target(
             name: "VecturaKit",
             dependencies: [
-                .product(name: "MLXEmbedders", package: "mlx-swift-examples")
+                .product(name: "Embeddings", package: "swift-embeddings")
             ]
         ),
         .testTarget(
