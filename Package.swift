@@ -24,6 +24,10 @@ let package = Package(
             dependencies: [
                 .product(name: "Embeddings", package: "swift-embeddings")
             ]
-        )
+        ),
+        .testTarget(
+            name: "VecturaKitTests",
+            dependencies: ["VecturaKit"]
+        ),
     ]
 )

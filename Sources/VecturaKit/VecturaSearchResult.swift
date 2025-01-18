@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a search result from the vector database.
-public struct VecturaSearchResult: Identifiable {
+public struct VecturaSearchResult: Identifiable, Sendable {
 
     /// The unique identifier of the matching document.
     public let id: UUID
