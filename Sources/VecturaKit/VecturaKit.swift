@@ -112,9 +112,8 @@ public class VecturaKit: VecturaProtocol {
             // Copy the directory URL into a local constant:
             let directory = self.storageDirectory
             
-            // Create isolated copies of documents for concurrent processing
             for doc in documentsToSave {
-                group.addTask { @Sendable [doc] in
+                group.addTask {
                     let documentURL = directory.appendingPathComponent("\(doc.id).json")
                     let encoder = JSONEncoder()
                     encoder.outputFormatting = .prettyPrinted
