@@ -4,9 +4,7 @@ VecturaKit is a Swift-based vector database designed for on-device apps, enablin
 
 ## Features
 - On-Device Storage: Maintain data privacy and reduce latency by storing vectors directly on the device.
-- MLXEmbeddings Support: Utilize MLXEmbeddings for accurate and meaningful vector representations.
 - Batch Processing: Efficiently add multiple documents in parallel.
-- Normalized Vectors: Pre-computed normalized embeddings for faster similarity search.
 
 ## Installation
 
