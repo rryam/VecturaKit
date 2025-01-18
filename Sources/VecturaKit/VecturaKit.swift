@@ -217,6 +217,30 @@ public class VecturaKit: VecturaProtocol {
         }
     }
 
+    /// Deletes multiple documents from the store.
+    public func deleteDocuments(ids: [UUID]) async throws {
+        for id in ids {
+            documents[id] = nil
+            normalizedEmbeddings[id] = nil
+            
+            let documentURL = storageDirectory.appendingPathComponent("\(id).json")
+            try FileManager.default.removeItem(at: documentURL)
+        }
+    }
+
+    /// Updates a document in the store.
+    public func updateDocument(
+        id: UUID,
+        newText: String,
+        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    ) async throws {
+        // Delete old document
+        try await deleteDocuments(ids: [id])
+        
+        // Add updated document with same ID
+        _ = try await addDocument(text: newText, id: id, modelId: modelId)
+    }
+
     // MARK: - Private
 
     private func loadDocuments() throws {
