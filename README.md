@@ -117,6 +117,57 @@ Reset database:
 try await vectorDB.reset()
 ```
 
+## Command Line Interface
+
+VecturaKit comes with a built-in CLI tool for database operations:
+
+```bash
+# Add documents
+vectura add "First document" "Second document" "Third document" \
+  --db-name "my-vector-db" \
+  --dimension 384 \
+  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+
+# Search documents
+vectura search "search query" \
+  --db-name "my-vector-db" \
+  --dimension 384 \
+  --threshold 0.7 \
+  --num-results 5 \
+  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+
+# Update document
+vectura update <document-uuid> "Updated text content" \
+  --db-name "my-vector-db" \
+  --dimension 384 \
+  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+
+# Delete documents
+vectura delete <document-uuid-1> <document-uuid-2> \
+  --db-name "my-vector-db" \
+  --dimension 384
+
+# Reset database
+vectura reset \
+  --db-name "my-vector-db" \
+  --dimension 384
+
+# Run demo with sample data
+vectura mock \
+  --db-name "my-vector-db" \
+  --dimension 384 \
+  --threshold 0.7 \
+  --num-results 10 \
+  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+```
+
+Common options:
+- `--db-name, -d`: Database name (default: "vectura-cli-db")
+- `--dimension, -v`: Vector dimension (default: 384)
+- `--threshold, -t`: Minimum similarity threshold (default: 0.7)
+- `--num-results, -n`: Number of results to return (default: 10)
+- `--model-id, -m`: Model ID for embeddings (default: "sentence-transformers/all-MiniLM-L6-v2")
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
