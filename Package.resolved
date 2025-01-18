@@ -1,5 +1,4 @@
 {
-  "originHash" : "0d120b46a5c48b4039f6e95f0d889905c02f41f488647ac93fd29ccf6251d720",
   "pins" : [
     {
       "identity" : "jinja",
@@ -24,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "47697a003aa834ead4781ed886ac956bc81a436c",
-        "version" : "0.0.7"
+        "branch" : "main",
+        "revision" : "47697a003aa834ead4781ed886ac956bc81a436c"
       }
     },
     {
@@ -56,5 +55,5 @@
       }
     }
   ],
-  "version" : 3
+  "version" : 2
 }
