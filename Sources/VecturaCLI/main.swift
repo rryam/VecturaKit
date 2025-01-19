@@ -2,21 +2,20 @@ import ArgumentParser
 import Foundation
 import VecturaKit
 
-struct DocumentID: ExpressibleByArgument, Decodable {
-  let uuid: UUID
-
-  init(_ uuid: UUID) {
-    self.uuid = uuid
-  }
-
-  init?(argument: String) {
-    guard let uuid = UUID(uuidString: argument) else { return nil }
-    self.uuid = uuid
-  }
-}
-
-@main
 struct VecturaCLI: AsyncParsableCommand {
+  struct DocumentID: ExpressibleByArgument, Decodable {
+    let uuid: UUID
+
+    init(_ uuid: UUID) {
+      self.uuid = uuid
+    }
+
+    init?(argument: String) {
+      guard let uuid = UUID(uuidString: argument) else { return nil }
+      self.uuid = uuid
+    }
+  }
+
   static let configuration = CommandConfiguration(
     commandName: "vectura",
     abstract: "A CLI tool for VecturaKit vector database",
@@ -289,3 +288,5 @@ extension VecturaCLI {
     }
   }
 }
+
+VecturaCLI.main()
