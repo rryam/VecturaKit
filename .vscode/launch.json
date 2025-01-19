@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:VecturaKit}",
+            "name": "Debug vectura-cli",
+            "program": "${workspaceFolder:VecturaKit}/.build/debug/vectura-cli",
+            "preLaunchTask": "swift: Build Debug vectura-cli"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:VecturaKit}",
+            "name": "Release vectura-cli",
+            "program": "${workspaceFolder:VecturaKit}/.build/release/vectura-cli",
+            "preLaunchTask": "swift: Build Release vectura-cli"
+        }
+    ]
+}
