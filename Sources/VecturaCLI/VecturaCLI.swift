@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import VecturaKit
 
+@main
 struct VecturaCLI: AsyncParsableCommand {
   struct DocumentID: ExpressibleByArgument, Decodable {
     let uuid: UUID
@@ -288,5 +289,3 @@ extension VecturaCLI {
     }
   }
 }
-
-VecturaCLI.main()
