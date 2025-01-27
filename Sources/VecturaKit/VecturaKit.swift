@@ -45,18 +45,18 @@ public class VecturaKit: VecturaProtocol {
     public func addDocuments(
         texts: [String],
         ids: [UUID]? = nil,
-        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+        model: VecturaModelSource = .default
     ) async throws -> [UUID] {
         if let ids = ids, ids.count != texts.count {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
 
         if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: modelId)
+            bertModel = try await Bert.loadModelBundle(from: model)
         }
 
         guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(modelId)")
+            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
         }
 
         let embeddingsTensor = try modelBundle.batchEncode(texts)
@@ -128,19 +128,6 @@ public class VecturaKit: VecturaProtocol {
         }
 
         return documentIds
-    }
-
-    public func addDocument(
-        text: String,
-        id: UUID? = nil,
-        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
-    ) async throws -> UUID {
-        let ids = try await addDocuments(
-            texts: [text],
-            ids: id.map { [$0] },
-            modelId: modelId
-        )
-        return ids[0]
     }
 
     public func search(
@@ -337,5 +324,16 @@ public class VecturaKit: VecturaProtocol {
 
     private func l2Norm(_ v: [Float]) -> Float {
         sqrt(dotProduct(v, v))
+    }
+}
+
+internal extension Bert {
+    static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
+        switch source {
+        case .id(let modelId):
+            try await loadModelBundle(from: modelId)
+        case .folder(let url):
+            try await loadModelBundle(from: url)
+        }
     }
 }
