@@ -48,7 +48,7 @@ public extension VecturaProtocol {
     /// - Returns: The ID of the added document.
     func addDocument(
         text: String,
-        id: UUID?,
+        id: UUID? = nil,
         model: VecturaModelSource = .default
     ) async throws -> UUID {
         let ids = try await addDocuments(
@@ -67,6 +67,7 @@ public extension VecturaProtocol {
     ///   - modelId: Identifier of the model to use for generating the embedding
     ///              (e.g., "sentence-transformers/all-MiniLM-L6-v2").
     /// - Returns: The ID of the added document.
+    @_disfavoredOverload
     func addDocument(
         text: String,
         id: UUID?,
