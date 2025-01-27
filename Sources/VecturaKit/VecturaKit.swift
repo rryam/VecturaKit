@@ -172,7 +172,7 @@ public class VecturaKit: VecturaProtocol {
         query: String,
         numResults: Int? = nil,
         threshold: Float? = nil,
-        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+        modelId: String = VecturaModelSource.defaultModelId
     ) async throws -> [VecturaSearchResult] {
         if bertModel == nil {
             bertModel = try await Bert.loadModelBundle(from: modelId)
@@ -277,11 +277,20 @@ public class VecturaKit: VecturaProtocol {
     public func updateDocument(
         id: UUID,
         newText: String,
-        modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+        model: VecturaModelSource = .default
     ) async throws {
         try await deleteDocuments(ids: [id])
 
-        _ = try await addDocument(text: newText, id: id, modelId: modelId)
+        _ = try await addDocument(text: newText, id: id, model: model)
+    }
+
+    @_disfavoredOverload
+    public func updateDocument(
+        id: UUID,
+        newText: String,
+        modelId: String = VecturaModelSource.defaultModelId
+    ) async throws {
+        try await updateDocument(id: id, newText: newText, model: .id(modelId))
     }
 
     // MARK: - Private
