@@ -172,14 +172,14 @@ public class VecturaKit: VecturaProtocol {
         query: String,
         numResults: Int? = nil,
         threshold: Float? = nil,
-        modelId: String = VecturaModelSource.defaultModelId
+        model: VecturaModelSource = .default
     ) async throws -> [VecturaSearchResult] {
         if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: modelId)
+            bertModel = try await Bert.loadModelBundle(from: model)
         }
 
         guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(modelId)")
+            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
         }
 
         // Initialize BM25 index if needed
@@ -242,6 +242,16 @@ public class VecturaKit: VecturaProtocol {
 
         let limit = numResults ?? config.searchOptions.defaultNumResults
         return Array(hybridResults.prefix(limit))
+    }
+
+    @_disfavoredOverload
+    public func search(
+        query: String,
+        numResults: Int? = nil,
+        threshold: Float? = nil,
+        modelId: String = VecturaModelSource.defaultModelId
+    ) async throws -> [VecturaSearchResult] {
+        try await search(query: query, numResults: numResults, threshold: threshold, model: .id(modelId))
     }
 
     public func reset() async throws {
