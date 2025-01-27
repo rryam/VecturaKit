@@ -1,6 +1,7 @@
 import XCTest
 
 @testable import VecturaKit
+import Embeddings
 
 final class VecturaKitTests: XCTestCase {
   var vectura: VecturaKit!
@@ -180,5 +181,30 @@ final class VecturaKitTests: XCTestCase {
     let newVectura = try VecturaKit(config: config)
     let newResults = try await newVectura.search(query: text)
     XCTAssertEqual(newResults.count, 0)
+  }
+
+  func testFolderURLModelSource() async throws {
+    /// First load the model from a remote source in order to make it available in the local filesystem.
+    _ = try await Bert.loadModelBundle(from: .default)
+
+    /// Local model will be downloaded to a predictable location (this may break if `swift-transformers` updates where it downloads models).
+    let url = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        .appending(path: "huggingface/models/\(VecturaModelSource.defaultModelId)")
+
+    XCTAssertTrue(FileManager.default.fileExists(atPath: url.path(percentEncoded: false)), "Expected downloaded model to be available locally at \(url.path())")
+
+    let documents = [
+      "The quick brown fox jumps over the lazy dog",
+      "Pack my box with five dozen liquor jugs",
+      "How vexingly quick daft zebras jump",
+    ]
+
+    /// Proceed as usual now, but loading the model directly from the local directory instead of downloading it.
+    let ids = try await vectura.addDocuments(texts: documents, model: .folder(url))
+    XCTAssertEqual(ids.count, 3)
+
+    let results = try await vectura.search(query: "quick jumping animals")
+    XCTAssertGreaterThanOrEqual(results.count, 2)
+    XCTAssertTrue(results[0].score > results[1].score)
   }
 }
