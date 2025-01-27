@@ -29,11 +29,21 @@ public class VecturaKit: VecturaProtocol {
         self.config = config
         self.documents = [:]
 
-        // Create storage directory
-        self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            .first!
-            .appendingPathComponent("VecturaKit")
-            .appendingPathComponent(config.name)
+        if let customStorageDirectory = config.directoryURL {
+            let databaseDirectory = customStorageDirectory.appending(path: config.name)
+
+            if !FileManager.default.fileExists(atPath: databaseDirectory.path(percentEncoded: false)) {
+                try FileManager.default.createDirectory(at: databaseDirectory, withIntermediateDirectories: true)
+            }
+            
+            self.storageDirectory = databaseDirectory
+        } else {
+            // Create default storage directory
+            self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+                .first!
+                .appendingPathComponent("VecturaKit")
+                .appendingPathComponent(config.name)
+        }
 
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
 
