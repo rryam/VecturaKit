@@ -4,9 +4,18 @@ VecturaKit is a Swift-based vector database designed for on-device apps, enablin
 
 ## Features
 - On-Device Storage: Maintain data privacy and reduce latency by storing vectors directly on the device.
+- Hybrid Search: Combine vector similarity with BM25 text search for better results.
 - Batch Processing: Efficiently add multiple documents in parallel.
 - Persistent Storage: Documents are automatically saved and loaded between sessions.
-- Configurable Search: Customize search results with thresholds and result limits.
+- Configurable Search: Customize search results with thresholds, result limits, and hybrid search weights.
+- Custom Storage Location: Specify a custom directory for database storage.
+
+## Supported Platforms
+- macOS 14.0 or later
+- iOS 17.0 or later
+- tvOS 17.0 or later
+- visionOS 1.0 or later
+- watchOS 10.0 or later
 
 ## Installation
 
@@ -31,10 +40,14 @@ import VecturaKit
 ```swift
 let config = VecturaConfig(
     name: "my-vector-db",
-    dimension: 384,  // Matches the default BERT model dimension
+    directoryURL: nil,  // Optional custom storage location
+    dimension: 384,     // Matches the default BERT model dimension
     searchOptions: VecturaConfig.SearchOptions(
         defaultNumResults: 10,
-        minThreshold: 0.7
+        minThreshold: 0.7,
+        hybridWeight: 0.5,  // Balance between vector and text search
+        k1: 1.2,           // BM25 parameters
+        b: 0.75
     )
 )
 
@@ -69,12 +82,12 @@ let documentIds = try await vectorDB.addDocuments(
 
 4. Search Documents
 
-Search by text:
+Search by text (hybrid search):
 ```swift
 let results = try await vectorDB.search(
     query: "search query",
-    numResults: 5,  // Optional
-    threshold: 0.8,  // Optional
+    numResults: 5,      // Optional
+    threshold: 0.8,     // Optional
     modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional
 )
 
@@ -112,7 +125,6 @@ try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
 ```
 
 Reset database:
-
 ```swift
 try await vectorDB.reset()
 ```
