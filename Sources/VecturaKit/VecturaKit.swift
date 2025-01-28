@@ -2,6 +2,7 @@ import CoreML
 import Embeddings
 import Foundation
 
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
 public class VecturaKit: VecturaProtocol {
 
@@ -336,6 +337,7 @@ public class VecturaKit: VecturaProtocol {
     }
 }
 
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 internal extension Bert {
     static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
         switch source {

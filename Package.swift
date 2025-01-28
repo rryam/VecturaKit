@@ -6,8 +6,11 @@ import PackageDescription
 let package = Package(
   name: "VecturaKit",
   platforms: [
-    .iOS(.v18),
-    .macOS(.v15),
+    .macOS(.v14),
+    .iOS(.v17),
+    .tvOS(.v17),
+    .visionOS(.v1),
+    .watchOS(.v10),
   ],
   products: [
     .library(
@@ -20,7 +23,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/jkrukowski/swift-embeddings.git", branch: "main"),
+    .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.10"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
   ],
   targets: [

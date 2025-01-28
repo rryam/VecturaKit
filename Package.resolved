@@ -1,4 +1,5 @@
 {
+  "originHash" : "1d6b0c2f12728d00495aa3ed5a9f7ebb4a5dce75ed02656ba6342ed4562c7cba",
   "pins" : [
     {
       "identity" : "jinja",
@@ -23,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "47697a003aa834ead4781ed886ac956bc81a436c"
+        "revision" : "d8726665fe8650fd2279f87825774e111fac893d",
+        "version" : "0.0.10"
       }
     },
     {
@@ -32,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-safetensors.git",
       "state" : {
-        "revision" : "f730309020d5b53e137b30bc10eb1d168954e1e7",
-        "version" : "0.0.6"
+        "revision" : "718b0f38f912e0bf9d92130fa1e1fe2ae5136dd6",
+        "version" : "0.0.7"
       }
     },
     {
@@ -55,5 +56,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

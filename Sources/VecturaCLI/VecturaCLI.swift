@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import VecturaKit
 
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
 struct VecturaCLI: AsyncParsableCommand {
   struct DocumentID: ExpressibleByArgument, Decodable {
@@ -38,6 +39,7 @@ struct VecturaCLI: AsyncParsableCommand {
   }
 }
 
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension VecturaCLI {
   struct Mock: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
