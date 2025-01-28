@@ -6,6 +6,10 @@ public struct VecturaConfig {
   /// The name of the database instance.
   public let name: String
 
+  /// A custom directory where the database should be stored.
+  /// Will be created if it doesn't exist, database contents are stored in a subdirectory named after ``name``.
+  public let directoryURL: URL?
+
   /// The dimension of vectors to be stored.
   public let dimension: Int
 
@@ -45,10 +49,12 @@ public struct VecturaConfig {
 
   public init(
     name: String,
+    directoryURL: URL? = nil,
     dimension: Int,
     searchOptions: SearchOptions = SearchOptions()
   ) {
     self.name = name
+    self.directoryURL = directoryURL
     self.dimension = dimension
     self.searchOptions = searchOptions
   }

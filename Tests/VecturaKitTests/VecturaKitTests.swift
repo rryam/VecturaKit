@@ -207,4 +207,17 @@ final class VecturaKitTests: XCTestCase {
     XCTAssertGreaterThanOrEqual(results.count, 2)
     XCTAssertTrue(results[0].score > results[1].score)
   }
+
+  func testCustomStorageDirectory() async throws {
+    let customDirectoryURL = URL(filePath: NSTemporaryDirectory()).appending(path: "VecturaKitTest")
+    defer { try? FileManager.default.removeItem(at: customDirectoryURL) }
+
+    let instance = try VecturaKit(config: .init(name: "test", directoryURL: customDirectoryURL, dimension: 384))
+    let text = "Test document"
+    let id = UUID()
+    _ = try await instance.addDocument(text: text, id: id)
+
+    let documentPath = customDirectoryURL.appending(path: "test/\(id).json").path(percentEncoded: false)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: documentPath), "Custom storage directory inserted document doesn't exist at \(documentPath)")
+  }
 }
