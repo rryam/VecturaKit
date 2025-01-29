@@ -25,6 +25,10 @@ let package = Package(
       name: "vectura-cli",
       targets: ["VecturaCLI"]
     ),
+    .executable(
+      name: "vectura-mlx-cli",
+      targets: ["VecturaMLXCLI"]
+    ),
   ],
   dependencies: [
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.10"),
@@ -49,6 +53,13 @@ let package = Package(
       name: "VecturaCLI",
       dependencies: [
         "VecturaKit",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
+    ),
+    .executableTarget(
+      name: "VecturaMLXCLI",
+      dependencies: [
+        "VecturaMLXKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
     ),
