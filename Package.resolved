@@ -1,6 +1,15 @@
 {
-  "originHash" : "1d6b0c2f12728d00495aa3ed5a9f7ebb4a5dce75ed02656ba6342ed4562c7cba",
+  "originHash" : "2ea00aa0ea2cb56e377e8d20d7e0b1a7d20160d8a2bea846180c26f6c2b73140",
   "pins" : [
+    {
+      "identity" : "gzipswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/1024jp/GzipSwift",
+      "state" : {
+        "revision" : "731037f6cc2be2ec01562f6597c1d0aa3fe6fd05",
+        "version" : "6.0.1"
+      }
+    },
     {
       "identity" : "jinja",
       "kind" : "remoteSourceControl",
@@ -8,6 +17,24 @@
       "state" : {
         "revision" : "6dbe4c449469fb586d0f7339f900f0dd4d78b167",
         "version" : "1.0.6"
+      }
+    },
+    {
+      "identity" : "mlx-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ml-explore/mlx-swift",
+      "state" : {
+        "revision" : "70dbb62128a5a1471a5ab80363430adb33470cab",
+        "version" : "0.21.2"
+      }
+    },
+    {
+      "identity" : "mlx-swift-examples",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ml-explore/mlx-swift-examples.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "2f1928ba903b557eedda90202271785a1f4b233d"
       }
     },
     {
@@ -26,6 +53,15 @@
       "state" : {
         "revision" : "d8726665fe8650fd2279f87825774e111fac893d",
         "version" : "0.0.10"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics",
+      "state" : {
+        "revision" : "0a5bc04095a675662cf24757cc0640aa2204253b",
+        "version" : "1.0.2"
       }
     },
     {
