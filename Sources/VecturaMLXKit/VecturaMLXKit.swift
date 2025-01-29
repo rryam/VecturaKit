@@ -1,4 +1,5 @@
 import Foundation
+import MLXEmbedders
 import VecturaKit
 
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
@@ -154,6 +155,7 @@ public class VecturaMLXKit {
       do {
         let data = try Data(contentsOf: fileURL)
         let doc = try decoder.decode(VecturaDocument.self, from: data)
+          
         // Rebuild normalized embeddings
         let norm = l2Norm(doc.embedding)
         let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
