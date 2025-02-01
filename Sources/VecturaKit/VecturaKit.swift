@@ -110,7 +110,9 @@ public class VecturaKit: VecturaProtocol {
 
     for doc in documentsToSave {
       let norm = l2Norm(doc.embedding)
-      let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+      var divisor = norm + 1e-9
+      var normalized = [Float](repeating: 0, count: doc.embedding.count)
+      vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
       normalizedEmbeddings[doc.id] = normalized
       documents[doc.id] = doc
     }
@@ -155,26 +157,59 @@ public class VecturaKit: VecturaProtocol {
       )
     }
 
+    // Normalize the query vector
     let norm = l2Norm(queryEmbedding)
-    let normalizedQuery = queryEmbedding.map { $0 / (norm + 1e-9) }
+    var divisor = norm + 1e-9
+    var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
+    vDSP_vsdiv(queryEmbedding, 1, &divisor, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
 
-    var results: [VecturaSearchResult] = []
-
+    // Build a matrix of normalized document embeddings
+    var docIds = [UUID]()
+    var matrix = [Float]()
     for doc in documents.values {
-      guard let normDoc = normalizedEmbeddings[doc.id] else { continue }
-      let similarity = dotProduct(normalizedQuery, normDoc)
+      if let normalized = normalizedEmbeddings[doc.id] {
+        docIds.append(doc.id)
+        matrix.append(contentsOf: normalized)
+      }
+    }
+
+    let docsCount = docIds.count
+    let M = Int32(docsCount)  // number of rows (documents)
+    let N = Int32(config.dimension)  // number of columns (embedding dimension)
+    var similarities = [Float](repeating: 0, count: docsCount)
+
+    // Compute all similarities at once using matrix-vector multiplication
+    cblas_sgemv(
+      CblasRowMajor,
+      CblasTrans,  // transpose to make it more cache-friendly
+      N,  // now N comes first (dimension)
+      M,  // number of documents
+      1.0,  // alpha
+      matrix,  // matrix
+      M,  // leading dimension changes due to transpose
+      normalizedQuery,
+      1,
+      0.0,
+      &similarities,
+      1
+    )
+
+    // Construct the results
+    var results = [VecturaSearchResult]()
+    for (i, similarity) in similarities.enumerated() {
       if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
         continue
       }
-
-      results.append(
-        VecturaSearchResult(
-          id: doc.id,
-          text: doc.text,
-          score: similarity,
-          createdAt: doc.createdAt
+      if let doc = documents[docIds[i]] {
+        results.append(
+          VecturaSearchResult(
+            id: doc.id,
+            text: doc.text,
+            score: similarity,
+            createdAt: doc.createdAt
+          )
         )
-      )
+      }
     }
 
     results.sort { $0.score > $1.score }
@@ -332,7 +367,9 @@ public class VecturaKit: VecturaProtocol {
         let doc = try decoder.decode(VecturaDocument.self, from: data)
         // Rebuild normalized embeddings
         let norm = l2Norm(doc.embedding)
-        let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+        var divisor = norm + 1e-9
+        var normalized = [Float](repeating: 0, count: doc.embedding.count)
+        vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
         normalizedEmbeddings[doc.id] = normalized
         documents[doc.id] = doc
       } catch {
