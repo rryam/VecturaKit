@@ -1,0 +1,19 @@
+name: Build and Test VecturaKit and CLI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [ "VecturaKit", "vectura-cli" ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build target ${{ matrix.target }}
+        run: swift build --product "${{ matrix.target }}"
+      - name: Run tests
+        run: swift test

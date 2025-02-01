@@ -1,0 +1,19 @@
+name: Build and Test MLX Targets
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test-mlx:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [ "VecturaMLXKit", "vectura-mlx-cli" ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build target ${{ matrix.target }}
+        run: xcodebuild -scheme "${{ matrix.target }}" build -destination 'platform=macOS'
+      - name: Run tests
+        run: xcodebuild -scheme "${{ matrix.target }}" test -destination 'platform=macOS'
