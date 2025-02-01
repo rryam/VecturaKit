@@ -16,5 +16,7 @@ jobs:
         target: ["VecturaKit", "vectura-cli"]
     steps:
       - uses: actions/checkout@v4
-      - name: Build and Test ${{ matrix.target }}
-        run: swift build --product "${{ matrix.target }}" && swift test
+      - name: Build ${{ matrix.target }}
+        run: swift build --product "${{ matrix.target }}"
+      - name: Test ${{ matrix.target }}
+        run: swift test --target "${{ matrix.target }}"
