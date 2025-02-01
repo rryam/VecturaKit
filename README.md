@@ -1,18 +1,18 @@
 ```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device apps, enabling user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings). It also includes a version that leverages Apple's MLX framework for accelerated processing.
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings). It also includes a version that leverages Apple's MLX framework for accelerated processing (VecturaMLXKit).
 
 ## Features
 
--   **On-Device Storage:** Maintain data privacy and reduce latency by storing vectors directly on the device.
--   **Hybrid Search:** Combine vector similarity with BM25 text search for enhanced search results.
--   **Batch Processing:** Efficiently add multiple documents in parallel.
--   **Persistent Storage:** Documents are automatically saved and loaded between sessions.
--   **Configurable Search:** Customize search results with thresholds, result limits, and hybrid search weights.
--   **Custom Storage Location:** Specify a custom directory for database storage.
--   **MLX Support:** Utilize Apple's MLX framework for accelerated embedding generation and search (VecturaMLXKit).
--   **CLI Tool:** Includes a command-line interface for easy database management.
+-   **On-Device Storage:** Store and manage vector embeddings directly on the device for enhanced privacy and reduced latency.
+-   **Hybrid Search:** Combines vector similarity with BM25 text search for more comprehensive and relevant search results.
+-   **Batch Processing:** Efficiently add multiple documents in parallel for faster indexing.
+-   **Persistent Storage:** Automatically saves and loads document data between app sessions.
+-   **Configurable Search:** Customize search results with adjustable thresholds, result limits, and hybrid search weights.
+-   **Custom Storage Location:** Specify a custom directory for database storage to suit specific app requirements.
+-   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (VecturaMLXKit).
+-   **CLI Tool:** Includes a command-line interface for easy database management, testing and debugging.
 
 ## Supported Platforms
 
@@ -40,7 +40,7 @@ VecturaKit relies on the following Swift packages:
 
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): For generating text embeddings.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): For creating the command-line interface.
--  [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): For MLX based embeddings and vector search.
+-   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): For MLX based embeddings and vector search.
 
 ## Usage
 
@@ -80,7 +80,7 @@ VecturaKit relies on the following Swift packages:
     let documentId = try await vectorDB.addDocument(
         text: text,
         id: UUID(),  // Optional, will be generated if not provided
-        modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional, this is the default
+        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional, this is the default
     )
     ```
 
@@ -95,7 +95,7 @@ VecturaKit relies on the following Swift packages:
     let documentIds = try await vectorDB.addDocuments(
         texts: texts,
         ids: nil,  // Optional array of UUIDs
-        modelId: "sentence-transformers/all-MiniLM-L6-v2"
+         model: .id("sentence-transformers/all-MiniLM-L6-v2") // Optional model
     )
     ```
 
@@ -108,7 +108,7 @@ VecturaKit relies on the following Swift packages:
         query: "search query",
         numResults: 5,      // Optional
         threshold: 0.8,     // Optional
-        modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional
+        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
     )
 
     for result in results {
@@ -137,7 +137,7 @@ VecturaKit relies on the following Swift packages:
     try await vectorDB.updateDocument(
         id: documentId,
         newText: "Updated text",
-        modelId: "sentence-transformers/all-MiniLM-L6-v2"  // Optional
+        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
     )
     ```
 
@@ -157,11 +157,11 @@ VecturaKit relies on the following Swift packages:
 
 VecturaMLXKit uses Apple's MLX framework for accelerated processing.
 
-1. **Import VecturaMLXKit**
+1.  **Import VecturaMLXKit**
 
-```swift
-import VecturaMLXKit
-```
+    ```swift
+    import VecturaMLXKit
+    ```
 
 2.  **Initialize Database**
 
@@ -185,6 +185,7 @@ import VecturaMLXKit
     ```
 
 4.  **Search Documents**
+
     ```swift
      let results = try await vectorDB.search(
         query: "search query",
