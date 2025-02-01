@@ -1,3 +1,4 @@
+import Accelerate
 import CoreML
 import Embeddings
 import Foundation
@@ -34,9 +35,10 @@ public class VecturaKit: VecturaProtocol {
             let databaseDirectory = customStorageDirectory.appending(path: config.name)
 
             if !FileManager.default.fileExists(atPath: databaseDirectory.path(percentEncoded: false)) {
-                try FileManager.default.createDirectory(at: databaseDirectory, withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(
+                    at: databaseDirectory, withIntermediateDirectories: true)
             }
-            
+
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
@@ -108,7 +110,9 @@ public class VecturaKit: VecturaProtocol {
 
         for doc in documentsToSave {
             let norm = l2Norm(doc.embedding)
-            let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+            var divisor = norm + 1e-9
+            var normalized = [Float](repeating: 0, count: doc.embedding.count)
+            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
             normalizedEmbeddings[doc.id] = normalized
             documents[doc.id] = doc
         }
@@ -153,30 +157,79 @@ public class VecturaKit: VecturaProtocol {
             )
         }
 
+        // Normalize the query vector
         let norm = l2Norm(queryEmbedding)
-        let normalizedQuery = queryEmbedding.map { $0 / (norm + 1e-9) }
+        var divisor = norm + 1e-9
+        var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
+        vDSP_vsdiv(queryEmbedding, 1, &divisor, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
 
-        var results: [VecturaSearchResult] = []
+        // Build a matrix of normalized document embeddings in row-major order
+        var docIds = [UUID]()
+        var matrix = [Float]()
+        matrix.reserveCapacity(documents.count * config.dimension)  // Pre-allocate for better performance
 
         for doc in documents.values {
-            guard let normDoc = normalizedEmbeddings[doc.id] else { continue }
-            let similarity = dotProduct(normalizedQuery, normDoc)
+            if let normalized = normalizedEmbeddings[doc.id] {
+                docIds.append(doc.id)
+                matrix.append(contentsOf: normalized)
+            }
+        }
+
+        let docsCount = docIds.count
+        if docsCount == 0 {
+            return []
+        }
+
+        let M = Int32(docsCount)  // number of rows (documents)
+        let N = Int32(config.dimension)  // number of columns (embedding dimension)
+        var similarities = [Float](repeating: 0, count: docsCount)
+
+        // Convert Int32 to Int for LAPACK compatibility
+        let mInt = Int(M)  // Convert number of rows
+        let nInt = Int(N)  // Convert number of columns
+        let ldInt = Int(N) // Convert leading dimension
+
+        // Compute all similarities at once using matrix-vector multiplication
+        // Matrix is in row-major order, so we use CblasNoTrans
+        cblas_sgemv(
+            CblasRowMajor,    // matrix layout
+            CblasNoTrans,     // no transpose needed for row-major
+            mInt,             // number of rows (documents) as Int
+            nInt,             // number of columns (dimension) as Int
+            1.0,              // alpha scaling factor
+            matrix,           // matrix
+            ldInt,            // leading dimension as Int
+            normalizedQuery,  // vector
+            1,                // vector increment
+            0.0,              // beta scaling factor
+            &similarities,    // result vector
+            1                 // result increment
+        )
+
+        // Construct the results
+        var results = [VecturaSearchResult]()
+        results.reserveCapacity(docsCount)  // Pre-allocate for better performance
+
+        for (i, similarity) in similarities.enumerated() {
             if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
                 continue
             }
-
-            results.append(
-                VecturaSearchResult(
-                    id: doc.id,
-                    text: doc.text,
-                    score: similarity,
-                    createdAt: doc.createdAt
+            if let doc = documents[docIds[i]] {
+                results.append(
+                    VecturaSearchResult(
+                        id: doc.id,
+                        text: doc.text,
+                        score: similarity,
+                        createdAt: doc.createdAt
+                    )
                 )
-            )
+            }
         }
 
         results.sort { $0.score > $1.score }
-        return results
+
+        let limit = numResults ?? config.searchOptions.defaultNumResults
+        return Array(results.prefix(limit))
     }
 
     public func search(
@@ -262,7 +315,8 @@ public class VecturaKit: VecturaProtocol {
         threshold: Float? = nil,
         modelId: String = VecturaModelSource.defaultModelId
     ) async throws -> [VecturaSearchResult] {
-        try await search(query: query, numResults: numResults, threshold: threshold, model: .id(modelId))
+        try await search(
+            query: query, numResults: numResults, threshold: threshold, model: .id(modelId))
     }
 
     public func reset() async throws {
@@ -329,7 +383,9 @@ public class VecturaKit: VecturaProtocol {
                 let doc = try decoder.decode(VecturaDocument.self, from: data)
                 // Rebuild normalized embeddings
                 let norm = l2Norm(doc.embedding)
-                let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+                var divisor = norm + 1e-9
+                var normalized = [Float](repeating: 0, count: doc.embedding.count)
+                vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
                 normalizedEmbeddings[doc.id] = normalized
                 documents[doc.id] = doc
             } catch {
@@ -349,16 +405,20 @@ public class VecturaKit: VecturaProtocol {
     }
 
     private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
-        zip(a, b).reduce(into: 0) { $0 += $1.0 * $1.1 }
+        var result: Float = 0
+        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
+        return result
     }
 
     private func l2Norm(_ v: [Float]) -> Float {
-        sqrt(dotProduct(v, v))
+        var sumSquares: Float = 0
+        vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
+        return sqrt(sumSquares)
     }
 }
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-internal extension Bert {
+extension Bert {
     static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
         switch source {
         case .id(let modelId):
