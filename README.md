@@ -68,7 +68,7 @@ VecturaKit relies on the following Swift packages:
         )
     )
 
-    let vectorDB = try VecturaKit(config: config)
+    let vectorDB = try await VecturaKit(config: config)
     ```
 
 3.  **Add Documents**
