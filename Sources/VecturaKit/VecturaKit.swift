@@ -184,21 +184,26 @@ public class VecturaKit: VecturaProtocol {
         let N = Int32(config.dimension)  // number of columns (embedding dimension)
         var similarities = [Float](repeating: 0, count: docsCount)
 
+        // Convert Int32 to Int for LAPACK compatibility
+        let mInt = Int(M)  // Convert number of rows
+        let nInt = Int(N)  // Convert number of columns
+        let ldInt = Int(N) // Convert leading dimension
+
         // Compute all similarities at once using matrix-vector multiplication
         // Matrix is in row-major order, so we use CblasNoTrans
         cblas_sgemv(
-            CblasRowMajor,  // matrix layout
-            CblasNoTrans,  // no transpose needed for row-major
-            M,  // number of rows (documents)
-            N,  // number of columns (dimension)
-            1.0,  // alpha scaling factor
-            matrix,  // matrix
-            N,  // leading dimension is number of columns for row-major
+            CblasRowMajor,    // matrix layout
+            CblasNoTrans,     // no transpose needed for row-major
+            mInt,             // number of rows (documents) as Int
+            nInt,             // number of columns (dimension) as Int
+            1.0,              // alpha scaling factor
+            matrix,           // matrix
+            ldInt,            // leading dimension as Int
             normalizedQuery,  // vector
-            1,  // vector increment
-            0.0,  // beta scaling factor
-            &similarities,  // result vector
-            1  // result increment
+            1,                // vector increment
+            0.0,              // beta scaling factor
+            &similarities,    // result vector
+            1                 // result increment
         )
 
         // Construct the results
