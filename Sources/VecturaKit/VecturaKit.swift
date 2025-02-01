@@ -163,9 +163,11 @@ public class VecturaKit: VecturaProtocol {
     var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
     vDSP_vsdiv(queryEmbedding, 1, &divisor, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
 
-    // Build a matrix of normalized document embeddings
+    // Build a matrix of normalized document embeddings in row-major order
     var docIds = [UUID]()
     var matrix = [Float]()
+    matrix.reserveCapacity(documents.count * config.dimension)  // Pre-allocate for better performance
+
     for doc in documents.values {
       if let normalized = normalizedEmbeddings[doc.id] {
         docIds.append(doc.id)
@@ -174,28 +176,35 @@ public class VecturaKit: VecturaProtocol {
     }
 
     let docsCount = docIds.count
+    if docsCount == 0 {
+      return []
+    }
+
     let M = Int32(docsCount)  // number of rows (documents)
     let N = Int32(config.dimension)  // number of columns (embedding dimension)
     var similarities = [Float](repeating: 0, count: docsCount)
 
     // Compute all similarities at once using matrix-vector multiplication
+    // Matrix is in row-major order, so we use CblasNoTrans
     cblas_sgemv(
-      CblasRowMajor,
-      CblasTrans,  // transpose to make it more cache-friendly
-      N,  // now N comes first (dimension)
-      M,  // number of documents
-      1.0,  // alpha
+      CblasRowMajor,  // matrix layout
+      CblasNoTrans,  // no transpose needed for row-major
+      M,  // number of rows (documents)
+      N,  // number of columns (dimension)
+      1.0,  // alpha scaling factor
       matrix,  // matrix
-      M,  // leading dimension changes due to transpose
-      normalizedQuery,
-      1,
-      0.0,
-      &similarities,
-      1
+      N,  // leading dimension is number of columns for row-major
+      normalizedQuery,  // vector
+      1,  // vector increment
+      0.0,  // beta scaling factor
+      &similarities,  // result vector
+      1  // result increment
     )
 
     // Construct the results
     var results = [VecturaSearchResult]()
+    results.reserveCapacity(docsCount)  // Pre-allocate for better performance
+
     for (i, similarity) in similarities.enumerated() {
       if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
         continue
@@ -213,7 +222,9 @@ public class VecturaKit: VecturaProtocol {
     }
 
     results.sort { $0.score > $1.score }
-    return results
+
+    let limit = numResults ?? config.searchOptions.defaultNumResults
+    return Array(results.prefix(limit))
   }
 
   public func search(
