@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-import google.generativeai as genai
-
-# Initialize the genai client using your API key.
-# Ensure that GEMINI_API_KEY is set as an environment variable.
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+from google import genai
 
 # The system prompt instructs the model on what to do.
 SYSTEM_PROMPT = (
