@@ -27,6 +27,8 @@ jobs:
 
       # 3. Run the Python script that calls TogetherAI
       - name: Run README updater script
+        env:
+          TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
         run: python3 scripts/update_readme.py
 
       # 4. Commit any changes (i.e. updated README.md)
