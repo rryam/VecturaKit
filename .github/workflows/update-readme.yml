@@ -47,6 +47,7 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
           branch: update-readme-${{ github.run_number }}
           title: "Automated README Update"
           commit-message: "Update README.md based on the latest code base"
