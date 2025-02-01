@@ -30,13 +30,13 @@ def get_codebase_summary():
         summary += f"--- {file} ---\n{content}\n\n"
     return summary
 
-def call_togetherai(prompt):
+def call_geminiai(prompt):
     """
     Uses the Google GenAI Python SDK with Gemini to generate an updated README.
     It generates content based on the provided prompt.
     """
-    model = genai.GenerativeModel("gemini-2.0-flash-exp")
-    response = model.generate_content(prompt)
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    response = client.models.generate_content(model='gemini-2.0-flash-exp', contents=prompt)
     return response.text
 
 def main():
@@ -45,7 +45,7 @@ def main():
     # Build the user prompt with the context from the codebase.
     full_prompt = f"{SYSTEM_PROMPT}\n\nCodebase files:\n{codebase_context}"
     
-    updated_readme = call_togetherai(full_prompt)
+    updated_readme = call_geminiai(full_prompt)
     if updated_readme:
         with open("README.md", "w") as f:
             f.write(updated_readme)

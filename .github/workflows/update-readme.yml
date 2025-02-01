@@ -21,14 +21,14 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 2. Install Together package
-      - name: Install Together package
-        run: pip install together
+      # 2. Install Gemini package
+      - name: Install Gemini package
+        run: pip install google-genai
 
       # 3. Run the Python script that calls TogetherAI
       - name: Run README updater script
         env:
-          TOGETHER_API_KEY: "${{ secrets.TOGETHER_API_KEY }}"
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
         run: python3 scripts/update_readme.py
 
       # 4. Commit any changes (i.e. updated README.md)
