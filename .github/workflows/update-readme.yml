@@ -14,6 +14,9 @@ permissions:
 
 jobs:
   update-readme:
+    # Skip this job if the commit message indicates a merge from docs/update-readme.
+    # Adjust the string in the contains() check if your merge commit message is different.
+    if: "!contains(github.event.head_commit.message, 'docs/update-readme')"
     runs-on: ubuntu-latest
 
     steps:
@@ -27,11 +30,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 2. Install Gemini package
+      # 3. Install Gemini package
       - name: Install Gemini package
         run: pip install google-genai
 
-      # 3. Run the Python script that calls GeminiAI
+      # 4. Run the Python script that calls GeminiAI
       - name: Run README updater script
         env:
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
