@@ -19,4 +19,4 @@ jobs:
       - name: Build ${{ matrix.target }}
         run: swift build --product "${{ matrix.target }}"
       - name: Test ${{ matrix.target }}
-        run: swift test --target "${{ matrix.target }}"
+        run: swift test --filter "${{ matrix.target }}Tests"
