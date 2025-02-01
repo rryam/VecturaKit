@@ -25,7 +25,7 @@ jobs:
       - name: Install Gemini package
         run: pip install google-genai
 
-      # 3. Run the Python script that calls TogetherAI
+      # 3. Run the Python script that calls GeminiAI
       - name: Run README updater script
         env:
           GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
@@ -37,7 +37,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           # Create (or switch to) an update branch. You can add a timestamp to avoid conflicts.
-          git checkout -b update-readme-$(date +%s)
+          git checkout -b update-readme-${{ github.run_number }}
           git add README.md
           git commit -m "chore: update README.md based on codebase changes" || echo "No changes to commit"
           git push --set-upstream origin HEAD
@@ -47,7 +47,7 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-readme-$(date +%s)
+          branch: update-readme-${{ github.run_number }}
           title: "Automated README Update"
           commit-message: "Update README.md based on the latest code base"
           body: "This PR was automatically created to update the README based on current codebase analysis via TogetherAI."
