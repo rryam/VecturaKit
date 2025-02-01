@@ -67,5 +67,9 @@ let package = Package(
       name: "VecturaKitTests",
       dependencies: ["VecturaKit"]
     ),
+    .testTarget(
+      name: "VecturaMLXKitTests",
+      dependencies: ["VecturaMLXKit"]
+    ),
   ]
 )
