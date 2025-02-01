@@ -1,7 +1,7 @@
 ```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings). It also includes a version that leverages Apple's MLX framework for accelerated processing (VecturaMLXKit).
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It also includes a version that utilizes Apple's MLX framework for accelerated processing (VecturaMLXKit).
 
 ## Features
 
@@ -12,7 +12,7 @@ VecturaKit is a Swift-based vector database designed for on-device applications,
 -   **Configurable Search:** Customize search results with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specify a custom directory for database storage to suit specific app requirements.
 -   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (VecturaMLXKit).
--   **CLI Tool:** Includes a command-line interface for easy database management, testing and debugging.
+-   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging.
 
 ## Supported Platforms
 
@@ -38,9 +38,9 @@ dependencies: [
 
 VecturaKit relies on the following Swift packages:
 
--   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): For generating text embeddings.
+-   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): For generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): For creating the command-line interface.
--   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): For MLX based embeddings and vector search.
+-   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): For MLX based embeddings and vector search, specifically used by `VecturaMLXKit`.
 
 ## Usage
 
@@ -155,7 +155,7 @@ VecturaKit relies on the following Swift packages:
 
 ### VecturaMLXKit (MLX Version)
 
-VecturaMLXKit uses Apple's MLX framework for accelerated processing.
+VecturaMLXKit utilizes Apple's MLX framework for accelerated processing, offering optimized performance for on-device machine learning tasks.
 
 1.  **Import VecturaMLXKit**
 
@@ -226,7 +226,9 @@ VecturaMLXKit uses Apple's MLX framework for accelerated processing.
 
 ## Command Line Interface
 
-VecturaKit comes with a built-in CLI tool for database operations:
+VecturaKit includes a command-line interface for both the standard and MLX versions, facilitating easy database management.
+
+**Standard CLI Tool**
 
 ```bash
 # Add documents
