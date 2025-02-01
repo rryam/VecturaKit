@@ -1,3 +1,4 @@
+import Accelerate
 import Foundation
 import MLXEmbedders
 import VecturaKit
@@ -54,7 +55,9 @@ public class VecturaMLXKit {
 
       // Normalize embedding for cosine similarity
       let norm = l2Norm(doc.embedding)
-      let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+      var divisor = norm + 1e-9
+      var normalized = [Float](repeating: 0, count: doc.embedding.count)
+      vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
 
       normalizedEmbeddings[doc.id] = normalized
       documents[doc.id] = doc
@@ -88,7 +91,10 @@ public class VecturaMLXKit {
     let queryEmbedding = try await embedder.embed(text: query)
 
     let norm = l2Norm(queryEmbedding)
-    let normalizedQuery = queryEmbedding.map { $0 / (norm + 1e-9) }
+    var divisorQuery = norm + 1e-9
+    var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
+    vDSP_vsdiv(
+      queryEmbedding, 1, &divisorQuery, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
 
     var results: [VecturaSearchResult] = []
 
@@ -155,10 +161,12 @@ public class VecturaMLXKit {
       do {
         let data = try Data(contentsOf: fileURL)
         let doc = try decoder.decode(VecturaDocument.self, from: data)
-          
+
         // Rebuild normalized embeddings
         let norm = l2Norm(doc.embedding)
-        let normalized = doc.embedding.map { $0 / (norm + 1e-9) }
+        var divisor = norm + 1e-9
+        var normalized = [Float](repeating: 0, count: doc.embedding.count)
+        vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
         normalizedEmbeddings[doc.id] = normalized
         documents[doc.id] = doc
       } catch {
@@ -173,10 +181,14 @@ public class VecturaMLXKit {
   }
 
   private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
-    zip(a, b).reduce(into: 0) { $0 += $1.0 * $1.1 }
+    var result: Float = 0
+    vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
+    return result
   }
 
   private func l2Norm(_ v: [Float]) -> Float {
-    sqrt(dotProduct(v, v))
+    var sumSquares: Float = 0
+    vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
+    return sqrt(sumSquares)
   }
 }
