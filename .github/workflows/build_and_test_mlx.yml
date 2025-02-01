@@ -11,9 +11,6 @@ jobs:
     runs-on: macos-15
     env:
       DEVELOPER_DIR: "/Applications/Xcode_16.1.app/Contents/Developer"
-    strategy:
-      matrix:
-        target: ["VecturaMLXKit", "vectura-mlx-cli"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +18,7 @@ jobs:
         uses: swift-actions/setup-swift@v2
         with:
           swift-version: "6.0"
-      - name: Build target ${{ matrix.target }}
-        run: xcodebuild -scheme "${{ matrix.target }}" build -destination 'platform=macOS'
+      - name: Build target VecturaMLXKit
+        run: xcodebuild -scheme "VecturaMLXKit" build -destination 'platform=macOS'
       - name: Run tests
-        run: xcodebuild -scheme "${{ matrix.target }}" test -destination 'platform=macOS'
+        run: xcodebuild -scheme "VecturaMLXKitTests" test -destination 'platform=macOS'
