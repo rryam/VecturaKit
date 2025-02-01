@@ -13,8 +13,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Select Xcode Version
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+      - name: Setup Swift Toolchain
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
       - name: Build target ${{ matrix.target }}
         run: xcodebuild -scheme "${{ matrix.target }}" build -destination 'platform=macOS'
       - name: Run tests
