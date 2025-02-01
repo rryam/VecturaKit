@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-from together import Together
+import google.generativeai as genai
 
-# Initialize the Together client using your API key.
-# Ensure that TOGETHER_API_KEY is set as an environment variable.
-client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+# Initialize the genai client using your API key.
+# Ensure that GEMINI_API_KEY is set as an environment variable.
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # The system prompt instructs the model on what to do.
 SYSTEM_PROMPT = (
@@ -32,25 +32,18 @@ def get_codebase_summary():
 
 def call_togetherai(prompt):
     """
-    Uses the Together AI Python SDK to generate an updated README.
-    It sends two messages: one with the system instructions and another with the codebase context.
+    Uses the Google GenAI Python SDK with Gemini to generate an updated README.
+    It generates content based on the provided prompt.
     """
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
-    # Adjust the model name as needed; here we're using an instruct-turbo model.
-    response = client.chat.completions.create(
-        model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        messages=messages
-    )
-    return response.choices[0].message.content
+    model = genai.GenerativeModel("gemini-2.0-flash-exp")
+    response = model.generate_content(prompt)
+    return response.text
 
 def main():
     # Gather codebase context to inform the README generation.
     codebase_context = get_codebase_summary()
     # Build the user prompt with the context from the codebase.
-    full_prompt = f"Codebase files:\n{codebase_context}"
+    full_prompt = f"{SYSTEM_PROMPT}\n\nCodebase files:\n{codebase_context}"
     
     updated_readme = call_togetherai(full_prompt)
     if updated_readme:
