@@ -10,11 +10,14 @@ public class VecturaKit: VecturaProtocol {
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
 
-    /// The storage for documents.
+    /// In-memory cache of all documents.
     private var documents: [UUID: VecturaDocument]
 
     /// The storage directory for documents.
     private let storageDirectory: URL
+
+    /// The storage provider that handles document persistence.
+    private let storageProvider: VecturaStorage
 
     /// Cached normalized embeddings for faster searches.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
@@ -27,18 +30,16 @@ public class VecturaKit: VecturaProtocol {
 
     // MARK: - Initialization
 
-    public init(config: VecturaConfig) throws {
+    public init(config: VecturaConfig) async throws {
         self.config = config
         self.documents = [:]
 
         if let customStorageDirectory = config.directoryURL {
             let databaseDirectory = customStorageDirectory.appending(path: config.name)
-
             if !FileManager.default.fileExists(atPath: databaseDirectory.path(percentEncoded: false)) {
                 try FileManager.default.createDirectory(
                     at: databaseDirectory, withIntermediateDirectories: true)
             }
-
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
@@ -50,8 +51,20 @@ public class VecturaKit: VecturaProtocol {
 
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
 
-        // Attempt to load existing docs
-        try loadDocuments()
+        // Instantiate the storage provider (currently the file-based implementation).
+        self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
+
+        // Load existing documents using the storage provider.
+        let storedDocuments = try await storageProvider.loadDocuments()
+        for doc in storedDocuments {
+            self.documents[doc.id] = doc
+            // Compute normalized embedding and store in cache.
+            let norm = l2Norm(doc.embedding)
+            var divisor = norm + 1e-9
+            var normalized = [Float](repeating: 0, count: doc.embedding.count)
+            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
+            self.normalizedEmbeddings[doc.id] = normalized
+        }
     }
 
     /// Adds multiple documents to the vector store in batch.
@@ -369,35 +382,6 @@ public class VecturaKit: VecturaProtocol {
     }
 
     // MARK: - Private
-
-    private func loadDocuments() throws {
-        let fileURLs = try FileManager.default.contentsOfDirectory(
-            at: storageDirectory, includingPropertiesForKeys: nil)
-
-        let decoder = JSONDecoder()
-        var loadErrors: [String] = []
-
-        for fileURL in fileURLs where fileURL.pathExtension == "json" {
-            do {
-                let data = try Data(contentsOf: fileURL)
-                let doc = try decoder.decode(VecturaDocument.self, from: data)
-                // Rebuild normalized embeddings
-                let norm = l2Norm(doc.embedding)
-                var divisor = norm + 1e-9
-                var normalized = [Float](repeating: 0, count: doc.embedding.count)
-                vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-                normalizedEmbeddings[doc.id] = normalized
-                documents[doc.id] = doc
-            } catch {
-                loadErrors.append(
-                    "Failed to load \(fileURL.lastPathComponent): \(error.localizedDescription)")
-            }
-        }
-
-        if !loadErrors.isEmpty {
-            throw VecturaError.loadFailed(loadErrors.joined(separator: "\n"))
-        }
-    }
 
     private func tensorToArray(_ tensor: MLTensor) async -> [Float] {
         let shaped = await tensor.cast(to: Float.self).shapedArray(of: Float.self)
