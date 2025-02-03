@@ -8,11 +8,12 @@ VecturaKit is a Swift-based vector database designed for on-device applications,
 -   **On-Device Storage:** Store and manage vector embeddings directly on the device for enhanced privacy and reduced latency.
 -   **Hybrid Search:** Combines vector similarity with BM25 text search for more comprehensive and relevant search results.
 -   **Batch Processing:** Efficiently add multiple documents in parallel for faster indexing.
--   **Persistent Storage:** Automatically saves and loads document data between app sessions.
+-   **Persistent Storage:** Automatically saves and loads document data between app sessions using a file-based storage provider.
 -   **Configurable Search:** Customize search results with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specify a custom directory for database storage to suit specific app requirements.
 -   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (VecturaMLXKit).
--   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging.
+-   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging for both the standard and MLX versions.
+-   **Flexible Model Loading:** Supports loading embedding models by ID (remote download) or from a local directory.
 
 ## Supported Platforms
 
