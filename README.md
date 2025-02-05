@@ -1,18 +1,18 @@
 ```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It also includes a version that utilizes Apple's MLX framework for accelerated processing (VecturaMLXKit).
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It provides two main modules: `VecturaKit` which supports different embedding models through `swift-embeddings`, and `VecturaMLXKit` that utilizes Apple's MLX framework for accelerated processing.
 
 ## Features
 
 -   **On-Device Storage:** Store and manage vector embeddings directly on the device for enhanced privacy and reduced latency.
--   **Hybrid Search:** Combines vector similarity with BM25 text search for more comprehensive and relevant search results.
+-   **Hybrid Search:** Combines vector similarity with BM25 text search for more comprehensive and relevant search results (`VecturaKit`).
 -   **Batch Processing:** Efficiently add multiple documents in parallel for faster indexing.
 -   **Persistent Storage:** Automatically saves and loads document data between app sessions.
 -   **Configurable Search:** Customize search results with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specify a custom directory for database storage to suit specific app requirements.
--   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (VecturaMLXKit).
--   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging.
+-   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (`VecturaMLXKit`).
+-   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging for both `VecturaKit` and `VecturaMLXKit`.
 
 ## Supported Platforms
 
@@ -38,7 +38,7 @@ dependencies: [
 
 VecturaKit relies on the following Swift packages:
 
--   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): For generating text embeddings using various models.
+-   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): For generating text embeddings using various models (`VecturaKit`).
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): For creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): For MLX based embeddings and vector search, specifically used by `VecturaMLXKit`.
 
@@ -55,6 +55,9 @@ VecturaKit relies on the following Swift packages:
 2.  **Create Configuration and Initialize Database**
 
     ```swift
+    import Foundation
+    import VecturaKit
+
     let config = VecturaConfig(
         name: "my-vector-db",
         directoryURL: nil,  // Optional custom storage location
@@ -166,11 +169,14 @@ VecturaMLXKit utilizes Apple's MLX framework for accelerated processing, offerin
 2.  **Initialize Database**
 
     ```swift
+    import VecturaMLXKit
+    import MLXEmbedders
+
     let config = VecturaConfig(
       name: "my-mlx-vector-db",
       dimension: 768 //  nomic_text_v1_5 model outputs 768-dimensional embeddings
     )
-    let vectorDB = try await VecturaMLXKit(config: config)
+    let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
     ```
 
 3.  **Add Documents**
