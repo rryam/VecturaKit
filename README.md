@@ -1,7 +1,7 @@
 ```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It provides two main modules: `VecturaKit` which supports different embedding models through `swift-embeddings`, and `VecturaMLXKit` that utilizes Apple's MLX framework for accelerated processing.
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** leverages `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It provides two main modules: `VecturaKit` which supports different embedding models through `swift-embeddings`, and `VecturaMLXKit` that utilizes Apple's MLX framework for accelerated processing. VecturaKit also provides command-line interfaces (`vectura-cli` and `vectura-mlx-cli`) for managing the databases.
 
 ## Features
 
@@ -12,7 +12,7 @@ VecturaKit is a Swift-based vector database designed for on-device applications,
 -   **Configurable Search:** Customize search results with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specify a custom directory for database storage to suit specific app requirements.
 -   **MLX Support:** Utilizes Apple's MLX framework for accelerated embedding generation and search capabilities (`VecturaMLXKit`).
--   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging for both `VecturaKit` and `VecturaMLXKit`.
+-   **CLI Tool:** Includes a command-line interface for easy database management, testing, and debugging for both `VecturaKit` (`vectura-cli`) and `VecturaMLXKit` (`vectura-mlx-cli`).
 
 ## Supported Platforms
 
@@ -30,7 +30,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", branch: "main"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "0.0.0"),
 ],
 ```
 
@@ -234,7 +234,7 @@ VecturaMLXKit utilizes Apple's MLX framework for accelerated processing, offerin
 
 VecturaKit includes a command-line interface for both the standard and MLX versions, facilitating easy database management.
 
-**Standard CLI Tool**
+**Standard CLI Tool (`vectura-cli`)**
 
 ```bash
 # Add documents
@@ -284,7 +284,7 @@ Common options:
 -   `--num-results, -n`: Number of results to return (default: 10)
 -   `--model-id, -m`: Model ID for embeddings (default: "sentence-transformers/all-MiniLM-L6-v2")
 
-**MLX CLI Tool**
+**MLX CLI Tool (`vectura-mlx-cli`)**
 
 ```bash
 # Add documents
@@ -305,6 +305,8 @@ vectura-mlx reset --db-name "my-mlx-vector-db"
 # Run demo with sample data
 vectura-mlx mock  --db-name "my-mlx-vector-db"
 ```
+
+For `vectura-mlx-cli`, the default model configuration is `nomic_text_v1_5`, which outputs 768-dimensional embeddings.
 
 ## Contributing
 
