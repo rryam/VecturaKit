@@ -1,18 +1,18 @@
 ```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database tailored for on-device applications. It facilitates advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
 
 ## Key Features
 
--   **On-Device Storage:** Provides the capability to store and manage vector embeddings locally, ensuring enhanced privacy and reduced latency.
--   **Hybrid Search:** Combines vector similarity with BM25 text search to yield more comprehensive and relevant search results (`VecturaKit`).
+-   **On-Device Storage:** Stores and manages vector embeddings locally, enhancing privacy and reducing latency.
+-   **Hybrid Search:** Combines vector similarity with BM25 text search for comprehensive and relevant search results (`VecturaKit`).
 -   **Batch Processing:** Indexes documents in parallel for faster data ingestion.
 -   **Persistent Storage:** Automatically saves and loads document data, preserving the database state across app sessions.
--   **Configurable Search:** Allows customization of search behavior with adjustable thresholds, result limits, and hybrid search weights.
--   **Custom Storage Location:** Permits specifying a custom directory for database storage, accommodating specific app requirements.
--   **MLX Support:** Employs Apple's MLX framework to accelerate embedding generation and search operations (`VecturaMLXKit`).
--   **CLI Tool:** Includes a command-line interface (CLI) for easy database management, testing, and debugging for both `VecturaKit` and `VecturaMLXKit`.
+-   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
+-   **Custom Storage Location:** Specifies a custom directory for database storage.
+-   **MLX Support:** Employs Apple's MLX framework for accelerated embedding generation and search operations (`VecturaMLXKit`).
+-   **CLI Tool:** Includes a command-line interface (CLI) for database management, testing, and debugging for both `VecturaKit` and `VecturaMLXKit`.
 
 ## Supported Platforms
 
@@ -38,7 +38,7 @@ dependencies: [
 
 VecturaKit relies on the following Swift packages:
 
--   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Utilized in `VecturaKit` for generating text embeddings using various models.
+-   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
 
@@ -308,7 +308,7 @@ vectura-mlx mock  --db-name "my-mlx-vector-db"
 
 ## License
 
-VecturaKit is released under the MIT License. See the [LICENSE](LICENSE) file for more information.
+VecturaKit is released under the MIT License. See the [LICENSE](LICENSE) file for more information. Copyright (c) 2025 Rudrank Riyam.
 
 ## Contributing
 
@@ -333,4 +333,12 @@ swift test
 The project also includes CI workflows defined in `.github/workflows` to automate building and testing on pull requests and pushes to the `main` branch.  The workflows require Xcode 16.1 and Swift 6.0.
 
 Debugging configurations are provided in `.vscode/launch.json` for the `vectura-cli`.  These can be used to launch the CLI with the debugger attached.
+
+### Continuous Integration
+
+The project uses GitHub Actions for continuous integration. The following workflows are defined:
+
+- `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
+- `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
+- `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
 ```
