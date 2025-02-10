@@ -4,9 +4,6 @@ on:
   push:
     # Run on pushes to main (or any branch you prefer)
     branches: [main]
-  workflow_dispatch:  # Allow manual triggering
-  schedule:
-    - cron: '0 0 * * *'
 
 permissions:
   contents: write
