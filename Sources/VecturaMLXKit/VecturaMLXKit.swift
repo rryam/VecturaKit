@@ -88,6 +88,10 @@ public class VecturaMLXKit {
     public func search(query: String, numResults: Int? = nil, threshold: Float? = nil) async throws
     -> [VecturaSearchResult]
     {
+        guard !query.isEmpty else {
+            throw VecturaError.invalidInput("Query cannot be empty")
+        }
+        
         let queryEmbedding = try await embedder.embed(text: query)
         
         let norm = l2Norm(queryEmbedding)
