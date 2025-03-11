@@ -1,3 +1,4 @@
+```markdown
 # VecturaKit
 
 VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
@@ -40,6 +41,16 @@ VecturaKit relies on the following Swift packages:
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
+
+Additionally, the project utilizes the following dependencies which are automatically managed by Swift Package Manager:
+
+- [GzipSwift](https://github.com/1024jp/GzipSwift)
+- [Jinja](https://github.com/maiqingqiang/Jinja)
+- [mlx-swift](https://github.com/ml-explore/mlx-swift)
+- [swift-numerics](https://github.com/apple/swift-numerics)
+- [swift-safetensors](https://github.com/jkrukowski/swift-safetensors)
+- [swift-sentencepiece](https://github.com/jkrukowski/swift-sentencepiece)
+- [swift-transformers](https://github.com/huggingface/swift-transformers)
 
 ## Usage
 
@@ -340,3 +351,39 @@ The project uses GitHub Actions for continuous integration. The following workfl
 - `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
 - `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
 - `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
+
+#### Running tests
+
+To execute the tests, use the following command:
+
+```bash
+swift test
+```
+
+This command will run all tests defined in the `VecturaKitTests` and `VecturaMLXKitTests` targets. Each test case covers various aspects of the library's functionality, including adding, searching, deleting, and updating documents, as well as persistence and model reuse.
+
+### Code Structure
+
+The project follows a modular structure, with each main component residing in its own directory:
+
+- `Sources/VecturaKit`: Contains the core implementation of the vector database.
+- `Sources/VecturaMLXKit`: Contains the MLX-accelerated implementation.
+- `Sources/VecturaCLI`: Contains the implementation of the command-line interface for VecturaKit.
+- `Sources/VecturaMLXCLI`: Contains the implementation of the command-line interface for VecturaMLXKit.
+- `Tests/VecturaKitTests`: Contains the unit tests for VecturaKit.
+- `Tests/VecturaMLXKitTests`: Contains the unit tests for VecturaMLXKit.
+
+The core components and classes of the `VecturaKit` include:
+
+- `VecturaKit`: Main class that implements the vector database.
+- `VecturaConfig`: Struct that holds the configuration options for the vector database.
+- `VecturaDocument`: Struct that represents a document stored in the vector database.
+- `VecturaSearchResult`: Struct that represents a search result from the vector database.
+- `VecturaStorage`: Protocol that defines the requirements for a storage provider.
+- `FileStorageProvider`: Class that implements the `VecturaStorage` protocol using JSON files.
+- `BM25Index`: Class that implements the BM25 algorithm for text search.
+
+### Swift Version
+
+The project is built using Swift 6.0. Ensure you have Swift 6.0 or later installed to build and run the project.
+```
