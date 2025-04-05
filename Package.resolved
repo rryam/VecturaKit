@@ -1,5 +1,5 @@
 {
-  "originHash" : "2ea00aa0ea2cb56e377e8d20d7e0b1a7d20160d8a2bea846180c26f6c2b73140",
+  "originHash" : "7335682b117c0c0972dfa93dcff81c388255794833e1d256a430634ac3644013",
   "pins" : [
     {
       "identity" : "gzipswift",
@@ -31,7 +31,7 @@
     {
       "identity" : "mlx-swift-examples",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift-examples.git",
+      "location" : "https://github.com/ml-explore/mlx-swift-examples/",
       "state" : {
         "branch" : "main",
         "revision" : "2f1928ba903b557eedda90202271785a1f4b233d"
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser.git",
       "state" : {
-        "revision" : "41982a3656a71c768319979febd796c6fd111d5c",
-        "version" : "1.5.0"
+        "revision" : "0fbc8848e389af3bb55c182bc19ca9d5dc2f255b",
+        "version" : "1.4.0"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "d8726665fe8650fd2279f87825774e111fac893d",
-        "version" : "0.0.10"
+        "revision" : "419c52ea50238435218c587e3bebfe290ee91287",
+        "version" : "0.0.13"
       }
     },
     {
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-sentencepiece",
       "state" : {
-        "revision" : "75d725019ff0b75fbbd7128314fe6710c5a86df0",
-        "version" : "0.0.5"
+        "revision" : "36a8b2b45733f6adb3092100f16e4c7d38a10a7c",
+        "version" : "0.0.6"
       }
     },
     {

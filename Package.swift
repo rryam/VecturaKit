@@ -32,7 +32,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.10"),
-    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
     .package(url: "https://github.com/ml-explore/mlx-swift-examples/", branch: "main"),
   ],
   targets: [
