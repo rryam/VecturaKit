@@ -1,6 +1,7 @@
+```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
+VecturaKit is a Swift-based vector database designed for on-device applications. It enables advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
 
 ## Key Features
 
@@ -29,7 +30,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", branch: "main"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "0.0.1"),
 ],
 ```
 
@@ -340,3 +341,4 @@ The project uses GitHub Actions for continuous integration. The following workfl
 - `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
 - `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
 - `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
+```
