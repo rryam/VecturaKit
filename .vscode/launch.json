@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "type": "lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:VecturaKit}",
@@ -10,13 +10,31 @@
             "preLaunchTask": "swift: Build Debug vectura-cli"
         },
         {
-            "type": "lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:VecturaKit}",
             "name": "Release vectura-cli",
             "program": "${workspaceFolder:VecturaKit}/.build/release/vectura-cli",
             "preLaunchTask": "swift: Build Release vectura-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:VecturaKit}",
+            "name": "Debug vectura-mlx-cli",
+            "program": "${workspaceFolder:VecturaKit}/.build/debug/vectura-mlx-cli",
+            "preLaunchTask": "swift: Build Debug vectura-mlx-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:VecturaKit}",
+            "name": "Release vectura-mlx-cli",
+            "program": "${workspaceFolder:VecturaKit}/.build/release/vectura-mlx-cli",
+            "preLaunchTask": "swift: Build Release vectura-mlx-cli"
         }
     ]
 }
