@@ -2,6 +2,14 @@
 
 VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
 
+## Support
+
+Love this project? Check out my books to explore more of AI and iOS development:
+- [Exploring AI for iOS Development](https://academy.rudrank.com/product/ai)
+- [Exploring AI-Assisted Coding for iOS Development](https://academy.rudrank.com/product/ai-assisted-coding)
+
+Your support helps to keep this project growing!
+
 ## Key Features
 
 -   **On-Device Storage:** Stores and manages vector embeddings locally, enhancing privacy and reducing latency.
