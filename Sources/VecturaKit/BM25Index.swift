@@ -39,7 +39,11 @@ public struct BM25Index {
             dict[doc.id] = tokenize(doc.text).count
         }
         
-        self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(documents.count)
+        if documents.isEmpty {
+            self.averageDocumentLength = 0
+        } else {
+            self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(documents.count)
+        }
         
         for document in documents {
             let terms = Set(tokenize(document.text))
@@ -58,6 +62,9 @@ public struct BM25Index {
     public func search(query: String, topK: Int = 10) -> [(document: VecturaDocument, score: Float)] {
         let queryTerms = tokenize(query)
         var scores: [(VecturaDocument, Float)] = []
+
+        // Prevent division by zero if averageDocumentLength is 0
+        guard averageDocumentLength > 0 else { return [] }
         
         for document in documents {
             let docLength = Float(documentLengths[document.id] ?? 0)
@@ -67,11 +74,23 @@ public struct BM25Index {
                 let tf = termFrequency(term: term, in: document)
                 let df = Float(documentFrequencies[term] ?? 0)
                 
-                let idf = log((Float(documents.count) - df + 0.5) / (df + 0.5))
+                // Ensure documents.count is not zero for IDF calculation, though averageDocumentLength check above might cover this.
+                // Also, ensure df is not equal to documents.count to avoid log(negative) or log(0).
+                var idf: Float = 0
+                let N = Float(documents.count)
+                if N > df && df >= 0 { // df should always be >= 0
+                    idf = log((N - df + 0.5) / (df + 0.5))
+                } else if N == df && N > 0 { // if term is in all documents
+                     idf = log(1.0 / ( (N - df + 0.5) / (df + 0.5) ) ) // A small positive value, effectively
+                }
+
+
                 let numerator = tf * (k1 + 1)
                 let denominator = tf + k1 * (1 - b + b * docLength / averageDocumentLength)
                 
-                score += idf * (numerator / denominator)
+                if denominator != 0 { // Prevent division by zero
+                    score += idf * (numerator / denominator)
+                }
             }
             
             scores.append((document, score))
@@ -87,18 +106,59 @@ public struct BM25Index {
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
+        // Ensure document is not already indexed
+        guard !documents.contains(where: { $0.id == document.id }) else {
+            // Optionally, update the document if it exists, or simply return
+            // For now, returning to prevent duplicate processing
+            return
+        }
+
         documents.append(document)
         
-        let length = tokenize(document.text).count
-        documentLengths[document.id] = length
+        let tokenizedText = tokenize(document.text)
+        documentLengths[document.id] = tokenizedText.count
         
-        let terms = Set(tokenize(document.text))
+        let terms = Set(tokenizedText)
         for term in terms {
             documentFrequencies[term, default: 0] += 1
         }
         
         let totalLength = documentLengths.values.reduce(0, +)
-        self.averageDocumentLength = Float(totalLength) / Float(documents.count)
+        if documents.isEmpty {
+            self.averageDocumentLength = 0
+        } else {
+            self.averageDocumentLength = Float(totalLength) / Float(documents.count)
+        }
+    }
+
+    /// Removes a document from the index by its ID.
+    ///
+    /// - Parameter id: The UUID of the document to remove.
+    public mutating func removeDocument(byId id: UUID) {
+        guard let index = documents.firstIndex(where: { $0.id == id }) else {
+            return // Document not found
+        }
+        
+        let documentToRemove = documents.remove(at: index)
+        documentLengths.removeValue(forKey: id)
+        
+        let termsInRemovedDocument = Set(tokenize(documentToRemove.text))
+        for term in termsInRemovedDocument {
+            if let currentFreq = documentFrequencies[term] {
+                if currentFreq > 1 {
+                    documentFrequencies[term] = currentFreq - 1
+                } else {
+                    documentFrequencies.removeValue(forKey: term)
+                }
+            }
+        }
+        
+        if documents.isEmpty {
+            averageDocumentLength = 0
+        } else {
+            let totalLength = documentLengths.values.reduce(0, +)
+            averageDocumentLength = Float(totalLength) / Float(documents.count)
+        }
     }
     
     private func termFrequency(term: String, in document: VecturaDocument) -> Float {

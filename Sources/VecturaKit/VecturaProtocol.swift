@@ -13,8 +13,8 @@ public protocol VecturaProtocol {
     /// - Returns: The IDs of the added documents.
     func addDocuments(
         texts: [String],
-        ids: [UUID]?,
-        model: VecturaModelSource
+        ids: [UUID]?
+        // model parameter removed
     ) async throws -> [UUID]
 
     /// Searches for similar documents using a *pre-computed query embedding*.
@@ -48,13 +48,13 @@ public extension VecturaProtocol {
     /// - Returns: The ID of the added document.
     func addDocument(
         text: String,
-        id: UUID? = nil,
-        model: VecturaModelSource = .default
+        id: UUID? = nil
+        // model parameter removed
     ) async throws -> UUID {
         let ids = try await addDocuments(
             texts: [text],
-            ids: id.map { [$0] },
-            model: model
+            ids: id.map { [$0] }
+            // model parameter removed
         )
         return ids[0]
     }
@@ -70,10 +70,11 @@ public extension VecturaProtocol {
     @_disfavoredOverload
     func addDocument(
         text: String,
-        id: UUID?,
-        modelId: String = VecturaModelSource.defaultModelId
+        id: UUID?
+        // modelId parameter removed
     ) async throws -> UUID {
-        try await addDocument(text: text, id: id, model: .id(modelId))
+        // This will now call the addDocument above, which calls the protocol's addDocuments
+        try await addDocument(text: text, id: id)
     }
 
     /// Adds multiple documents to the vector store in batch.
@@ -86,9 +87,10 @@ public extension VecturaProtocol {
     /// - Returns: The IDs of the added documents.
     func addDocuments(
         texts: [String],
-        ids: [UUID]? = nil,
-        modelId: String = VecturaModelSource.defaultModelId
+        ids: [UUID]? = nil
+        // modelId parameter removed
     ) async throws -> [UUID] {
-        try await addDocuments(texts: texts, ids: ids, model: .id(modelId))
+        // This will now call the protocol's addDocuments
+        try await addDocuments(texts: texts, ids: ids)
     }
 }

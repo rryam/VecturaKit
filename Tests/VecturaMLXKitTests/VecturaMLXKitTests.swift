@@ -29,13 +29,15 @@ final class VecturaMLXKitTests: XCTestCase {
     
     func testAddAndSearch() async throws {
         // Create a test config with a minThreshold of 0 so any document is returned.
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"), // Specific model ID
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         let text = "Hello world"
         let ids = try await kit.addDocuments(texts: [text])
@@ -48,13 +50,15 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testDeleteDocuments() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         let text = "Delete me"
         let ids = try await kit.addDocuments(texts: [text])
@@ -67,13 +71,15 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testUpdateDocument() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         let originalText = "Original text"
         let updatedText = "Updated text"
@@ -89,13 +95,15 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testReset() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         _ = try await kit.addDocuments(texts: ["Doc1", "Doc2"])
         try await kit.reset()
@@ -107,13 +115,15 @@ final class VecturaMLXKitTests: XCTestCase {
     // MARK: - Robust Search Tests
     
     func testSearchMultipleDocuments() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         // Add several documents with overlapping keywords.
         let texts = [
@@ -138,13 +148,15 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testSearchNumResultsLimiting() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         // Add more documents.
         let texts = [
@@ -163,13 +175,15 @@ final class VecturaMLXKitTests: XCTestCase {
     
     func testSearchWithHighThreshold() async throws {
         // Set a high threshold so that only nearly identical matches return.
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         // Add documents that are expected to have high similarity for 'apple'.
         let texts = [
@@ -190,13 +204,15 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testSearchNoMatches() async throws {
+        let modelConfiguration = MLXEmbedders.ModelConfiguration.nomic_text_v1_5
         let config = VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
+            modelSource: .id("nomic-ai/nomic-embed-text-v1.5"),
             searchOptions: VecturaConfig.SearchOptions(defaultNumResults: 10, minThreshold: 0, hybridWeight: 0.5, k1: 1.2, b: 0.75)
         )
-        let kit = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let kit = try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
         
         // Add a document.
         _ = try await kit.addDocuments(texts: ["Some random content"])

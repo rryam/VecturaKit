@@ -17,6 +17,9 @@ public enum VecturaError: LocalizedError {
     /// Thrown when input validation fails.
     case invalidInput(String)
 
+    /// Thrown when VecturaKit initialization fails.
+    case initializationFailed(String)
+
     public var errorDescription: String? {
         switch self {
         case .collectionAlreadyExists(let name):
@@ -29,6 +32,8 @@ public enum VecturaError: LocalizedError {
             "Failed to load collection: \(reason)"
         case .invalidInput(let reason):
             "Invalid input: \(reason)"
+        case .initializationFailed(let reason):
+            "Initialization failed: \(reason)"
         }
     }
 }
