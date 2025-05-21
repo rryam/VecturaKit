@@ -5,7 +5,7 @@ import Foundation
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public class VecturaKit: VecturaProtocol {
+public actor VecturaKit: VecturaProtocol {
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
@@ -25,14 +25,16 @@ public class VecturaKit: VecturaProtocol {
     /// BM25 index for text search
     private var bm25Index: BM25Index?
 
-    /// Swift-Embeddings model bundle that you can reuse (e.g. BERT, XLM-R, CLIP, etc.)
-    private var bertModel: Bert.ModelBundle?
+    /// Swift-Embeddings model bundle.
+    private let bertModel: Bert.ModelBundle
 
     // MARK: - Initialization
 
     public init(config: VecturaConfig) async throws {
         self.config = config
         self.documents = [:]
+        // Load the model early
+        self.bertModel = try await Bert.loadModelBundle(from: config.modelSource)
 
         if let customStorageDirectory = config.directoryURL {
             let databaseDirectory = customStorageDirectory.appending(path: config.name)
@@ -43,8 +45,10 @@ public class VecturaKit: VecturaProtocol {
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
-            self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                .first!
+            guard let defaultDocumentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw VecturaError.initializationFailed("Could not determine default document directory.")
+            }
+            self.storageDirectory = defaultDocumentsDirectory
                 .appendingPathComponent("VecturaKit")
                 .appendingPathComponent(config.name)
         }
@@ -55,10 +59,15 @@ public class VecturaKit: VecturaProtocol {
         self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
 
         // Load existing documents using the storage provider.
-        let storedDocuments = try await storageProvider.loadDocuments()
-        for doc in storedDocuments {
+        let (loadedDocs, loadErrors) = await storageProvider.loadDocuments()
+        for error in loadErrors {
+            // For now, just print. Consider more robust logging or error handling.
+            print("Error loading document during init: \(error.localizedDescription)")
+        }
+        for doc in loadedDocs {
             self.documents[doc.id] = doc
             // Compute normalized embedding and store in cache.
+            guard !doc.embedding.isEmpty else { continue }
             let norm = l2Norm(doc.embedding)
             var divisor = norm + 1e-9
             var normalized = [Float](repeating: 0, count: doc.embedding.count)
@@ -70,22 +79,15 @@ public class VecturaKit: VecturaProtocol {
     /// Adds multiple documents to the vector store in batch.
     public func addDocuments(
         texts: [String],
-        ids: [UUID]? = nil,
-        model: VecturaModelSource = .default
+        ids: [UUID]? = nil
+        // model parameter removed
     ) async throws -> [UUID] {
         if let ids = ids, ids.count != texts.count {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
 
-        if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: model)
-        }
-
-        guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
-        }
-
-        let embeddingsTensor = try modelBundle.batchEncode(texts)
+        // bertModel is now guaranteed to be non-nil
+        let embeddingsTensor = try bertModel.batchEncode(texts)
         let shape = embeddingsTensor.shape
 
         if shape.count != 2 {
@@ -130,28 +132,25 @@ public class VecturaKit: VecturaProtocol {
             documents[doc.id] = doc
         }
 
-        let allDocs = Array(documents.values)
-
-        bm25Index = BM25Index(
-            documents: allDocs,
-            k1: config.searchOptions.k1,
-            b: config.searchOptions.b
-        )
+        // Update BM25 Index
+        if bm25Index == nil && !documents.isEmpty {
+            bm25Index = BM25Index(
+                documents: Array(documents.values),
+                k1: config.searchOptions.k1,
+                b: config.searchOptions.b
+            )
+        } else {
+            for doc in documentsToSave {
+                bm25Index?.addDocument(doc)
+            }
+        }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
-            let directory = self.storageDirectory
-
             for doc in documentsToSave {
                 group.addTask {
-                    let documentURL = directory.appendingPathComponent("\(doc.id).json")
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = .prettyPrinted
-
-                    let data = try encoder.encode(doc)
-                    try data.write(to: documentURL)
+                    try await self.storageProvider.saveDocument(doc)
                 }
             }
-
             try await group.waitForAll()
         }
 
@@ -248,19 +247,13 @@ public class VecturaKit: VecturaProtocol {
     public func search(
         query: String,
         numResults: Int? = nil,
-        threshold: Float? = nil,
-        model: VecturaModelSource = .default
+        threshold: Float? = nil
+        // model parameter removed
     ) async throws -> [VecturaSearchResult] {
-        if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: model)
-        }
-
-        guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
-        }
+        // bertModel is now guaranteed to be non-nil
 
         // Initialize BM25 index if needed
-        if bm25Index == nil {
+        if bm25Index == nil && !documents.isEmpty {
             let docs = documents.values.map { $0 }
             bm25Index = BM25Index(
                 documents: docs,
@@ -270,7 +263,7 @@ public class VecturaKit: VecturaProtocol {
         }
 
         // Get vector similarity results
-        let queryEmbeddingTensor = try modelBundle.encode(query)
+        let queryEmbeddingTensor = try bertModel.encode(query)
         let queryEmbeddingFloatArray = await tensorToArray(queryEmbeddingTensor)
         let vectorResults = try await search(
             query: queryEmbeddingFloatArray,
@@ -325,16 +318,17 @@ public class VecturaKit: VecturaProtocol {
     public func search(
         query: String,
         numResults: Int? = nil,
-        threshold: Float? = nil,
-        modelId: String = VecturaModelSource.defaultModelId
+        threshold: Float? = nil
+        // modelId parameter removed
     ) async throws -> [VecturaSearchResult] {
-        try await search(
-            query: query, numResults: numResults, threshold: threshold, model: .id(modelId))
+        try await search( // Calls the primary search method which now uses self.bertModel
+            query: query, numResults: numResults, threshold: threshold)
     }
 
     public func reset() async throws {
         documents.removeAll()
         normalizedEmbeddings.removeAll()
+        bm25Index = nil // Ensure bm25Index is reset
 
         let files = try FileManager.default.contentsOfDirectory(
             at: storageDirectory, includingPropertiesForKeys: nil)
@@ -344,44 +338,94 @@ public class VecturaKit: VecturaProtocol {
     }
 
     public func deleteDocuments(ids: [UUID]) async throws {
-        if bm25Index != nil {
-            let remainingDocs = documents.values.filter { !ids.contains($0.id) }
-            bm25Index = BM25Index(
-                documents: Array(remainingDocs),
-                k1: config.searchOptions.k1,
-                b: config.searchOptions.b
-            )
+        for id in ids {
+            documents[id] = nil // Remove from main documents dictionary
+            normalizedEmbeddings[id] = nil // Remove from normalized embeddings
+
+            // Attempt to remove from BM25 index
+            bm25Index?.removeDocument(byId: id)
+
+            // Use storageProvider to delete the document from disk
+            try await storageProvider.deleteDocument(withID: id)
         }
 
-        for id in ids {
-            documents[id] = nil
-            normalizedEmbeddings[id] = nil
-
-            let documentURL = storageDirectory.appendingPathComponent("\(id).json")
-            try FileManager.default.removeItem(at: documentURL)
+        // If all documents are deleted, clear the BM25 index
+        if documents.isEmpty {
+            bm25Index = nil
         }
     }
 
     public func updateDocument(
         id: UUID,
-        newText: String,
-        model: VecturaModelSource = .default
+        newText: String
+        // model parameter removed
     ) async throws {
         try await deleteDocuments(ids: [id])
 
-        _ = try await addDocument(text: newText, id: id, model: model)
+        // Need to define/find addDocument and ensure it uses self.bertModel
+        _ = try await addDocument(text: newText, id: id)
     }
 
     @_disfavoredOverload
     public func updateDocument(
         id: UUID,
-        newText: String,
-        modelId: String = VecturaModelSource.defaultModelId
+        newText: String
+        // modelId parameter removed
     ) async throws {
-        try await updateDocument(id: id, newText: newText, model: .id(modelId))
+        // Calls the primary updateDocument method which now uses self.bertModel via addDocument
+        try await updateDocument(id: id, newText: newText)
     }
 
     // MARK: - Private
+
+    // Helper function for adding a single document, used by updateDocument
+    // This function was implicitly expected by the `updateDocument` changes.
+    // It needs to be defined or modified if it already exists.
+    // Assuming it needs to be created or made to fit this new structure.
+    private func addDocument(text: String, id: UUID? = nil) async throws -> UUID {
+        let docId = id ?? UUID()
+        
+        // Embed using the instance's bertModel
+        let embeddingTensor = try bertModel.encode(text)
+        let embedding = await tensorToArray(embeddingTensor)
+
+        if embedding.count != config.dimension {
+            throw VecturaError.dimensionMismatch(
+                expected: config.dimension,
+                got: embedding.count
+            )
+        }
+        
+        let doc = VecturaDocument(
+            id: docId,
+            text: text,
+            embedding: embedding
+        )
+        
+        // Normalize and store
+        let norm = l2Norm(doc.embedding)
+        var divisor = norm + 1e-9
+        var normalized = [Float](repeating: 0, count: doc.embedding.count)
+        vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
+        normalizedEmbeddings[doc.id] = normalized
+        documents[doc.id] = doc
+        
+        // Update BM25 Index
+        if bm25Index == nil && !documents.isEmpty {
+            bm25Index = BM25Index(
+                documents: Array(documents.values),
+                k1: config.searchOptions.k1,
+                b: config.searchOptions.b
+            )
+        } else {
+            bm25Index?.addDocument(doc)
+        }
+        
+        // Persist the document using the storage provider
+        try await storageProvider.saveDocument(doc)
+        
+        return docId
+    }
 
     private func tensorToArray(_ tensor: MLTensor) async -> [Float] {
         let shaped = await tensor.cast(to: Float.self).shapedArray(of: Float.self)

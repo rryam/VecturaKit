@@ -32,9 +32,30 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     async throws
     -> VecturaMLXKit
     {
+        let dimension: Int
+        let modelSourceName: String
+
+        switch modelConfiguration {
+        case .nomic_text_v1_5:
+            dimension = 768
+            modelSourceName = "nomic-ai/nomic-embed-text-v1.5" // Or a suitable identifier
+        case .bge_small_en_v1_5:
+            dimension = 384
+            modelSourceName = "BAAI/bge-small-en-v1.5" // Or a suitable identifier
+        // Add other cases as MLXEmbedders.ModelConfiguration expands
+        default:
+            // Fallback or throw error for unsupported models
+            // For now, let's use a default and print a warning,
+            // but ideally this should be handled more robustly.
+            print("Warning: Model configuration \(modelConfiguration) not explicitly mapped. Using default dimension 768 and generic model name.")
+            dimension = 768 
+            modelSourceName = String(describing: modelConfiguration)
+        }
+
         let config = VecturaConfig(
             name: dbName,
-            dimension: 768  // nomic_text_v1_5 model outputs 768-dimensional embeddings
+            dimension: dimension,
+            modelSource: .id(modelSourceName)
         )
         return try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
     }

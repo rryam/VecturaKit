@@ -47,15 +47,20 @@ public struct VecturaConfig {
   /// Search configuration options.
   public var searchOptions: SearchOptions
 
+  /// The source for the embedding model.
+  public let modelSource: VecturaModelSource
+
   public init(
     name: String,
     directoryURL: URL? = nil,
     dimension: Int,
+    modelSource: VecturaModelSource, // Making it non-optional for now as per instruction
     searchOptions: SearchOptions = SearchOptions()
   ) {
     self.name = name
     self.directoryURL = directoryURL
     self.dimension = dimension
+    self.modelSource = modelSource
     self.searchOptions = searchOptions
   }
 }

@@ -9,9 +9,11 @@ public protocol VecturaStorage {
     func createStorageDirectoryIfNeeded() async throws
     
     /// Loads the persisted documents.
+    /// It should iterate through files in storage, decode them, and return documents.
+    /// If individual files fail to load/decode, it should collect these errors.
     ///
-    /// - Returns: An array of VecturaDocument.
-    func loadDocuments() async throws -> [VecturaDocument]
+    /// - Returns: A tuple containing an array of successfully loaded documents and an array of errors.
+    func loadDocuments() async -> (documents: [VecturaDocument], errors: [Error])
     
     /// Saves a document.
     ///
@@ -26,5 +28,7 @@ public protocol VecturaStorage {
     /// Updates an existing document. The document is replaced or modified as needed.
     ///
     /// - Parameter document: The updated document.
-    func updateDocument(_ document: VecturaDocument) async throws
+    // func updateDocument(_ document: VecturaDocument) async throws 
+    // Removing from protocol as FileStorageProvider will no longer implement it,
+    // and VecturaKit will handle the delete & save sequence.
 }
