@@ -33,8 +33,8 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.10"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
-    // Pin to specific revision for security. Update when new stable versions are released.
-    .package(url: "https://github.com/ml-explore/mlx-swift-examples/", revision: "cb66b4bc6bc1a69663837881e7f1260cd49d6b59"),
+    // Pin to specific tag for security. Update when new stable versions are released.
+    .package(url: "https://github.com/ml-explore/mlx-swift-examples/", exact: "2.25.4"),
   ],
   targets: [
     .target(
