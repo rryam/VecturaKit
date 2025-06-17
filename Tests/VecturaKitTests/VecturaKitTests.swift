@@ -10,7 +10,7 @@ final class VecturaKitTests: XCTestCase {
     
     override func setUp() async throws {
         config = VecturaConfig(name: "test-db", dimension: 384)
-        vectura = try VecturaKit(config: config)
+        vectura = try await VecturaKit(config: config)
     }
     
     override func tearDown() async throws {
@@ -50,7 +50,7 @@ final class VecturaKitTests: XCTestCase {
         
         // Create new instance with same config
         let config = VecturaConfig(name: "test-db", dimension: 384)
-        let newVectura = try VecturaKit(config: config)
+        let newVectura = try await VecturaKit(config: config)
         
         // Search should work with new instance
         let results = try await newVectura.search(query: "Document")
@@ -103,7 +103,7 @@ final class VecturaKitTests: XCTestCase {
     func testDimensionMismatch() async throws {
         // Test with wrong dimension config
         let wrongConfig = VecturaConfig(name: "wrong-dim-db", dimension: 128)
-        let wrongVectura = try VecturaKit(config: wrongConfig)
+        let wrongVectura = try await VecturaKit(config: wrongConfig)
         
         let text = "Test document"
         
@@ -179,7 +179,7 @@ final class VecturaKitTests: XCTestCase {
         XCTAssertEqual(results.count, 0)
         
         // Create new instance and verify it's empty
-        let newVectura = try VecturaKit(config: config)
+        let newVectura = try await VecturaKit(config: config)
         let newResults = try await newVectura.search(query: text)
         XCTAssertEqual(newResults.count, 0)
     }
@@ -213,7 +213,7 @@ final class VecturaKitTests: XCTestCase {
         let customDirectoryURL = URL(filePath: NSTemporaryDirectory()).appending(path: "VecturaKitTest")
         defer { try? FileManager.default.removeItem(at: customDirectoryURL) }
         
-        let instance = try VecturaKit(config: .init(name: "test", directoryURL: customDirectoryURL, dimension: 384))
+        let instance = try await VecturaKit(config: .init(name: "test", directoryURL: customDirectoryURL, dimension: 384))
         let text = "Test document"
         let id = UUID()
         _ = try await instance.addDocument(text: text, id: id)
