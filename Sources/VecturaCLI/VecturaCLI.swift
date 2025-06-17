@@ -27,7 +27,7 @@ struct VecturaCLI: AsyncParsableCommand {
     static func setupDB(dbName: String, dimension: Int, numResults: Int, threshold: Float) async throws
     -> VecturaKit
     {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: dbName,
             dimension: dimension,
             searchOptions: VecturaConfig.SearchOptions(

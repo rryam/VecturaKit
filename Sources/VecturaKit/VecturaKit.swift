@@ -5,12 +5,13 @@ import Foundation
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public class VecturaKit: VecturaProtocol {
+/// Thread-safe implementation using actor-based concurrency.
+public actor VecturaKit: VecturaProtocol {
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
 
-    /// In-memory cache of all documents.
+    /// In-memory cache of all documents. Protected by actor isolation.
     private var documents: [UUID: VecturaDocument]
 
     /// The storage directory for documents.
@@ -19,10 +20,10 @@ public class VecturaKit: VecturaProtocol {
     /// The storage provider that handles document persistence.
     private let storageProvider: VecturaStorage
 
-    /// Cached normalized embeddings for faster searches.
+    /// Cached normalized embeddings for faster searches. Protected by actor isolation.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
 
-    /// BM25 index for text search
+    /// BM25 index for text search. Protected by actor isolation.
     private var bm25Index: BM25Index?
 
     /// Swift-Embeddings model bundle that you can reuse (e.g. BERT, XLM-R, CLIP, etc.)
@@ -43,8 +44,10 @@ public class VecturaKit: VecturaProtocol {
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
-            self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                .first!
+            guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw VecturaError.loadFailed("Unable to access documents directory")
+            }
+            self.storageDirectory = documentsDirectory
                 .appendingPathComponent("VecturaKit")
                 .appendingPathComponent(config.name)
         }
@@ -52,18 +55,14 @@ public class VecturaKit: VecturaProtocol {
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
 
         // Instantiate the storage provider (currently the file-based implementation).
-        self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
+        self.storageProvider = try await FileStorageProvider.create(storageDirectory: storageDirectory)
 
         // Load existing documents using the storage provider.
         let storedDocuments = try await storageProvider.loadDocuments()
         for doc in storedDocuments {
             self.documents[doc.id] = doc
             // Compute normalized embedding and store in cache.
-            let norm = l2Norm(doc.embedding)
-            var divisor = norm + 1e-9
-            var normalized = [Float](repeating: 0, count: doc.embedding.count)
-            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-            self.normalizedEmbeddings[doc.id] = normalized
+            self.normalizedEmbeddings[doc.id] = VectorMath.normalizeL2(doc.embedding)
         }
     }
 
@@ -76,6 +75,9 @@ public class VecturaKit: VecturaProtocol {
         if let ids = ids, ids.count != texts.count {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
+        
+        // Validate input texts for security and performance
+        try VecturaValidation.validateDocumentTexts(texts)
 
         if bertModel == nil {
             bertModel = try await Bert.loadModelBundle(from: model)
@@ -122,11 +124,7 @@ public class VecturaKit: VecturaProtocol {
         }
 
         for doc in documentsToSave {
-            let norm = l2Norm(doc.embedding)
-            var divisor = norm + 1e-9
-            var normalized = [Float](repeating: 0, count: doc.embedding.count)
-            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-            normalizedEmbeddings[doc.id] = normalized
+            normalizedEmbeddings[doc.id] = VectorMath.normalizeL2(doc.embedding)
             documents[doc.id] = doc
         }
 
@@ -171,10 +169,7 @@ public class VecturaKit: VecturaProtocol {
         }
 
         // Normalize the query vector
-        let norm = l2Norm(queryEmbedding)
-        var divisor = norm + 1e-9
-        var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
-        vDSP_vsdiv(queryEmbedding, 1, &divisor, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
+        let normalizedQuery = VectorMath.normalizeL2(queryEmbedding)
 
         // Build a matrix of normalized document embeddings in row-major order
         var docIds = [UUID]()
@@ -251,6 +246,11 @@ public class VecturaKit: VecturaProtocol {
         threshold: Float? = nil,
         model: VecturaModelSource = .default
     ) async throws -> [VecturaSearchResult] {
+        // Validate query input
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw VecturaError.invalidInput("Query cannot be empty")
+        }
+        try VecturaValidation.validateDocumentText(query)
         if bertModel == nil {
             bertModel = try await Bert.loadModelBundle(from: model)
         }
@@ -389,15 +389,7 @@ public class VecturaKit: VecturaProtocol {
     }
 
     private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
-        var result: Float = 0
-        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
-        return result
-    }
-
-    private func l2Norm(_ v: [Float]) -> Float {
-        var sumSquares: Float = 0
-        vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
-        return sqrt(sumSquares)
+        return VectorMath.dotProduct(a, b)
     }
 }
 

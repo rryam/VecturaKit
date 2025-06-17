@@ -6,11 +6,11 @@ import PackageDescription
 let package = Package(
   name: "VecturaKit",
   platforms: [
-    .macOS(.v14),
-    .iOS(.v17),
-    .tvOS(.v17),
-    .visionOS(.v1),
-    .watchOS(.v10),
+    .macOS(.v15),  // VecturaKit requires macOS 15.0+ due to swift-embeddings dependencies
+    .iOS(.v18),    // VecturaKit requires iOS 18.0+ due to swift-embeddings dependencies  
+    .tvOS(.v18),   // VecturaKit requires tvOS 18.0+ due to swift-embeddings dependencies
+    .visionOS(.v2), // VecturaKit requires visionOS 2.0+ due to swift-embeddings dependencies
+    .watchOS(.v11), // VecturaKit requires watchOS 11.0+ due to swift-embeddings dependencies
   ],
   products: [
     .library(
@@ -33,7 +33,8 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.10"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
-    .package(url: "https://github.com/ml-explore/mlx-swift-examples/", branch: "main"),
+    // Pin to specific revision for security. Update when new stable versions are released.
+    .package(url: "https://github.com/ml-explore/mlx-swift-examples/", revision: "cb66b4bc6bc1a69663837881e7f1260cd49d6b59"),
   ],
   targets: [
     .target(

@@ -4,10 +4,13 @@ import MLXEmbedders
 import VecturaKit
 
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
-public class VecturaMLXKit {
+/// Thread-safe implementation using actor-based concurrency.
+public actor VecturaMLXKit {
     private let config: VecturaConfig
     private let embedder: MLXEmbedder
+    /// In-memory cache of all documents. Protected by actor isolation.
     private var documents: [UUID: VecturaDocument] = [:]
+    /// Cached normalized embeddings for faster searches. Protected by actor isolation.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
     private let storageDirectory: URL
     
@@ -28,8 +31,10 @@ public class VecturaMLXKit {
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
-            self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                .first!
+            guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw VecturaError.loadFailed("Unable to access documents directory")
+            }
+            self.storageDirectory = documentsDirectory
                 .appendingPathComponent("VecturaKit")
                 .appendingPathComponent(config.name)
         }
@@ -45,6 +50,9 @@ public class VecturaMLXKit {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
         
+        // Validate input texts for security and performance
+        try VecturaValidation.validateDocumentTexts(texts)
+        
         let embeddings = await embedder.embed(texts: texts)
         var documentIds = [UUID]()
         var documentsToSave = [VecturaDocument]()
@@ -54,12 +62,7 @@ public class VecturaMLXKit {
             let doc = VecturaDocument(id: docId, text: text, embedding: embeddings[index])
             
             // Normalize embedding for cosine similarity
-            let norm = l2Norm(doc.embedding)
-            var divisor = norm + 1e-9
-            var normalized = [Float](repeating: 0, count: doc.embedding.count)
-            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-            
-            normalizedEmbeddings[doc.id] = normalized
+            normalizedEmbeddings[doc.id] = VectorMath.normalizeL2(doc.embedding)
             documents[doc.id] = doc
             documentIds.append(docId)
             documentsToSave.append(doc)
@@ -88,17 +91,15 @@ public class VecturaMLXKit {
     public func search(query: String, numResults: Int? = nil, threshold: Float? = nil) async throws
     -> [VecturaSearchResult]
     {
-        guard !query.isEmpty else {
+        // Validate query input
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw VecturaError.invalidInput("Query cannot be empty")
         }
+        try VecturaValidation.validateDocumentText(query)
         
         let queryEmbedding = try await embedder.embed(text: query)
         
-        let norm = l2Norm(queryEmbedding)
-        var divisorQuery = norm + 1e-9
-        var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
-        vDSP_vsdiv(
-            queryEmbedding, 1, &divisorQuery, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
+        let normalizedQuery = VectorMath.normalizeL2(queryEmbedding)
         
         var results: [VecturaSearchResult] = []
         
@@ -167,11 +168,7 @@ public class VecturaMLXKit {
                 let doc = try decoder.decode(VecturaDocument.self, from: data)
                 
                 // Rebuild normalized embeddings
-                let norm = l2Norm(doc.embedding)
-                var divisor = norm + 1e-9
-                var normalized = [Float](repeating: 0, count: doc.embedding.count)
-                vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-                normalizedEmbeddings[doc.id] = normalized
+                normalizedEmbeddings[doc.id] = VectorMath.normalizeL2(doc.embedding)
                 documents[doc.id] = doc
             } catch {
                 loadErrors.append(
@@ -185,14 +182,6 @@ public class VecturaMLXKit {
     }
     
     private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
-        var result: Float = 0
-        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
-        return result
-    }
-    
-    private func l2Norm(_ v: [Float]) -> Float {
-        var sumSquares: Float = 0
-        vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
-        return sqrt(sumSquares)
+        return VectorMath.dotProduct(a, b)
     }
 }

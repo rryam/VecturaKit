@@ -71,7 +71,7 @@ final class VecturaMLXKitTests: XCTestCase {
     
     func testAddAndSearch() async throws {
         // Create a test config with a minThreshold of 0 so any document is returned.
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -91,7 +91,7 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testDeleteDocuments() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -110,7 +110,7 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testUpdateDocument() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -132,7 +132,7 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testReset() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -150,7 +150,7 @@ final class VecturaMLXKitTests: XCTestCase {
     // MARK: - Robust Search Tests
     
     func testSearchMultipleDocuments() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -181,7 +181,7 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testSearchNumResultsLimiting() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -206,7 +206,7 @@ final class VecturaMLXKitTests: XCTestCase {
     
     func testSearchWithHighThreshold() async throws {
         // Set a high threshold so that only nearly identical matches return.
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,
@@ -233,7 +233,7 @@ final class VecturaMLXKitTests: XCTestCase {
     }
     
     func testSearchNoMatches() async throws {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: "TestMLXDB",
             directoryURL: testDirectory,
             dimension: testDimension,

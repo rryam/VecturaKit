@@ -23,11 +23,11 @@ Your support helps to keep this project growing!
 
 ## Supported Platforms
 
--   macOS 14.0 or later
--   iOS 17.0 or later
--   tvOS 17.0 or later
--   visionOS 1.0 or later
--   watchOS 10.0 or later
+-   macOS 15.0 or later
+-   iOS 18.0 or later
+-   tvOS 18.0 or later
+-   visionOS 2.0 or later
+-   watchOS 11.0 or later
 
 ## Installation
 

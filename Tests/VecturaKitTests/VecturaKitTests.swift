@@ -9,7 +9,7 @@ final class VecturaKitTests: XCTestCase {
     var config: VecturaConfig!
     
     override func setUp() async throws {
-        config = VecturaConfig(name: "test-db", dimension: 384)
+        config = try VecturaConfig(name: "test-db", dimension: 384)
         vectura = try await VecturaKit(config: config)
     }
     
@@ -49,7 +49,7 @@ final class VecturaKitTests: XCTestCase {
         let ids = try await vectura.addDocuments(texts: texts)
         
         // Create new instance with same config
-        let config = VecturaConfig(name: "test-db", dimension: 384)
+        let config = try VecturaConfig(name: "test-db", dimension: 384)
         let newVectura = try await VecturaKit(config: config)
         
         // Search should work with new instance
@@ -102,7 +102,7 @@ final class VecturaKitTests: XCTestCase {
     
     func testDimensionMismatch() async throws {
         // Test with wrong dimension config
-        let wrongConfig = VecturaConfig(name: "wrong-dim-db", dimension: 128)
+        let wrongConfig = try VecturaConfig(name: "wrong-dim-db", dimension: 128)
         let wrongVectura = try await VecturaKit(config: wrongConfig)
         
         let text = "Test document"
