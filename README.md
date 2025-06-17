@@ -1,6 +1,7 @@
+```markdown
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.  It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
 
 ## Support
 
@@ -48,6 +49,16 @@ VecturaKit relies on the following Swift packages:
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
+
+The project also has the following dependencies, as specified in `Package.resolved`:
+-   [GzipSwift](https://github.com/1024jp/GzipSwift)
+-   [Jinja](https://github.com/johnmai-dev/Jinja)
+-   [mlx-swift](https://github.com/ml-explore/mlx-swift)
+-   [swift-collections](https://github.com/apple/swift-collections.git)
+-   [swift-numerics](https://github.com/apple/swift-numerics)
+-   [swift-safetensors](https://github.com/jkrukowski/swift-safetensors.git)
+-   [swift-sentencepiece](https://github.com/jkrukowski/swift-sentencepiece)
+-   [swift-transformers](https://github.com/huggingface/swift-transformers)
 
 ## Usage
 
@@ -241,7 +252,7 @@ VecturaMLXKit harnesses Apple's MLX framework for accelerated processing, delive
 
 VecturaKit includes a command-line interface for both the standard and MLX versions, facilitating easy database management.
 
-**Standard CLI Tool**
+**Standard CLI Tool (`vectura-cli`)**
 
 ```bash
 # Add documents
@@ -283,7 +294,7 @@ vectura mock \
   --model-id "sentence-transformers/all-MiniLM-L6-v2"
 ```
 
-Common options:
+Common options for `vectura-cli`:
 
 -   `--db-name, -d`: Database name (default: "vectura-cli-db")
 -   `--dimension, -v`: Vector dimension (default: 384)
@@ -291,7 +302,7 @@ Common options:
 -   `--num-results, -n`: Number of results to return (default: 10)
 -   `--model-id, -m`: Model ID for embeddings (default: "sentence-transformers/all-MiniLM-L6-v2")
 
-**MLX CLI Tool**
+**MLX CLI Tool (`vectura-mlx-cli`)**
 
 ```bash
 # Add documents
@@ -339,7 +350,7 @@ swift test
 
 The project also includes CI workflows defined in `.github/workflows` to automate building and testing on pull requests and pushes to the `main` branch.  The workflows require Xcode 16.1 and Swift 6.0.
 
-Debugging configurations are provided in `.vscode/launch.json` for the `vectura-cli`.  These can be used to launch the CLI with the debugger attached.
+Debugging configurations are provided in `.vscode/launch.json` for the `vectura-cli` and `vectura-mlx-cli`.  These can be used to launch the CLI with the debugger attached.
 
 ### Continuous Integration
 
@@ -348,3 +359,4 @@ The project uses GitHub Actions for continuous integration. The following workfl
 - `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
 - `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
 - `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
+```
