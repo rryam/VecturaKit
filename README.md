@@ -1,3 +1,4 @@
+```markdown
 # VecturaKit
 
 VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing.  It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
@@ -323,6 +324,12 @@ vectura-mlx reset --db-name "my-mlx-vector-db"
 vectura-mlx mock  --db-name "my-mlx-vector-db"
 ```
 
+Options for `vectura-mlx-cli`:
+
+-   `--db-name, -d`: Database name (default: "vectura-mlx-cli-db")
+-   `--threshold, -t`: Minimum similarity threshold (default: no threshold)
+-   `--num-results, -n`: Number of results to return (default: 10)
+
 ## License
 
 VecturaKit is released under the MIT License. See the [LICENSE](LICENSE) file for more information. Copyright (c) 2025 Rudrank Riyam.
@@ -358,3 +365,4 @@ The project uses GitHub Actions for continuous integration. The following workfl
 - `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
 - `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
 - `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
+```
