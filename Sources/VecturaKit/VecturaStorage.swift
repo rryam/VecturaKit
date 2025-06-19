@@ -4,7 +4,7 @@ import Foundation
 ///
 /// It allows for multiple underlying storage implementations (e.g., File-based or SQLite)
 /// without changing the higher-level API used in VecturaKit.
-public protocol VecturaStorage {
+public protocol VecturaStorage: Sendable {
     /// Prepares or creates the storage location for documents if needed.
     func createStorageDirectoryIfNeeded() async throws
     

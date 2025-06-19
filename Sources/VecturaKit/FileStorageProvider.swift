@@ -1,24 +1,37 @@
 import Foundation
 import Accelerate
+import os
 
 /// A file‑based storage provider that implements VecturaStorage using JSON files.
 /// This provider maintains an in‑memory cache of documents while persisting them
 /// to a specified storage directory.
-public class FileStorageProvider: VecturaStorage {
+/// Thread-safe implementation using actor-based concurrency.
+public actor FileStorageProvider: VecturaStorage {
     /// The storage directory where JSON files are stored.
     private let storageDirectory: URL
 
-    /// In‑memory cache of documents keyed by their UUID.
+    /// In‑memory cache of documents keyed by their UUID. Protected by actor isolation.
     private var documents: [UUID: VecturaDocument] = [:]
 
-    /// In‑memory cache of normalized embeddings for each document.
+    /// In‑memory cache of normalized embeddings for each document. Protected by actor isolation.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
+    
+    /// Logger for this storage provider.
+    private let logger = Logger(subsystem: "VecturaKit", category: "FileStorage")
 
     /// Initializes the provider with the target storage directory.
     ///
     /// - Parameter storageDirectory: The directory URL where documents will be saved and loaded.
-    public init(storageDirectory: URL) throws {
+    public init(storageDirectory: URL) {
         self.storageDirectory = storageDirectory
+    }
+    
+    /// Factory method to create and initialize a FileStorageProvider.
+    ///
+    /// - Parameter storageDirectory: The directory URL where documents will be saved and loaded.
+    /// - Returns: A fully initialized FileStorageProvider.
+    public static func create(storageDirectory: URL) async throws -> FileStorageProvider {
+        let provider = FileStorageProvider(storageDirectory: storageDirectory)
         
         // Ensure the storage directory exists
         if !FileManager.default.fileExists(atPath: storageDirectory.path) {
@@ -26,7 +39,8 @@ public class FileStorageProvider: VecturaStorage {
         }
         
         // Load any existing documents.
-        try loadDocumentsFromStorage()
+        try await provider.loadDocumentsFromStorage()
+        return provider
     }
 
     /// Ensures that the storage directory exists.
@@ -56,11 +70,7 @@ public class FileStorageProvider: VecturaStorage {
         try data.write(to: documentURL)
         
         // Compute and store normalized embedding
-        let norm = l2Norm(document.embedding)
-        var divisor = norm + 1e-9
-        var normalized = [Float](repeating: 0, count: document.embedding.count)
-        vDSP_vsdiv(document.embedding, 1, &divisor, &normalized, 1, vDSP_Length(document.embedding.count))
-        normalizedEmbeddings[document.id] = normalized
+        normalizedEmbeddings[document.id] = VectorMath.normalizeL2(document.embedding)
     }
 
     /// Deletes a document by removing it from the in‑memory caches and deleting its file.
@@ -82,7 +92,7 @@ public class FileStorageProvider: VecturaStorage {
     // MARK: - Private Helper Methods
 
     /// Loads all JSON‑encoded documents from disk into memory.
-    private func loadDocumentsFromStorage() throws {
+    private func loadDocumentsFromStorage() async throws {
         let fileURLs = try FileManager.default.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil)
         let decoder = JSONDecoder()
         
@@ -93,22 +103,12 @@ public class FileStorageProvider: VecturaStorage {
                 documents[doc.id] = doc
                 
                 // Compute normalized embedding and store it.
-                let norm = l2Norm(doc.embedding)
-                var divisor = norm + 1e-9
-                var normalized = [Float](repeating: 0, count: doc.embedding.count)
-                vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
-                normalizedEmbeddings[doc.id] = normalized
+                normalizedEmbeddings[doc.id] = VectorMath.normalizeL2(doc.embedding)
             } catch {
-                // Log the error if needed
-                print("Failed to load \(fileURL.lastPathComponent): \(error.localizedDescription)")
+                // Log the error with proper privacy considerations
+                logger.error("Failed to load document: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 
-    /// Computes the L2 norm of a vector.
-    private func l2Norm(_ vector: [Float]) -> Float {
-        var sumSquares: Float = 0
-        vDSP_svesq(vector, 1, &sumSquares, vDSP_Length(vector.count))
-        return sqrt(sumSquares)
-    }
 }

@@ -32,7 +32,7 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     async throws
     -> VecturaMLXKit
     {
-        let config = VecturaConfig(
+        let config = try VecturaConfig(
             name: dbName,
             dimension: 768  // nomic_text_v1_5 model outputs 768-dimensional embeddings
         )
