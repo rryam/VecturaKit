@@ -381,6 +381,19 @@ public class VecturaKit: VecturaProtocol {
         try await updateDocument(id: id, newText: newText, model: .id(modelId))
     }
 
+    // MARK: - Public Properties
+    
+    /// Returns the number of documents currently stored in the vector database.
+    public var documentCount: Int {
+        return documents.count
+    }
+    
+    /// Returns all documents currently stored in the vector database.
+    /// - Returns: Array of VecturaDocument objects
+    public func getAllDocuments() -> [VecturaDocument] {
+        return Array(documents.values)
+    }
+
     // MARK: - Private
 
     private func tensorToArray(_ tensor: MLTensor) async -> [Float] {
