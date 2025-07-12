@@ -1,3 +1,4 @@
+```markdown
 # VecturaKit
 
 VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing. It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
@@ -50,14 +51,14 @@ VecturaKit relies on the following Swift packages:
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
 
 The project also has the following dependencies, as specified in `Package.resolved`:
--   [GzipSwift](https://github.com/1024jp/GzipSwift)
--   [Jinja](https://github.com/johnmai-dev/Jinja)
--   [mlx-swift](https://github.com/ml-explore/mlx-swift)
--   [swift-collections](https://github.com/apple/swift-collections.git)
--   [swift-numerics](https://github.com/apple/swift-numerics)
--   [swift-safetensors](https://github.com/jkrukowski/swift-safetensors.git)
--   [swift-sentencepiece](https://github.com/jkrukowski/swift-sentencepiece)
--   [swift-transformers](https://github.com/huggingface/swift-transformers)
+-   [GzipSwift](https://github.com/1024jp/GzipSwift) version 6.0.1: Compression library.
+-   [Jinja](https://github.com/johnmai-dev/Jinja) version 1.1.1: Templating engine.
+-   [mlx-swift](https://github.com/ml-explore/mlx-swift) version 0.21.2: Apple's MLX framework for accelerated processing.
+-   [swift-collections](https://github.com/apple/swift-collections.git) version 1.1.4: Apple's collections library.
+-   [swift-numerics](https://github.com/apple/swift-numerics) version 1.0.2:  Numerics library for Swift.
+-   [swift-safetensors](https://github.com/jkrukowski/swift-safetensors.git) version 0.0.7: A library for reading and writing Safe Tensors.
+-   [swift-sentencepiece](https://github.com/jkrukowski/swift-sentencepiece) version 0.0.6:  SentencePiece implementation in Swift.
+-   [swift-transformers](https://github.com/huggingface/swift-transformers) version 0.1.18: Hugging Face Transformers implementation in Swift.
 
 ## Usage
 
@@ -352,3 +353,16 @@ To build and test the project, use the following commands:
 swift build
 swift test
 ```
+
+### Continuous Integration
+
+The project uses GitHub Actions for continuous integration.  The following workflows are defined:
+
+- `build_and_test_vectura.yml`: Builds and tests the `VecturaKit` library and `vectura-cli` tool on macOS.
+- `build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` library on macOS.
+- `claude-code-review.yml`:  Runs a code review on pull requests using the Claude AI model.  This workflow can be configured to provide feedback on code quality, potential bugs, performance considerations, and security concerns.  It requires a `CLAUDE_CODE_OAUTH_TOKEN` secret.
+- `claude.yml`: Allows interaction with the Claude AI model through issue comments and pull request reviews.  It requires a `CLAUDE_CODE_OAUTH_TOKEN` secret.  It is triggered by mentioning `@claude` in a comment, review, issue, or pull request.
+- `update-readme.yml`: Automatically updates the `README.md` file based on the codebase using Gemini AI. It runs on pushes to the `main` branch and creates a pull request with the updated README. Requires a `GEMINI_API_KEY` secret.
+
+```
+
