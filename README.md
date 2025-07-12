@@ -1,4 +1,3 @@
-```markdown
 # VecturaKit
 
 VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing. It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
@@ -352,33 +351,4 @@ To build and test the project, use the following commands:
 ```bash
 swift build
 swift test
-```
-
-The project also includes CI workflows defined in `.github/workflows` to automate building and testing on pull requests and pushes to the `main` branch.  The workflows require Xcode 16.1 and Swift 6.0.
-
-Debugging configurations are provided in `.vscode/launch.json` for the `vectura-cli` and `vectura-mlx-cli`.  These can be used to launch the CLI with the debugger attached.
-
-### Continuous Integration
-
-The project uses GitHub Actions for continuous integration. The following workflows are defined:
-
-- `.github/workflows/build_and_test_mlx.yml`: Builds and tests the `VecturaMLXKit` target.
-- `.github/workflows/build_and_test_vectura.yml`: Builds and tests the `VecturaKit` and `vectura-cli` targets.
-- `.github/workflows/update-readme.yml`: Automatically updates the `README.md` file using a Python script that calls the Gemini AI model. This workflow is triggered on pushes to the `main` branch and creates a pull request with the updated README.
-
-### Claude Code Review Integration
-
-The project uses the Claude Code Action for automated code reviews on pull requests. This integration helps to ensure code quality, identify potential issues, and maintain coding standards.
-
-- `.github/workflows/claude-code-review.yml`: Defines the workflow for running the Claude Code Review. It is triggered on pull requests and provides feedback on code quality, potential bugs, performance considerations, security concerns, and test coverage. The workflow uses the `anthropics/claude-code-action@beta` action.
-
-To enable Claude Code Review, you need to set the `CLAUDE_CODE_OAUTH_TOKEN` secret in your GitHub repository settings.
-
-### Interacting with Claude via Comments
-
-You can also interact with Claude directly via comments on issues and pull requests.  By mentioning `@claude` in a comment, you can trigger Claude to provide assistance.
-
-- `.github/workflows/claude.yml`: Defines the workflow for interacting with Claude via comments. It is triggered on `issue_comment`, `pull_request_review_comment`, `pull_request_review`, and `issues` events.
-
-To enable this feature, you also need to set the `CLAUDE_CODE_OAUTH_TOKEN` secret in your GitHub repository settings.
 ```
