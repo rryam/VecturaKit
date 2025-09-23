@@ -1,6 +1,6 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
+VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
 
 The framework offers two primary modules: `VecturaKit`, which supports many embedding models via `swift-embeddings`, and `VecturaMLXKit`, which uses Apple's MLX framework. It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
@@ -12,16 +12,16 @@ Explore the following books to understand more about AI and iOS development:
 
 ## Features
 
--   **Model2Vec Support:** Uses the fast 32M parameter Model2Vec model as default for efficient static embeddings.
--   **Auto-Dimension Detection:** Automatically detects embedding dimensions from models, eliminating manual configuration.
--   **On-Device Storage:** Stores and manages vector embeddings locally, enhancing privacy and reducing latency.
--   **Hybrid Search:** Combines vector similarity with BM25 text search for comprehensive and relevant search results (`VecturaKit`).
+-   **Model2Vec Support:** Uses the retrieval 32M parameter Model2Vec model as default for fast static embeddings.
+-   **Auto-Dimension Detection:** Automatically detects embedding dimensions from models.
+-   **On-Device Storage:** Stores and manages vector embeddings locally.
+-   **Hybrid Search:** Combines vector similarity with BM25 text search for relevant search results (`VecturaKit`).
 -   **Batch Processing:** Indexes documents in parallel for faster data ingestion.
 -   **Persistent Storage:** Automatically saves and loads document data, preserving the database state across app sessions.
 -   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specifies a custom directory for database storage.
--   **MLX Support:** Employs Apple's MLX framework for accelerated embedding generation and search operations (`VecturaMLXKit`).
--   **CLI Tool:** Includes a command-line interface (CLI) for database management, testing, and debugging for both `VecturaKit` and `VecturaMLXKit`.
+-   **MLX Support:** Uses Apple's MLX framework for embedding generation and search operations (`VecturaMLXKit`).
+-   **CLI Tool:** Includes CLIs for database management, testing, and debugging both `VecturaKit` and `VecturaMLXKit`.
 
 ## Supported Platforms
 
@@ -45,7 +45,7 @@ dependencies: [
 
 ### Dependencies
 
-VecturaKit relies on the following Swift packages:
+VecturaKit uses the following Swift packages:
 
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
@@ -323,24 +323,8 @@ Options for `vectura-mlx-cli`:
 
 ## License
 
-VecturaKit is released under the MIT License. See the [LICENSE](LICENSE) file for more information. Copyright (c) 2025 Rudrank Riyam.
+VecturaKit is released under the MIT License. See the LICENSE file for more information. Copyright (c) 2025 Rudrank Riyam.
 
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
-
-### Development
-
-The project is structured as a Swift Package.  It includes the following key targets:
-
-- `VecturaKit`: The core vector database library.
-- `VecturaMLXKit`:  The MLX-accelerated version of the library.
-- `vectura-cli`:  The command-line interface for `VecturaKit`.
-- `vectura-mlx-cli`: The command-line interface for `VecturaMLXKit`.
-
-To build and test the project, use the following commands:
-
-```bash
-swift build
-swift test
-```
