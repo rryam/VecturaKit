@@ -1,0 +1,73 @@
+definitions:
+  triggering:
+    push: &events
+      events:
+        - push
+        - pull_request
+workflows:
+  vecturakit:
+    name: VecturaKit Workflow
+    environment:
+      xcode: 26.0
+      vars:
+        XCODE_SCHEME: "VecturaKit"
+        APP_ID: "VecturaKit"
+    when:
+      changeset:
+        includes:
+          - 'Sources'
+          - 'Tests'
+    triggering:
+      <<: *events
+    scripts:
+      - name: Build Framework
+        script: |
+          #!/bin/zsh
+
+          xcodebuild clean build \
+            -scheme "$XCODE_SCHEME" \
+            -destination "platform=macOS" \
+            -skipPackagePluginValidation
+      - name: Test Framework
+        script: |
+          #!/bin/zsh
+
+          set -o pipefail
+          xcodebuild clean test \
+            -scheme "$XCODE_SCHEME" \
+            -destination "platform=macOS" \
+            -skipPackagePluginValidation | xcpretty --report junit
+        test_report: build/reports/junit.xml
+  vecturamlxkit:
+    name: VecturaMLXKit Workflow
+    environment:
+      xcode: 26.0
+      vars:
+        XCODE_SCHEME: "VecturaMLXKit"
+        APP_ID: "VecturaMLXKit"
+    when:
+      changeset:
+        includes:
+          - 'Sources'
+          - 'Tests'
+    triggering:
+      <<: *events
+    scripts:
+      - name: Build Framework
+        script: |
+          #!/bin/zsh
+
+          xcodebuild clean build \
+            -scheme "$XCODE_SCHEME" \
+            -destination "platform=macOS" \
+            -skipPackagePluginValidation
+      - name: Test Framework
+        script: |
+          #!/bin/zsh
+
+          set -o pipefail
+          xcodebuild clean test \
+            -scheme "$XCODE_SCHEME" \
+            -destination "platform=macOS" \
+            -skipPackagePluginValidation | xcpretty --report junit
+        test_report: build/reports/junit.xml

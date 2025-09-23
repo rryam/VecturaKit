@@ -5,7 +5,7 @@ import Foundation
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public class VecturaKit: VecturaProtocol {
+public final class VecturaKit: VecturaProtocol {
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
