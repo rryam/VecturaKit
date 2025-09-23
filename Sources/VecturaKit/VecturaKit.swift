@@ -10,6 +10,9 @@ public class VecturaKit: VecturaProtocol {
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
 
+    /// The actual dimension of vectors, either from config or auto-detected from model.
+    private var actualDimension: Int?
+
     /// In-memory cache of all documents.
     private var documents: [UUID: VecturaDocument]
 
@@ -83,11 +86,26 @@ public class VecturaKit: VecturaProtocol {
         if isModel2VecModel(model) {
             if model2vecModel == nil {
                 model2vecModel = try await Model2Vec.loadModelBundle(from: model)
+                if actualDimension == nil {
+                    actualDimension = try detectDimension()
+                }
             }
         } else {
             if bertModel == nil {
                 bertModel = try await Bert.loadModelBundle(from: model)
+                if actualDimension == nil {
+                    actualDimension = try await detectDimensionAsync()
+                }
             }
+        }
+
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Could not determine model dimension")
+        }
+
+        // Validate dimension if specified in config
+        if let configDimension = config.dimension, configDimension != dimension {
+            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
         }
 
         let embeddingsTensor: MLTensor
@@ -104,9 +122,9 @@ public class VecturaKit: VecturaProtocol {
             throw VecturaError.invalidInput("Expected shape [N, D], got \(shape)")
         }
 
-        if shape[1] != config.dimension {
+        if shape[1] != dimension {
             throw VecturaError.dimensionMismatch(
-                expected: config.dimension,
+                expected: dimension,
                 got: shape[1]
             )
         }
@@ -119,8 +137,8 @@ public class VecturaKit: VecturaProtocol {
         var documentsToSave = [VecturaDocument]()
 
         for i in 0..<texts.count {
-            let startIndex = i * config.dimension
-            let endIndex = startIndex + config.dimension
+            let startIndex = i * dimension
+            let endIndex = startIndex + dimension
             let embeddingRow = Array(allScalars[startIndex..<endIndex])
 
             let docId = ids?[i] ?? UUID()
@@ -175,9 +193,13 @@ public class VecturaKit: VecturaProtocol {
         numResults: Int? = nil,
         threshold: Float? = nil
     ) async throws -> [VecturaSearchResult] {
-        if queryEmbedding.count != config.dimension {
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Model dimension not detected")
+        }
+
+        if queryEmbedding.count != dimension {
             throw VecturaError.dimensionMismatch(
-                expected: config.dimension,
+                expected: dimension,
                 got: queryEmbedding.count
             )
         }
@@ -191,7 +213,7 @@ public class VecturaKit: VecturaProtocol {
         // Build a matrix of normalized document embeddings in row-major order
         var docIds = [UUID]()
         var matrix = [Float]()
-        matrix.reserveCapacity(documents.count * config.dimension)  // Pre-allocate for better performance
+        matrix.reserveCapacity(documents.count * dimension)  // Pre-allocate for better performance
 
         for doc in documents.values {
             if let normalized = normalizedEmbeddings[doc.id] {
@@ -206,7 +228,7 @@ public class VecturaKit: VecturaProtocol {
         }
 
         let M = Int32(docsCount)  // number of rows (documents)
-        let N = Int32(config.dimension)  // number of columns (embedding dimension)
+        let N = Int32(dimension)  // number of columns (embedding dimension)
         var similarities = [Float](repeating: 0, count: docsCount)
 
         // Convert Int32 to Int for LAPACK compatibility
@@ -266,11 +288,26 @@ public class VecturaKit: VecturaProtocol {
         if isModel2VecModel(model) {
             if model2vecModel == nil {
                 model2vecModel = try await Model2Vec.loadModelBundle(from: model)
+                if actualDimension == nil {
+                    actualDimension = try detectDimension()
+                }
             }
         } else {
             if bertModel == nil {
                 bertModel = try await Bert.loadModelBundle(from: model)
+                if actualDimension == nil {
+                    actualDimension = try await detectDimensionAsync()
+                }
             }
+        }
+
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Could not determine model dimension")
+        }
+
+        // Validate dimension if specified in config
+        if let configDimension = config.dimension, configDimension != dimension {
+            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
         }
 
         // Initialize BM25 index if needed
@@ -440,6 +477,24 @@ public class VecturaKit: VecturaProtocol {
                modelId.contains("potion") ||
                modelId.contains("model2vec") ||
                modelId.contains("M2V")
+    }
+
+    private func detectDimension() throws -> Int {
+        if let model2vec = model2vecModel {
+            return model2vec.model.dimienstion
+        } else {
+            throw VecturaError.invalidInput("No model loaded to detect dimension")
+        }
+    }
+
+    private func detectDimensionAsync() async throws -> Int {
+        if let bert = bertModel {
+            // For BERT, we need to get dimension from a test encoding
+            let testEmbedding = try bert.encode("test")
+            return testEmbedding.shape.last ?? 0
+        } else {
+            throw VecturaError.invalidInput("No model loaded to detect dimension")
+        }
     }
 }
 

@@ -10,8 +10,8 @@ public struct VecturaConfig {
   /// Will be created if it doesn't exist, database contents are stored in a subdirectory named after ``name``.
   public let directoryURL: URL?
 
-  /// The dimension of vectors to be stored.
-  public let dimension: Int
+  /// The dimension of vectors to be stored. If nil, will be auto-detected from the model.
+  public let dimension: Int?
 
   /// Options for similarity search.
   public struct SearchOptions {
@@ -50,7 +50,7 @@ public struct VecturaConfig {
   public init(
     name: String,
     directoryURL: URL? = nil,
-    dimension: Int,
+    dimension: Int? = nil,
     searchOptions: SearchOptions = SearchOptions()
   ) {
     self.name = name
@@ -58,4 +58,5 @@ public struct VecturaConfig {
     self.dimension = dimension
     self.searchOptions = searchOptions
   }
+
 }

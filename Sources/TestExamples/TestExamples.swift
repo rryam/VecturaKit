@@ -14,7 +14,7 @@ struct TestExamples {
         let config = VecturaConfig(
             name: "test-vector-db",
             directoryURL: nil,  // Optional custom storage location
-            dimension: 384,     // Matches the default BERT model dimension
+            // Dimension will be auto-detected from the model
             searchOptions: VecturaConfig.SearchOptions(
                 defaultNumResults: 10,
                 minThreshold: 0.7,

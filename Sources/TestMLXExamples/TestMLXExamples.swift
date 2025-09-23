@@ -14,8 +14,8 @@ struct TestMLXExamples {
         debugPrint("2. Initialize Database")
 
         let config = VecturaConfig(
-          name: "test-mlx-vector-db",
-          dimension: 768 //  nomic_text_v1_5 model outputs 768-dimensional embeddings
+          name: "test-mlx-vector-db"
+          // Dimension will be auto-detected from the model
         )
         let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
         debugPrint("MLX Database initialized successfully")
