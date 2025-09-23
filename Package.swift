@@ -67,6 +67,14 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
     ),
+    .executableTarget(
+      name: "TestExamples",
+      dependencies: ["VecturaKit"]
+    ),
+    .executableTarget(
+      name: "TestMLXExamples",
+      dependencies: ["VecturaMLXKit"]
+    ),
     .testTarget(
       name: "VecturaKitTests",
       dependencies: ["VecturaKit"]
