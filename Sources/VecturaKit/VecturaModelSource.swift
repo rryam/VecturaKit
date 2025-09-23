@@ -10,7 +10,7 @@ public enum VecturaModelSource: Sendable, CustomStringConvertible {
 
 public extension VecturaModelSource {
     /// The default model identifier when not otherwise specified.
-    static let defaultModelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    static let defaultModelId: String = "minishlab/potion-retrieval-32M"
 
     /// The default model when not otherwise specified.
     static let `default` = VecturaModelSource.id(VecturaModelSource.defaultModelId)

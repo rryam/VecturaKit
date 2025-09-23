@@ -28,6 +28,9 @@ public class VecturaKit: VecturaProtocol {
     /// Swift-Embeddings model bundle that you can reuse (e.g. BERT, XLM-R, CLIP, etc.)
     private var bertModel: Bert.ModelBundle?
 
+    /// Model2Vec model bundle for fast static embeddings
+    private var model2vecModel: Model2Vec.ModelBundle?
+
     // MARK: - Initialization
 
     public init(config: VecturaConfig) async throws {
@@ -77,15 +80,24 @@ public class VecturaKit: VecturaProtocol {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
 
-        if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: model)
+        if isModel2VecModel(model) {
+            if model2vecModel == nil {
+                model2vecModel = try await Model2Vec.loadModelBundle(from: model)
+            }
+        } else {
+            if bertModel == nil {
+                bertModel = try await Bert.loadModelBundle(from: model)
+            }
         }
 
-        guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
+        let embeddingsTensor: MLTensor
+        if let model2vec = model2vecModel {
+            embeddingsTensor = try model2vec.batchEncode(texts)
+        } else if let bert = bertModel {
+            embeddingsTensor = try bert.batchEncode(texts)
+        } else {
+            throw VecturaError.invalidInput("Failed to load model: \(model)")
         }
-
-        let embeddingsTensor = try modelBundle.batchEncode(texts)
         let shape = embeddingsTensor.shape
 
         if shape.count != 2 {
@@ -251,12 +263,14 @@ public class VecturaKit: VecturaProtocol {
         threshold: Float? = nil,
         model: VecturaModelSource = .default
     ) async throws -> [VecturaSearchResult] {
-        if bertModel == nil {
-            bertModel = try await Bert.loadModelBundle(from: model)
-        }
-
-        guard let modelBundle = bertModel else {
-            throw VecturaError.invalidInput("Failed to load BERT model: \(model)")
+        if isModel2VecModel(model) {
+            if model2vecModel == nil {
+                model2vecModel = try await Model2Vec.loadModelBundle(from: model)
+            }
+        } else {
+            if bertModel == nil {
+                bertModel = try await Bert.loadModelBundle(from: model)
+            }
         }
 
         // Initialize BM25 index if needed
@@ -270,7 +284,14 @@ public class VecturaKit: VecturaProtocol {
         }
 
         // Get vector similarity results
-        let queryEmbeddingTensor = try modelBundle.encode(query)
+        let queryEmbeddingTensor: MLTensor
+        if let model2vec = model2vecModel {
+            queryEmbeddingTensor = try model2vec.encode(query)
+        } else if let bert = bertModel {
+            queryEmbeddingTensor = try bert.encode(query)
+        } else {
+            throw VecturaError.invalidInput("Failed to load model: \(model)")
+        }
         let queryEmbeddingFloatArray = await tensorToArray(queryEmbeddingTensor)
         let vectorResults = try await search(
             query: queryEmbeddingFloatArray,
@@ -412,11 +433,31 @@ public class VecturaKit: VecturaProtocol {
         vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
         return sqrt(sumSquares)
     }
+
+    private func isModel2VecModel(_ source: VecturaModelSource) -> Bool {
+        let modelId = source.description
+        return modelId.contains("minishlab") ||
+               modelId.contains("potion") ||
+               modelId.contains("model2vec") ||
+               modelId.contains("M2V")
+    }
 }
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension Bert {
     static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
+        switch source {
+        case .id(let modelId):
+            try await loadModelBundle(from: modelId)
+        case .folder(let url):
+            try await loadModelBundle(from: url)
+        }
+    }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension Model2Vec {
+    static func loadModelBundle(from source: VecturaModelSource) async throws -> Model2Vec.ModelBundle {
         switch source {
         case .id(let modelId):
             try await loadModelBundle(from: modelId)
