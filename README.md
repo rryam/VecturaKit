@@ -1,8 +1,8 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings and automatic dimension detection. 
+VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
 
-The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing. It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
+The framework offers two primary modules: `VecturaKit`, which supports many embedding models via `swift-embeddings`, and `VecturaMLXKit`, which uses Apple's MLX framework. It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
 ## Learn More
 
