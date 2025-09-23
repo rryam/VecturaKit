@@ -1,6 +1,6 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. 
+VecturaKit is a Swift-based vector database designed for on-device applications, enabling advanced user experiences through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** utilizes `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings and automatic dimension detection. 
 
 The framework offers two primary modules: `VecturaKit`, which supports diverse embedding models via `swift-embeddings`, and `VecturaMLXKit`, which leverages Apple's MLX framework for accelerated processing. It also includes command-line interface tools (`vectura-cli` and `vectura-mlx-cli`) for interacting with the databases.
 
@@ -12,6 +12,8 @@ Explore the following books to understand more about AI and iOS development:
 
 ## Features
 
+-   **Model2Vec Support:** Uses the fast 32M parameter Model2Vec model as default for efficient static embeddings.
+-   **Auto-Dimension Detection:** Automatically detects embedding dimensions from models, eliminating manual configuration.
 -   **On-Device Storage:** Stores and manages vector embeddings locally, enhancing privacy and reducing latency.
 -   **Hybrid Search:** Combines vector similarity with BM25 text search for comprehensive and relevant search results (`VecturaKit`).
 -   **Batch Processing:** Indexes documents in parallel for faster data ingestion.
@@ -78,7 +80,7 @@ The project also has the following dependencies, as specified in `Package.resolv
     let config = VecturaConfig(
         name: "my-vector-db",
         directoryURL: nil,  // Optional custom storage location
-        dimension: 384,     // Matches the default BERT model dimension
+        dimension: nil,     // Auto-detect dimension from model (recommended)
         searchOptions: VecturaConfig.SearchOptions(
             defaultNumResults: 10,
             minThreshold: 0.7,
@@ -100,7 +102,7 @@ The project also has the following dependencies, as specified in `Package.resolv
     let documentId = try await vectorDB.addDocument(
         text: text,
         id: UUID(),  // Optional, will be generated if not provided
-        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional, this is the default
+        model: .default  // Uses Model2Vec 32M model by default
     )
     ```
 
@@ -115,7 +117,7 @@ The project also has the following dependencies, as specified in `Package.resolv
     let documentIds = try await vectorDB.addDocuments(
         texts: texts,
         ids: nil,  // Optional array of UUIDs
-         model: .id("sentence-transformers/all-MiniLM-L6-v2") // Optional model
+        model: .default  // Uses Model2Vec 32M model by default
     )
     ```
 
@@ -128,7 +130,7 @@ The project also has the following dependencies, as specified in `Package.resolv
         query: "search query",
         numResults: 5,      // Optional
         threshold: 0.8,     // Optional
-        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+        model: .default     // Uses Model2Vec 32M model by default
     )
 
     for result in results {
@@ -157,7 +159,7 @@ The project also has the following dependencies, as specified in `Package.resolv
     try await vectorDB.updateDocument(
         id: documentId,
         newText: "Updated text",
-        model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+        model: .default  // Uses Model2Vec 32M model by default
     )
     ```
 
@@ -254,52 +256,42 @@ VecturaKit includes a command-line interface for both the standard and MLX versi
 **Standard CLI Tool (`vectura-cli`)**
 
 ```bash
-# Add documents
+# Add documents (dimension auto-detected from model)
 vectura add "First document" "Second document" "Third document" \
-  --db-name "my-vector-db" \
-  --dimension 384 \
-  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+  --db-name "my-vector-db"
 
 # Search documents
 vectura search "search query" \
   --db-name "my-vector-db" \
-  --dimension 384 \
   --threshold 0.7 \
-  --num-results 5 \
-  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+  --num-results 5
 
 # Update document
 vectura update <document-uuid> "Updated text content" \
-  --db-name "my-vector-db" \
-  --dimension 384 \
-  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+  --db-name "my-vector-db"
 
 # Delete documents
 vectura delete <document-uuid-1> <document-uuid-2> \
-  --db-name "my-vector-db" \
-  --dimension 384
+  --db-name "my-vector-db"
 
 # Reset database
 vectura reset \
-  --db-name "my-vector-db" \
-  --dimension 384
+  --db-name "my-vector-db"
 
 # Run demo with sample data
 vectura mock \
   --db-name "my-vector-db" \
-  --dimension 384 \
   --threshold 0.7 \
-  --num-results 10 \
-  --model-id "sentence-transformers/all-MiniLM-L6-v2"
+  --num-results 10
 ```
 
 Common options for `vectura-cli`:
 
 -   `--db-name, -d`: Database name (default: "vectura-cli-db")
--   `--dimension, -v`: Vector dimension (default: 384)
+-   `--dimension, -v`: Vector dimension (auto-detected by default)
 -   `--threshold, -t`: Minimum similarity threshold (default: 0.7)
 -   `--num-results, -n`: Number of results to return (default: 10)
--   `--model-id, -m`: Model ID for embeddings (default: "sentence-transformers/all-MiniLM-L6-v2")
+-   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-retrieval-32M")
 
 **MLX CLI Tool (`vectura-mlx-cli`)**
 
