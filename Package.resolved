@@ -1,5 +1,5 @@
 {
-  "originHash" : "44842c87d9e25660aaf86ec33e867a88e7b841ad5ad427a186c9cb31fad6f71b",
+  "originHash" : "331c1d9f7d76364dc074eb836aa1b0abab60af693643c8d9cbb285d571b0c7d7",
   "pins" : [
     {
       "identity" : "gzipswift",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "731037f6cc2be2ec01562f6597c1d0aa3fe6fd05",
         "version" : "6.0.1"
-      }
-    },
-    {
-      "identity" : "jinja",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/johnmai-dev/Jinja",
-      "state" : {
-        "revision" : "5c0a87846dfd36ca6621795ad2f09fdaab82b739",
-        "version" : "1.3.0"
       }
     },
     {
@@ -34,7 +25,7 @@
       "location" : "https://github.com/ml-explore/mlx-swift-examples/",
       "state" : {
         "branch" : "main",
-        "revision" : "b3acd8d5360cac231338247c8654c9793275dddc"
+        "revision" : "95cc51fdfb1f11104e3db48ba7db831a5e098974"
       }
     },
     {
@@ -60,8 +51,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "d33723d31f3ae3dc6183d978ae884ee19ca7ee20",
-        "version" : "0.0.20"
+        "revision" : "bacfe9579302d8d7f4bd581da73b08f8df58486e",
+        "version" : "0.0.21"
+      }
+    },
+    {
+      "identity" : "swift-jinja",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/huggingface/swift-jinja.git",
+      "state" : {
+        "revision" : "c1ef5963ba4a97a589b9c9583ff4ee3352a86d23",
+        "version" : "2.1.0"
       }
     },
     {
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
-        "revision" : "f000aa7aec0e78acd0211685e4094e1fca84cd8b",
-        "version" : "0.1.24"
+        "revision" : "a2e184dddb4757bc943e77fbe99ac6786c53f0b2",
+        "version" : "1.0.0"
       }
     }
   ],
