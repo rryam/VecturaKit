@@ -19,12 +19,12 @@ public class FileStorageProvider: VecturaStorage {
     /// - Parameter storageDirectory: The directory URL where documents will be saved and loaded.
     public init(storageDirectory: URL) throws {
         self.storageDirectory = storageDirectory
-        
+
         // Ensure the storage directory exists
         if !FileManager.default.fileExists(atPath: storageDirectory.path) {
             try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         }
-        
+
         // Load any existing documents.
         try loadDocumentsFromStorage()
     }
@@ -47,14 +47,14 @@ public class FileStorageProvider: VecturaStorage {
     public func saveDocument(_ document: VecturaDocument) async throws {
         // Update cache
         documents[document.id] = document
-        
+
         // Encode and write document to disk
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(document)
         let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
         try data.write(to: documentURL)
-        
+
         // Compute and store normalized embedding
         let norm = l2Norm(document.embedding)
         var divisor = norm + 1e-9
@@ -68,7 +68,7 @@ public class FileStorageProvider: VecturaStorage {
         // Remove from caches
         documents.removeValue(forKey: id)
         normalizedEmbeddings.removeValue(forKey: id)
-        
+
         let documentURL = storageDirectory.appendingPathComponent("\(id).json")
         try FileManager.default.removeItem(at: documentURL)
     }
@@ -83,15 +83,18 @@ public class FileStorageProvider: VecturaStorage {
 
     /// Loads all JSON‑encoded documents from disk into memory.
     private func loadDocumentsFromStorage() throws {
-        let fileURLs = try FileManager.default.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil)
+        let fileURLs = try FileManager.default.contentsOfDirectory(
+            at: storageDirectory,
+            includingPropertiesForKeys: nil
+        )
         let decoder = JSONDecoder()
-        
+
         for fileURL in fileURLs where fileURL.pathExtension.lowercased() == "json" {
             do {
                 let data = try Data(contentsOf: fileURL)
                 let doc = try decoder.decode(VecturaDocument.self, from: data)
                 documents[doc.id] = doc
-                
+
                 // Compute normalized embedding and store it.
                 let norm = l2Norm(doc.embedding)
                 var divisor = norm + 1e-9

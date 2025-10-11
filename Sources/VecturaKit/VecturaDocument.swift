@@ -4,13 +4,13 @@ import Foundation
 public struct VecturaDocument: Identifiable, Codable, Sendable {
     /// The unique identifier of the document.
     public let id: UUID
-    
+
     /// The text content of the document.
     public let text: String
-    
+
     /// The vector embedding of the document.
     public let embedding: [Float]
-    
+
     /// The timestamp when the document was created.
     public let createdAt: Date
 
