@@ -299,7 +299,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let customDirectoryURL = URL(filePath: NSTemporaryDirectory()).appending(path: "VecturaKitTest-\(UUID().uuidString)")
+        let customDirectoryURL = URL(filePath: NSTemporaryDirectory())
+            .appending(path: "VecturaKitTest-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: customDirectoryURL) }
 
         let databaseName = "test-\(UUID().uuidString)"
@@ -317,7 +318,7 @@ struct VecturaKitTests {
 
         #expect(
             FileManager.default.fileExists(atPath: documentPath),
-            "Custom storage directory inserted document doesn't exist at \(documentPath)"
+            "Expected stored document at \(documentPath)"
         )
 
         try await instance.reset()
