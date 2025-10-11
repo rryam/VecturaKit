@@ -97,8 +97,6 @@ struct VecturaMLXKitTests {
         let results = try await kit.search(query: text)
         #expect(results.count == 1, "The search should return one result after adding one document.")
         #expect(results.first?.text == text, "The text of the returned document should match the added text.")
-
-        try await kit.reset()
     }
 
     @Test("Delete documents")
@@ -117,8 +115,6 @@ struct VecturaMLXKitTests {
 
         let results = try await kit.search(query: text)
         #expect(results.isEmpty, "After deletion, the document should not be returned in search results.")
-
-        try await kit.reset()
     }
 
     @Test("Update document")
@@ -140,8 +136,6 @@ struct VecturaMLXKitTests {
         let results = try await kit.search(query: updatedText)
         #expect(results.count == 1, "One document should be returned after update.")
         #expect(results.first?.text == updatedText, "The document text should be updated in the search results.")
-
-        try await kit.reset()
     }
 
     @Test("Reset removes documents")
@@ -185,8 +179,6 @@ struct VecturaMLXKitTests {
                 "Search results are not sorted in descending order by score."
             )
         }
-
-        try await kit.reset()
     }
 
     @Test("Search result limiting")
@@ -208,8 +200,6 @@ struct VecturaMLXKitTests {
 
         let results = try await kit.search(query: "testing", numResults: 3)
         #expect(results.count == 3, "Should limit the search results to exactly 3 documents.")
-
-        try await kit.reset()
     }
 
     @Test("Search high threshold")
@@ -236,8 +226,6 @@ struct VecturaMLXKitTests {
                 "Result score \(result.score) is below the high threshold \(highThreshold)."
             )
         }
-
-        try await kit.reset()
     }
 
     @Test("Search no matches")
@@ -252,7 +240,5 @@ struct VecturaMLXKitTests {
 
         let results = try await kit.search(query: "completely different query text", threshold: 0.9)
         #expect(results.isEmpty, "Search should return no results when the query does not match any document.")
-
-        try await kit.reset()
     }
 }

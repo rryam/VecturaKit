@@ -50,8 +50,6 @@ struct VecturaKitTests {
         #expect(results.count == 1)
         #expect(results[0].id == id)
         #expect(results[0].text == text)
-
-        try await vectura.reset()
     }
 
     @Test("Add multiple documents")
@@ -75,8 +73,6 @@ struct VecturaKitTests {
         let results = try await vectura.search(query: "quick jumping animals")
         #expect(results.count >= 2)
         #expect(results[0].score > results[1].score)
-
-        try await vectura.reset()
     }
 
     @Test("Persistence across instances")
@@ -97,9 +93,6 @@ struct VecturaKitTests {
         #expect(results.count == 2)
         #expect(ids.contains(results[0].id))
         #expect(ids.contains(results[1].id))
-
-        try await vectura.reset()
-        try await newVectura.reset()
     }
 
     @Test("Search threshold reduces results")
@@ -120,8 +113,6 @@ struct VecturaKitTests {
 
         let results = try await vectura.search(query: "cats and pets", threshold: 0.8)
         #expect(results.count < 3)
-
-        try await vectura.reset()
     }
 
     @Test("Custom identifiers are preserved")
@@ -142,8 +133,6 @@ struct VecturaKitTests {
         let results = try await vectura.search(query: text)
         #expect(results.count == 1)
         #expect(results[0].id == customId)
-
-        try await vectura.reset()
     }
 
     @Test("Model reuse remains performant")
@@ -162,8 +151,6 @@ struct VecturaKitTests {
         let duration = Date().timeIntervalSince(start)
 
         #expect(duration < 10.0)
-
-        try await vectura.reset()
     }
 
     @Test("Empty search returns no results")
@@ -177,8 +164,6 @@ struct VecturaKitTests {
 
         let results = try await vectura.search(query: "test query")
         #expect(results.count == 0, "Search on empty database should return no results")
-
-        try await vectura.reset()
     }
 
     @Test("Dimension mismatch surfaces error")
@@ -207,8 +192,6 @@ struct VecturaKitTests {
         } catch {
             Issue.record("Unexpected error type: \(error)")
         }
-
-        try await wrongVectura.reset()
     }
 
     @Test("Duplicate identifiers overwrite documents")
@@ -230,8 +213,6 @@ struct VecturaKitTests {
         let results = try await vectura.search(query: text2)
         #expect(results.count == 1)
         #expect(results[0].text == text2)
-
-        try await vectura.reset()
     }
 
     @Test("Threshold edge cases")
@@ -250,8 +231,6 @@ struct VecturaKitTests {
 
         let allResults = try await vectura.search(query: "completely different", threshold: 0.0)
         #expect(allResults.count >= 0)
-
-        try await vectura.reset()
     }
 
     @Test("Large number of documents")
@@ -271,8 +250,6 @@ struct VecturaKitTests {
 
         let results = try await vectura.search(query: "document", numResults: 10)
         #expect(results.count == 10)
-
-        try await vectura.reset()
     }
 
     @Test("Persistence after reset")
@@ -296,8 +273,6 @@ struct VecturaKitTests {
         let newVectura = try await VecturaKit(config: config)
         let newResults = try await newVectura.search(query: text)
         #expect(newResults.count == 0)
-
-        try await newVectura.reset()
     }
 
     @Test("Folder URL model source")
@@ -335,8 +310,6 @@ struct VecturaKitTests {
         let results = try await vectura.search(query: "quick jumping animals", model: .folder(url))
         #expect(results.count >= 2)
         #expect(results[0].score > results[1].score)
-
-        try await vectura.reset()
     }
 
     @Test("Custom storage directory")
@@ -365,7 +338,5 @@ struct VecturaKitTests {
             FileManager.default.fileExists(atPath: documentPath),
             "Expected stored document at \(documentPath)"
         )
-
-        try await instance.reset()
     }
 }
