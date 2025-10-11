@@ -22,7 +22,7 @@ public struct BM25Index {
     private var documentFrequencies: [String: Int]
     private var documentLengths: [UUID: Int]
     private var averageDocumentLength: Float
-    
+
     /// Creates a new BM25 index for the given documents
     /// 
     /// - Parameters:
@@ -34,13 +34,13 @@ public struct BM25Index {
         self.b = b
         self.documents = documents
         self.documentFrequencies = [:]
-        
+
         self.documentLengths = documents.reduce(into: [:]) { dict, doc in
             dict[doc.id] = tokenize(doc.text).count
         }
-        
+
         self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(documents.count)
-        
+
         for document in documents {
             let terms = Set(tokenize(document.text))
             for term in terms {
@@ -48,7 +48,7 @@ public struct BM25Index {
             }
         }
     }
-    
+
     /// Searches the index using BM25 scoring
     ///
     /// - Parameters:
@@ -58,49 +58,49 @@ public struct BM25Index {
     public func search(query: String, topK: Int = 10) -> [(document: VecturaDocument, score: Float)] {
         let queryTerms = tokenize(query)
         var scores: [(VecturaDocument, Float)] = []
-        
+
         for document in documents {
             let docLength = Float(documentLengths[document.id] ?? 0)
             var score: Float = 0.0
-            
+
             for term in queryTerms {
                 let tf = termFrequency(term: term, in: document)
                 let df = Float(documentFrequencies[term] ?? 0)
-                
+
                 let idf = log((Float(documents.count) - df + 0.5) / (df + 0.5))
                 let numerator = tf * (k1 + 1)
                 let denominator = tf + k1 * (1 - b + b * docLength / averageDocumentLength)
-                
+
                 score += idf * (numerator / denominator)
             }
-            
+
             scores.append((document, score))
         }
-        
+
         return scores
             .sorted { $0.1 > $1.1 }
             .prefix(topK)
             .filter { $0.1 > 0 }
     }
-    
+
     /// Add a new document to the index
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
         documents.append(document)
-        
+
         let length = tokenize(document.text).count
         documentLengths[document.id] = length
-        
+
         let terms = Set(tokenize(document.text))
         for term in terms {
             documentFrequencies[term, default: 0] += 1
         }
-        
+
         let totalLength = documentLengths.values.reduce(0, +)
         self.averageDocumentLength = Float(totalLength) / Float(documents.count)
     }
-    
+
     private func termFrequency(term: String, in document: VecturaDocument) -> Float {
         Float(
             tokenize(document.text)
