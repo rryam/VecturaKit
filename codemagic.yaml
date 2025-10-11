@@ -20,6 +20,11 @@ workflows:
     triggering:
       <<: *events
     scripts:
+      - name: SwiftLint
+        script: |
+          #!/bin/zsh
+
+          swiftlint --strict
       - name: Build Framework
         script: |
           #!/bin/zsh
@@ -53,6 +58,11 @@ workflows:
     triggering:
       <<: *events
     scripts:
+      - name: SwiftLint
+        script: |
+          #!/bin/zsh
+
+          swiftlint --strict
       - name: Build Framework
         script: |
           #!/bin/zsh
