@@ -77,6 +77,7 @@ struct VecturaMLXKitTests {
         do {
             return try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
         } catch {
+            print("Skipping MLX test due to initialization failure: \(error.localizedDescription)")
             return nil
         }
     }

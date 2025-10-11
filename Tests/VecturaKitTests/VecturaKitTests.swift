@@ -5,12 +5,42 @@ import Embeddings
 
 @Suite("VecturaKit")
 struct VecturaKitTests {
+    private func makeTestDirectory() throws -> (URL, () -> Void) {
+        let directory = URL(filePath: NSTemporaryDirectory())
+            .appendingPathComponent("VecturaKitTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o755]
+        )
+        let cleanup = {
+            _ = try? FileManager.default.removeItem(at: directory)
+        }
+        return (directory, cleanup)
+    }
+
+    private func makeVecturaConfig(
+        name: String = "test-db-\(UUID().uuidString)",
+        dimension: Int? = nil,
+        searchOptions: VecturaConfig.SearchOptions = .init()
+    ) throws -> (VecturaConfig, () -> Void) {
+        let (directory, cleanup) = try makeTestDirectory()
+        let config = VecturaConfig(
+            name: name,
+            directoryURL: directory,
+            dimension: dimension,
+            searchOptions: searchOptions
+        )
+        return (config, cleanup)
+    }
+
     @Test("Add and search document")
     func addAndSearchDocument() async throws {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let text = "This is a test document"
@@ -29,7 +59,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let documents = [
@@ -54,7 +85,8 @@ struct VecturaKitTests {
             return
         }
         let databaseName = UUID().uuidString
-        let config = VecturaConfig(name: "test-db-\(databaseName)")
+        let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let texts = ["Document 1", "Document 2"]
@@ -75,7 +107,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let documents = [
@@ -96,7 +129,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let customId = UUID()
@@ -117,7 +151,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let start = Date()
@@ -136,7 +171,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let results = try await vectura.search(query: "test query")
@@ -150,7 +186,11 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let wrongConfig = VecturaConfig(name: "wrong-dim-db-\(UUID().uuidString)", dimension: 128)
+        let (wrongConfig, cleanup) = try makeVecturaConfig(
+            name: "wrong-dim-db-\(UUID().uuidString)",
+            dimension: 128
+        )
+        defer { cleanup() }
         let wrongVectura = try await VecturaKit(config: wrongConfig)
 
         do {
@@ -176,7 +216,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let id = UUID()
@@ -198,7 +239,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         _ = try await vectura.addDocuments(texts: ["Test document"])
@@ -217,7 +259,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let documentCount = 100
@@ -238,7 +281,8 @@ struct VecturaKitTests {
             return
         }
         let databaseName = UUID().uuidString
-        let config = VecturaConfig(name: "test-db-\(databaseName)")
+        let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         let text = "Test document"
@@ -261,7 +305,8 @@ struct VecturaKitTests {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
             return
         }
-        let config = VecturaConfig(name: "test-db-\(UUID().uuidString)")
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
         let vectura = try await VecturaKit(config: config)
 
         _ = try await Model2Vec.loadModelBundle(from: VecturaModelSource.defaultModelId)

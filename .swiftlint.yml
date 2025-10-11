@@ -29,10 +29,11 @@ cyclomatic_complexity:
 
 identifier_name:
   min_length:
-    warning: 1
-    error: 1
+    warning: 3
+    error: 2
   excluded:
     - db
+    - id
     - k1
     - b
     - tf
