@@ -236,6 +236,7 @@ VecturaKit supports Apple's MLX framework through the `MLXEmbedder` for accelera
 
 ```swift
 import VecturaKit
+import VecturaMLXKit
 import MLXEmbedders
 ```
 
