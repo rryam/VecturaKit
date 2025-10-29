@@ -5,7 +5,7 @@ import Testing
 @testable import VecturaMLXKit
 @testable import VecturaKit
 
-/// Tests for VecturaMLXKit functionality
+/// Tests for VecturaKit with MLX embeddings functionality
 ///
 /// Note: These tests require:
 /// 1. Metal device (GPU) availability
@@ -61,12 +61,8 @@ struct VecturaMLXKitTests {
         )
     }
 
-    private func createVecturaMLXKit(config: VecturaConfig) async throws -> VecturaMLXKit? {
+    private func createVecturaKit(config: VecturaConfig) async throws -> VecturaKit? {
         guard shouldRunMLXTests else {
-            return nil
-        }
-
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *) else {
             return nil
         }
 
@@ -75,7 +71,8 @@ struct VecturaMLXKitTests {
         }
 
         do {
-            return try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+            let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+            return try await VecturaKit(config: config, embedder: embedder)
         } catch {
             print("Skipping MLX test due to initialization failure: \(error.localizedDescription)")
             return nil
@@ -88,7 +85,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let text = "Hello world"
         let ids = try await kit.addDocuments(texts: [text])
@@ -105,7 +102,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let text = "Delete me"
         let ids = try await kit.addDocuments(texts: [text])
@@ -123,7 +120,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let originalText = "Original text"
         let updatedText = "Updated text"
@@ -144,7 +141,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         _ = try await kit.addDocuments(texts: ["Doc1", "Doc2"])
         try await kit.reset()
@@ -159,7 +156,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let texts = [
             "The quick brown fox jumps over the lazy dog",
@@ -187,7 +184,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let texts = [
             "Document one about testing",
@@ -208,7 +205,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         let texts = [
             "Apple pie recipe",
@@ -234,7 +231,7 @@ struct VecturaMLXKitTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
-        guard let kit = try await createVecturaMLXKit(config: config) else { return }
+        guard let kit = try await createVecturaKit(config: config) else { return }
 
         _ = try await kit.addDocuments(texts: ["Some random content"])
 

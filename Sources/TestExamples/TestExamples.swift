@@ -24,10 +24,13 @@ struct TestExamples {
             )
         )
 
-        let vectorDB = try await VecturaKit(config: config)
+        let vectorDB = try await VecturaKit(
+            config: config,
+            embedder: SwiftEmbedder(modelSource: .id("sentence-transformers/all-MiniLM-L6-v2"))
+        )
         debugPrint("Database initialized successfully")
         debugPrint("no space here and use debugPrint everywhere")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // Example 3: Add Documents
         debugPrint("3. Add Documents")
@@ -37,11 +40,10 @@ struct TestExamples {
         let text = "Sample text to be embedded"
         let documentId = try await vectorDB.addDocument(
             text: text,
-            id: UUID(),  // Optional, will be generated if not provided
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional, this is the default
+            id: UUID()  // Optional, will be generated if not provided
         )
         debugPrint("Single document added with ID: \(documentId)")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // Multiple documents in batch:
         debugPrint("Adding multiple documents in batch...")
@@ -52,11 +54,10 @@ struct TestExamples {
         ]
         let documentIds = try await vectorDB.addDocuments(
             texts: texts,
-            ids: nil,  // Optional array of UUIDs
-             model: .id("sentence-transformers/all-MiniLM-L6-v2") // Optional model
+            ids: nil  // Optional array of UUIDs
         )
         debugPrint("Batch documents added with IDs: \(documentIds)")
-        debugPrint("Total document count: \(vectorDB.documentCount)")
+        debugPrint("Total document count: \(await vectorDB.documentCount)")
 
         // Example 4: Search Documents
         debugPrint("4. Search Documents")
@@ -66,8 +67,7 @@ struct TestExamples {
         let textResults = try await vectorDB.search(
             query: "document text",
             numResults: 5,      // Optional
-            threshold: 0.8,     // Optional
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+            threshold: 0.8     // Optional
         )
 
         debugPrint("Text search found \(textResults.count) results:")
@@ -105,8 +105,7 @@ struct TestExamples {
         let documentToUpdate = documentIds.first!
         try await vectorDB.updateDocument(
             id: documentToUpdate,
-            newText: "Updated text",
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+            newText: "Updated text"
         )
         debugPrint("Document updated")
 
@@ -118,12 +117,12 @@ struct TestExamples {
         debugPrint("Deleting documents...")
         try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
         debugPrint("Documents deleted")
-        debugPrint("Document count after deletion: \(vectorDB.documentCount)")
+        debugPrint("Document count after deletion: \(await vectorDB.documentCount)")
 
         // Reset database:
         debugPrint("Resetting database...")
         try await vectorDB.reset()
         debugPrint("Database reset")
-        debugPrint("Document count after reset: \(vectorDB.documentCount)")
+        debugPrint("Document count after reset: \(await vectorDB.documentCount)")
     }
 }

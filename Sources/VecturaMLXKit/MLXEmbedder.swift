@@ -3,17 +3,31 @@ import MLX
 import MLXEmbedders
 import VecturaKit
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
-public class MLXEmbedder {
+public actor MLXEmbedder: VecturaEmbedder {
   private let modelContainer: ModelContainer
   private let configuration: ModelConfiguration
+  private var cachedDimension: Int?
 
   public init(configuration: ModelConfiguration = .nomic_text_v1_5) async throws {
     self.configuration = configuration
     self.modelContainer = try await MLXEmbedders.loadModelContainer(configuration: configuration)
   }
 
-  public func embed(texts: [String]) async -> [[Float]] {
+  public var dimension: Int {
+    get async throws {
+      if let cached = cachedDimension {
+        return cached
+      }
+
+      // Detect dimension by encoding a test string
+      let testEmbedding = try await embed(text: "test")
+      let dim = testEmbedding.count
+      cachedDimension = dim
+      return dim
+    }
+  }
+
+  public func embed(texts: [String]) async throws -> [[Float]] {
     await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
@@ -43,10 +57,5 @@ public class MLXEmbedder {
 
       return result.map { $0.asArray(Float.self) }
     }
-  }
-
-  public func embed(text: String) async throws -> [Float] {
-    let embeddings = await embed(texts: [text])
-    return embeddings[0]
   }
 }

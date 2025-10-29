@@ -4,7 +4,6 @@ import VecturaKit
 import VecturaMLXKit
 import MLXEmbedders
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 @main
 struct TestMLXExamples {
     static func main() async throws {
@@ -17,9 +16,12 @@ struct TestMLXExamples {
           name: "test-mlx-vector-db"
           // Dimension will be auto-detected from the model
         )
-        let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+        let vectorDB = try await VecturaKit(
+            config: config,
+            embedder: try await MLXEmbedder(configuration: .nomic_text_v1_5)
+        )
         debugPrint("MLX Database initialized successfully")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // 3. Add Documents
         debugPrint("3. Add Documents")
@@ -31,7 +33,7 @@ struct TestMLXExamples {
         ]
         let documentIds = try await vectorDB.addDocuments(texts: texts)
         debugPrint("Documents added with IDs: \(documentIds)")
-        debugPrint("Total document count: \(vectorDB.documentCount)")
+        debugPrint("Total document count: \(await vectorDB.documentCount)")
 
         // 4. Search Documents
         debugPrint("4. Search Documents")
@@ -57,9 +59,9 @@ struct TestMLXExamples {
         debugPrint("Updating document...")
         let documentToUpdate = documentIds.first!
         try await vectorDB.updateDocument(
-             id: documentToUpdate,
-             newText: "Updated text"
-         )
+            id: documentToUpdate,
+            newText: "Updated text"
+        )
         debugPrint("Document updated")
 
         // Verify update by searching
@@ -70,12 +72,12 @@ struct TestMLXExamples {
         debugPrint("Deleting documents...")
         try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
         debugPrint("Documents deleted")
-        debugPrint("Document count after deletion: \(vectorDB.documentCount)")
+        debugPrint("Document count after deletion: \(await vectorDB.documentCount)")
 
         // Reset database:
         debugPrint("Resetting database...")
         try await vectorDB.reset()
         debugPrint("Database reset")
-        debugPrint("Document count after reset: \(vectorDB.documentCount)")
+        debugPrint("Document count after reset: \(await vectorDB.documentCount)")
     }
 }

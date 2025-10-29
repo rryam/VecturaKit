@@ -34,6 +34,11 @@ struct VecturaKitTests {
         return (config, cleanup)
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+    private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
+        SwiftEmbedder(modelSource: modelSource)
+    }
+
     @Test("Add and search document")
     func addAndSearchDocument() async throws {
         guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
@@ -41,7 +46,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let text = "This is a test document"
         let id = try await vectura.addDocument(text: text)
@@ -59,7 +64,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let documents = [
             "The quick brown fox jumps over the lazy dog",
@@ -83,12 +88,12 @@ struct VecturaKitTests {
         let databaseName = UUID().uuidString
         let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let texts = ["Document 1", "Document 2"]
         let ids = try await vectura.addDocuments(texts: texts)
 
-        let newVectura = try await VecturaKit(config: config)
+        let newVectura = try await VecturaKit(config: config, embedder: makeEmbedder())
         let results = try await newVectura.search(query: "Document")
         #expect(results.count == 2)
         #expect(ids.contains(results[0].id))
@@ -102,7 +107,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let documents = [
             "Very relevant document about cats",
@@ -122,7 +127,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let customId = UUID()
         let text = "Document with custom ID"
@@ -142,7 +147,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let start = Date()
         for i in 1...5 {
@@ -160,7 +165,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let results = try await vectura.search(query: "test query")
         #expect(results.count == 0, "Search on empty database should return no results")
@@ -176,7 +181,7 @@ struct VecturaKitTests {
             dimension: 128
         )
         defer { cleanup() }
-        let wrongVectura = try await VecturaKit(config: wrongConfig)
+        let wrongVectura = try await VecturaKit(config: wrongConfig, embedder: makeEmbedder())
 
         do {
             _ = try await wrongVectura.addDocument(text: "Test document")
@@ -201,7 +206,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let id = UUID()
         let text1 = "First document"
@@ -222,7 +227,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         _ = try await vectura.addDocuments(texts: ["Test document"])
 
@@ -240,7 +245,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let documentCount = 100
         let documents = (0..<documentCount).map { "Test document number \($0)" }
@@ -260,7 +265,7 @@ struct VecturaKitTests {
         let databaseName = UUID().uuidString
         let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         let text = "Test document"
         _ = try await vectura.addDocument(text: text)
@@ -270,7 +275,7 @@ struct VecturaKitTests {
         let results = try await vectura.search(query: text)
         #expect(results.count == 0)
 
-        let newVectura = try await VecturaKit(config: config)
+        let newVectura = try await VecturaKit(config: config, embedder: makeEmbedder())
         let newResults = try await newVectura.search(query: text)
         #expect(newResults.count == 0)
     }
@@ -282,7 +287,7 @@ struct VecturaKitTests {
         }
         let (config, cleanup) = try makeVecturaConfig()
         defer { cleanup() }
-        let vectura = try await VecturaKit(config: config)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
 
         _ = try await Model2Vec.loadModelBundle(from: VecturaModelSource.defaultModelId)
 
@@ -304,10 +309,10 @@ struct VecturaKitTests {
             "How vexingly quick daft zebras jump"
         ]
 
-        let ids = try await vectura.addDocuments(texts: documents, model: .folder(url))
+        let ids = try await vectura.addDocuments(texts: documents)
         #expect(ids.count == 3)
 
-        let results = try await vectura.search(query: "quick jumping animals", model: .folder(url))
+        let results = try await vectura.search(query: "quick jumping animals")
         #expect(results.count >= 2)
         #expect(results[0].score > results[1].score)
     }
@@ -323,7 +328,8 @@ struct VecturaKitTests {
 
         let databaseName = "test-\(UUID().uuidString)"
         let instance = try await VecturaKit(
-            config: .init(name: databaseName, directoryURL: customDirectoryURL)
+            config: .init(name: databaseName, directoryURL: customDirectoryURL),
+            embedder: makeEmbedder()
         )
         let text = "Test document"
         let id = UUID()
@@ -339,9 +345,10 @@ struct VecturaKitTests {
 
         // Verify persistence: create new instance and load from disk
         let newInstance = try await VecturaKit(
-            config: .init(name: databaseName, directoryURL: customDirectoryURL)
+            config: .init(name: databaseName, directoryURL: customDirectoryURL),
+            embedder: makeEmbedder()
         )
-        #expect(newInstance.documentCount == 1, "New instance should load document from disk")
+        #expect(await newInstance.documentCount == 1, "New instance should load document from disk")
 
         // Verify deletion removes file from disk
         try await newInstance.deleteDocuments(ids: [id])
@@ -352,9 +359,10 @@ struct VecturaKitTests {
 
         // Verify third instance sees the deletion
         let thirdInstance = try await VecturaKit(
-            config: .init(name: databaseName, directoryURL: customDirectoryURL)
+            config: .init(name: databaseName, directoryURL: customDirectoryURL),
+            embedder: makeEmbedder()
         )
-        #expect(thirdInstance.documentCount == 0, "Third instance should reflect deletion")
+        #expect(await thirdInstance.documentCount == 0, "Third instance should reflect deletion")
     }
 
     @Test("Custom storage provider")
@@ -367,7 +375,7 @@ struct VecturaKitTests {
 
         // Create a custom in-memory storage provider
         let customStorage = InMemoryStorageProvider()
-        let vectura = try await VecturaKit(config: config, storageProvider: customStorage)
+        let vectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: customStorage)
 
         // Add documents
         let texts = ["Custom storage document 1", "Custom storage document 2"]
@@ -375,7 +383,7 @@ struct VecturaKitTests {
         #expect(ids.count == 2)
 
         // Verify documents were stored in custom provider
-        #expect(customStorage.documentCount == 2)
+        #expect(await customStorage.documentCount == 2)
 
         // Search
         let results = try await vectura.search(query: "Custom storage")
@@ -383,10 +391,10 @@ struct VecturaKitTests {
 
         // Delete one document
         try await vectura.deleteDocuments(ids: [ids[0]])
-        #expect(customStorage.documentCount == 1)
+        #expect(await customStorage.documentCount == 1)
 
         // Create a new instance with the same custom storage
-        let newVectura = try await VecturaKit(config: config, storageProvider: customStorage)
+        let newVectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: customStorage)
         let newResults = try await newVectura.search(query: "Custom")
         #expect(newResults.count == 1)
         #expect(newResults[0].id == ids[1])
@@ -466,8 +474,7 @@ struct VecturaKitTests {
 }
 
 /// A simple in-memory storage provider for testing custom storage implementations.
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-final class InMemoryStorageProvider: VecturaStorage {
+actor InMemoryStorageProvider: VecturaStorage {
     private var documents: [UUID: VecturaDocument] = [:]
 
     var documentCount: Int {
