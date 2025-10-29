@@ -114,9 +114,10 @@ public struct BM25Index {
         // Update document frequencies by decrementing counts
         let terms = Set(tokenize(document.text))
         for term in terms {
-            if let currentCount = documentFrequencies[term], currentCount > 0 {
-                documentFrequencies[term] = currentCount - 1
-                if documentFrequencies[term] == 0 {
+            if let currentCount = documentFrequencies[term] {
+                if currentCount > 1 {
+                    documentFrequencies[term] = currentCount - 1
+                } else {
                     documentFrequencies.removeValue(forKey: term)
                 }
             }
@@ -130,10 +131,38 @@ public struct BM25Index {
     ///
     /// - Parameter document: The updated document
     public mutating func updateDocument(_ document: VecturaDocument) {
-        // Remove old version first
-        removeDocument(document.id)
-        // Add new version
-        addDocument(document)
+        // If an old document with the same ID exists, remove its contribution to the index first.
+        guard let oldDocIndex = documents.firstIndex(where: { $0.id == document.id }) else {
+            // If document doesn't exist, this is an add operation.
+            addDocument(document)
+            return
+        }
+        let oldDocument = documents[oldDocIndex]
+
+        // Decrement frequencies for terms in old document.
+        let oldTerms = Set(tokenize(oldDocument.text))
+        for term in oldTerms {
+            if let count = documentFrequencies[term], count > 1 {
+                documentFrequencies[term] = count - 1
+            } else {
+                documentFrequencies.removeValue(forKey: term)
+            }
+        }
+
+        // Replace old document with new one.
+        documents[oldDocIndex] = document
+
+        // Add contributions for the new/updated document.
+        let tokenizedText = tokenize(document.text)
+        documentLengths[document.id] = tokenizedText.count
+
+        let newTerms = Set(tokenizedText)
+        for term in newTerms {
+            documentFrequencies[term, default: 0] += 1
+        }
+
+        // Update average document length once.
+        updateAverageDocumentLength()
     }
 
     /// Updates the average document length after changes

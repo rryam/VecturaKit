@@ -168,7 +168,10 @@ public actor VecturaKit {
             documents[doc.id] = doc
 
             // Incrementally update BM25 index
-            if bm25Index == nil {
+            if var index = bm25Index {
+                index.addDocument(doc)
+                bm25Index = index
+            } else {
                 // Initialize index if it doesn't exist
                 let allDocs = Array(documents.values)
                 bm25Index = BM25Index(
@@ -176,10 +179,6 @@ public actor VecturaKit {
                     k1: config.searchOptions.k1,
                     b: config.searchOptions.b
                 )
-            } else {
-                var index = bm25Index!
-                index.addDocument(doc)
-                bm25Index = index
             }
         }
 
@@ -448,7 +447,10 @@ public actor VecturaKit {
         normalizedEmbeddings[id] = normalized
 
         // 3. Incrementally update BM25 index
-        if bm25Index == nil {
+        if var index = bm25Index {
+            index.updateDocument(updatedDoc)
+            bm25Index = index
+        } else {
             // Initialize index if it doesn't exist
             let allDocs = Array(documents.values)
             bm25Index = BM25Index(
@@ -456,10 +458,6 @@ public actor VecturaKit {
                 k1: config.searchOptions.k1,
                 b: config.searchOptions.b
             )
-        } else {
-            var index = bm25Index!
-            index.updateDocument(updatedDoc)
-            bm25Index = index
         }
     }
 
