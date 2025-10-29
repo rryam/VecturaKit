@@ -19,11 +19,12 @@ public struct VecturaDocument: Identifiable, Codable, Sendable {
     ///   - id: The unique identifier for the document. If nil, a new UUID will be generated.
     ///   - text: The text content of the document.
     ///   - embedding: The vector embedding of the document.
-    public init(id: UUID? = nil, text: String, embedding: [Float]) {
+    ///   - createdAt: The creation timestamp. If nil, the current date will be used.
+    public init(id: UUID? = nil, text: String, embedding: [Float], createdAt: Date? = nil) {
         self.id = id ?? UUID()
         self.text = text
         self.embedding = embedding
-        self.createdAt = Date()
+        self.createdAt = createdAt ?? Date()
     }
 
     // MARK: - Codable

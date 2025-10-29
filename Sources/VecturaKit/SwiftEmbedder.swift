@@ -33,7 +33,10 @@ public actor SwiftEmbedder: VecturaEmbedder {
             } else if let bert = bertModel {
                 // For BERT, we need to get dimension from a test encoding
                 let testEmbedding = try bert.encode("test")
-                dim = testEmbedding.shape.last ?? 0
+                guard let lastDim = testEmbedding.shape.last else {
+                    throw VecturaError.invalidInput("Could not determine BERT model dimension from shape \(testEmbedding.shape)")
+                }
+                dim = lastDim
             } else {
                 throw VecturaError.invalidInput("No model loaded to detect dimension")
             }
@@ -64,17 +67,9 @@ public actor SwiftEmbedder: VecturaEmbedder {
         let embeddingShapedArray = await embeddingsTensor.cast(to: Float.self).shapedArray(of: Float.self)
         let allScalars = embeddingShapedArray.scalars
 
-        var result: [[Float]] = []
-        result.reserveCapacity(texts.count)
-
-        for i in 0..<texts.count {
-            let startIndex = i * dimension
-            let endIndex = startIndex + dimension
-            let embeddingRow = Array(allScalars[startIndex..<endIndex])
-            result.append(embeddingRow)
+        return stride(from: 0, to: allScalars.count, by: dimension).map {
+            Array(allScalars[$0..<($0 + dimension)])
         }
-
-        return result
     }
 
     public func embed(text: String) async throws -> [Float] {
@@ -107,6 +102,15 @@ public actor SwiftEmbedder: VecturaEmbedder {
         }
     }
 
+    /// Determines if a model source refers to a Model2Vec model based on string matching.
+    ///
+    /// This uses string-based heuristics to identify Model2Vec models since the swift-embeddings
+    /// library doesn't provide a type property to differentiate model types. The check covers
+    /// known Model2Vec model families including minishlab, potion, and M2V variants.
+    ///
+    /// - Note: This approach may need updates if new Model2Vec naming schemes are introduced.
+    /// - Parameter source: The model source to check.
+    /// - Returns: `true` if the source appears to be a Model2Vec model, `false` otherwise.
     private func isModel2VecModel(_ source: VecturaModelSource) -> Bool {
         let modelId = source.description
         return modelId.contains("minishlab") ||

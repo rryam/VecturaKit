@@ -17,6 +17,9 @@ public enum VecturaError: LocalizedError {
     /// Thrown when input validation fails.
     case invalidInput(String)
 
+    /// Thrown when attempting to access a document that doesn't exist.
+    case documentNotFound(UUID)
+
     public var errorDescription: String? {
         switch self {
         case .collectionAlreadyExists(let name):
@@ -29,6 +32,8 @@ public enum VecturaError: LocalizedError {
             "Failed to load collection: \(reason)"
         case .invalidInput(let reason):
             "Invalid input: \(reason)"
+        case .documentNotFound(let id):
+            "Document with ID '\(id)' not found."
         }
     }
 }

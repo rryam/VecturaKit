@@ -146,6 +146,19 @@ public actor VecturaKit {
             documentIds.append(docId)
         }
 
+        // Save documents to storage first to ensure atomicity
+        let storage = self.storageProvider
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for doc in documentsToSave {
+                group.addTask {
+                    try await storage.saveDocument(doc)
+                }
+            }
+
+            try await group.waitForAll()
+        }
+
+        // Only update in-memory state after successful persistence
         for doc in documentsToSave {
             let norm = l2Norm(doc.embedding)
             var divisor = norm + 1e-9
@@ -162,18 +175,6 @@ public actor VecturaKit {
             k1: config.searchOptions.k1,
             b: config.searchOptions.b
         )
-
-        // Save documents using the storage provider in parallel
-        let storage = self.storageProvider
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for doc in documentsToSave {
-                group.addTask {
-                    try await storage.saveDocument(doc)
-                }
-            }
-
-            try await group.waitForAll()
-        }
 
         return documentIds
     }
@@ -197,6 +198,11 @@ public actor VecturaKit {
 
         guard let dimension = actualDimension else {
             throw VecturaError.invalidInput("Could not determine embedder dimension")
+        }
+
+        // Validate that embedder dimension matches config dimension if already set
+        if let configDimension = config.dimension, configDimension != dimension {
+            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
         }
 
         if queryEmbedding.count != dimension {
@@ -302,6 +308,11 @@ public actor VecturaKit {
             throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
+        // Validate that embedder dimension matches config dimension if already set
+        if let configDimension = config.dimension, configDimension != dimension {
+            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
+        }
+
         // Initialize BM25 index if needed
         if bm25Index == nil {
             let docs = documents.values.map { $0 }
@@ -402,8 +413,47 @@ public actor VecturaKit {
     ///   - id: The ID of the document to update.
     ///   - newText: The new text content for the document.
     public func updateDocument(id: UUID, newText: String) async throws {
-        try await deleteDocuments(ids: [id])
-        _ = try await addDocument(text: newText, id: id)
+        guard let oldDocument = documents[id] else {
+            throw VecturaError.documentNotFound(id)
+        }
+
+        // Generate new embedding
+        let newEmbedding = try await embedder.embed(text: newText)
+
+        // Validate dimension
+        if let dimension = actualDimension, newEmbedding.count != dimension {
+            throw VecturaError.dimensionMismatch(expected: dimension, got: newEmbedding.count)
+        }
+
+        // Create updated document, preserving original creation date
+        let updatedDoc = VecturaDocument(
+            id: id,
+            text: newText,
+            embedding: newEmbedding,
+            createdAt: oldDocument.createdAt
+        )
+
+        // 1. Persist the updated document first to ensure atomicity
+        try await storageProvider.saveDocument(updatedDoc)
+
+        // 2. Only update in-memory state after successful persistence
+        documents[id] = updatedDoc
+
+        let norm = l2Norm(updatedDoc.embedding)
+        var divisor = norm + 1e-9
+        var normalized = [Float](repeating: 0, count: updatedDoc.embedding.count)
+        vDSP_vsdiv(updatedDoc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(updatedDoc.embedding.count))
+        normalizedEmbeddings[id] = normalized
+
+        // 3. Rebuild BM25 index
+        if bm25Index != nil {
+            let allDocs = Array(documents.values)
+            bm25Index = BM25Index(
+                documents: allDocs,
+                k1: config.searchOptions.k1,
+                b: config.searchOptions.b
+            )
+        }
     }
 
     // MARK: - Public Properties
