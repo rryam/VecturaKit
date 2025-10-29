@@ -100,22 +100,7 @@ public struct BM25Index {
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
-        // If document already exists, decrement its old term frequencies first
-        if let oldDocument = documents[document.id] {
-            decrementTermFrequencies(for: oldDocument)
-        }
-
-        documents[document.id] = document
-
-        // Tokenize once and reuse for both length and term frequencies
-        let tokens = tokenize(document.text)
-        let length = tokens.count
-        documentLengths[document.id] = length
-
-        let terms = Set(tokens)
-        incrementTermFrequencies(terms: terms)
-
-        updateAverageDocumentLength()
+        upsertDocument(document)
     }
 
     /// Remove a document from the index incrementally
@@ -138,27 +123,27 @@ public struct BM25Index {
     ///
     /// - Parameter document: The updated document
     public mutating func updateDocument(_ document: VecturaDocument) {
-        // If an old document with the same ID exists, remove its contribution to the index first.
-        guard let oldDocument = documents[document.id] else {
-            // If document doesn't exist, this is an add operation.
-            addDocument(document)
-            return
+        upsertDocument(document)
+    }
+
+    /// Internal helper that handles both adding new documents and updating existing ones
+    /// - Parameter document: The document to add or update
+    private mutating func upsertDocument(_ document: VecturaDocument) {
+        // If document already exists, decrement its old term frequencies first
+        if let oldDocument = documents[document.id] {
+            decrementTermFrequencies(for: oldDocument)
         }
 
-        // Decrement frequencies for terms in old document.
-        decrementTermFrequencies(for: oldDocument)
-
-        // Replace old document with new one.
         documents[document.id] = document
 
         // Tokenize once and reuse for both length and term frequencies
         let tokens = tokenize(document.text)
-        documentLengths[document.id] = tokens.count
+        let length = tokens.count
+        documentLengths[document.id] = length
 
         let terms = Set(tokens)
         incrementTermFrequencies(terms: terms)
 
-        // Update average document length once.
         updateAverageDocumentLength()
     }
 
