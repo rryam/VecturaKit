@@ -71,8 +71,12 @@ public struct BM25Index {
             let docLength = Float(documentLengths[document.id] ?? 0)
             var score: Float = 0.0
 
+            // Tokenize document once and reuse for all query terms
+            let docTokens = tokenize(document.text)
+            let docTokenCounts = Dictionary(grouping: docTokens, by: { $0 }).mapValues { Float($0.count) }
+
             for term in queryTerms {
-                let tf = termFrequency(term: term, in: document)
+                let tf = docTokenCounts[term] ?? 0
                 let df = Float(documentFrequencies[term] ?? 0)
 
                 let idf = log((Float(documents.count) - df + 0.5) / (df + 0.5))
@@ -174,15 +178,6 @@ public struct BM25Index {
         self.averageDocumentLength = Float(totalLength) / Float(documents.count)
     }
 
-    /// Increments term frequencies for a document
-    /// - Parameter document: The document whose terms should be incremented
-    private mutating func incrementTermFrequencies(for document: VecturaDocument) {
-        let terms = Set(tokenize(document.text))
-        for term in terms {
-            documentFrequencies[term, default: 0] += 1
-        }
-    }
-
     /// Increments term frequencies using pre-computed terms
     /// - Parameter terms: The unique terms to increment
     private mutating func incrementTermFrequencies(terms: Set<String>) {
@@ -212,12 +207,6 @@ public struct BM25Index {
         }
     }
 
-    private func termFrequency(term: String, in document: VecturaDocument) -> Float {
-        Float(
-            tokenize(document.text)
-                .filter { $0 == term }
-                .count)
-    }
 }
 
 extension VecturaDocument {
