@@ -42,7 +42,12 @@ public struct BM25Index {
             dict[doc.id] = tokenize(doc.text).count
         }
 
-        self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+        // Guard against division by zero when documents array is empty
+        if self.documents.isEmpty {
+            self.averageDocumentLength = 0
+        } else {
+            self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+        }
 
         for document in self.documents.values {
             let terms = Set(tokenize(document.text))
@@ -97,10 +102,13 @@ public struct BM25Index {
 
         documents[document.id] = document
 
-        let length = tokenize(document.text).count
+        // Tokenize once and reuse for both length and term frequencies
+        let tokens = tokenize(document.text)
+        let length = tokens.count
         documentLengths[document.id] = length
 
-        incrementTermFrequencies(for: document)
+        let terms = Set(tokens)
+        incrementTermFrequencies(terms: terms)
 
         updateAverageDocumentLength()
     }
@@ -138,11 +146,12 @@ public struct BM25Index {
         // Replace old document with new one.
         documents[document.id] = document
 
-        // Add contributions for the new/updated document.
-        let tokenizedText = tokenize(document.text)
-        documentLengths[document.id] = tokenizedText.count
+        // Tokenize once and reuse for both length and term frequencies
+        let tokens = tokenize(document.text)
+        documentLengths[document.id] = tokens.count
 
-        incrementTermFrequencies(for: document)
+        let terms = Set(tokens)
+        incrementTermFrequencies(terms: terms)
 
         // Update average document length once.
         updateAverageDocumentLength()
@@ -174,10 +183,24 @@ public struct BM25Index {
         }
     }
 
+    /// Increments term frequencies using pre-computed terms
+    /// - Parameter terms: The unique terms to increment
+    private mutating func incrementTermFrequencies(terms: Set<String>) {
+        for term in terms {
+            documentFrequencies[term, default: 0] += 1
+        }
+    }
+
     /// Decrements term frequencies for a document
     /// - Parameter document: The document whose terms should be decremented
     private mutating func decrementTermFrequencies(for document: VecturaDocument) {
         let terms = Set(tokenize(document.text))
+        decrementTermFrequencies(terms: terms)
+    }
+
+    /// Decrements term frequencies using pre-computed terms
+    /// - Parameter terms: The unique terms to decrement
+    private mutating func decrementTermFrequencies(terms: Set<String>) {
         for term in terms {
             if let currentCount = documentFrequencies[term] {
                 if currentCount > 1 {
