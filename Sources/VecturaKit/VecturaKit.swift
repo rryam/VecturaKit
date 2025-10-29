@@ -54,8 +54,10 @@ public actor VecturaKit {
             self.storageDirectory = databaseDirectory
         } else {
             // Create default storage directory
-            self.storageDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                .first!
+            guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw VecturaError.loadFailed("Could not access document directory")
+            }
+            self.storageDirectory = documentsURL
                 .appendingPathComponent("VecturaKit")
                 .appendingPathComponent(config.name)
         }
@@ -164,15 +166,28 @@ public actor VecturaKit {
             vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
             normalizedEmbeddings[doc.id] = normalized
             documents[doc.id] = doc
+
+            // Incrementally update BM25 index
+            if var index = bm25Index {
+                // Check if document with this ID already exists in BM25 index
+                if index.containsDocument(withID: doc.id) {
+                    // Update existing document to keep index in sync
+                    index.updateDocument(doc)
+                } else {
+                    // Add new document
+                    index.addDocument(doc)
+                }
+                bm25Index = index
+            } else {
+                // Initialize index if it doesn't exist
+                let allDocs = Array(documents.values)
+                bm25Index = BM25Index(
+                    documents: allDocs,
+                    k1: config.searchOptions.k1,
+                    b: config.searchOptions.b
+                )
+            }
         }
-
-        let allDocs = Array(documents.values)
-
-        bm25Index = BM25Index(
-            documents: allDocs,
-            k1: config.searchOptions.k1,
-            b: config.searchOptions.b
-        )
 
         return documentIds
     }
@@ -349,11 +364,7 @@ public actor VecturaKit {
         // Combine scores using hybrid scoring
         var hybridResults = vectorResults.map { result in
             let bm25Score = bm25Scores[result.id] ?? 0
-            let hybridScore = VecturaDocument(
-                id: result.id,
-                text: result.text,
-                embedding: []
-            ).hybridScore(
+            let hybridScore = VecturaDocument.calculateHybridScore(
                 vectorScore: result.score,
                 bm25Score: bm25Score,
                 weight: config.searchOptions.hybridWeight
@@ -387,13 +398,12 @@ public actor VecturaKit {
     ///
     /// - Parameter ids: The IDs of documents to delete.
     public func deleteDocuments(ids: [UUID]) async throws {
-        if bm25Index != nil {
-            let remainingDocs = documents.values.filter { !ids.contains($0.id) }
-            bm25Index = BM25Index(
-                documents: Array(remainingDocs),
-                k1: config.searchOptions.k1,
-                b: config.searchOptions.b
-            )
+        // Incrementally remove documents from BM25 index
+        if var index = bm25Index {
+            for id in ids {
+                index.removeDocument(id)
+            }
+            bm25Index = index
         }
 
         for id in ids {
@@ -443,8 +453,12 @@ public actor VecturaKit {
         vDSP_vsdiv(updatedDoc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(updatedDoc.embedding.count))
         normalizedEmbeddings[id] = normalized
 
-        // 3. Rebuild BM25 index
-        if bm25Index != nil {
+        // 3. Incrementally update BM25 index
+        if var index = bm25Index {
+            index.updateDocument(updatedDoc)
+            bm25Index = index
+        } else {
+            // Initialize index if it doesn't exist
             let allDocs = Array(documents.values)
             bm25Index = BM25Index(
                 documents: allDocs,

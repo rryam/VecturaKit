@@ -83,7 +83,7 @@ public struct BM25Index {
             .filter { $0.1 > 0 }
     }
 
-    /// Add a new document to the index
+    /// Add a new document to the index incrementally
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
@@ -92,13 +92,95 @@ public struct BM25Index {
         let length = tokenize(document.text).count
         documentLengths[document.id] = length
 
+        incrementTermFrequencies(for: document)
+
+        updateAverageDocumentLength()
+    }
+
+    /// Remove a document from the index incrementally
+    ///
+    /// - Parameter documentID: The ID of the document to remove
+    public mutating func removeDocument(_ documentID: UUID) {
+        guard let index = documents.firstIndex(where: { $0.id == documentID }) else {
+            return
+        }
+
+        let document = documents[index]
+        documents.remove(at: index)
+
+        decrementTermFrequencies(for: document)
+
+        documentLengths.removeValue(forKey: documentID)
+        updateAverageDocumentLength()
+    }
+
+    /// Update an existing document in the index incrementally
+    ///
+    /// - Parameter document: The updated document
+    public mutating func updateDocument(_ document: VecturaDocument) {
+        // If an old document with the same ID exists, remove its contribution to the index first.
+        guard let oldDocIndex = documents.firstIndex(where: { $0.id == document.id }) else {
+            // If document doesn't exist, this is an add operation.
+            addDocument(document)
+            return
+        }
+        let oldDocument = documents[oldDocIndex]
+
+        // Decrement frequencies for terms in old document.
+        decrementTermFrequencies(for: oldDocument)
+
+        // Replace old document with new one.
+        documents[oldDocIndex] = document
+
+        // Add contributions for the new/updated document.
+        let tokenizedText = tokenize(document.text)
+        documentLengths[document.id] = tokenizedText.count
+
+        incrementTermFrequencies(for: document)
+
+        // Update average document length once.
+        updateAverageDocumentLength()
+    }
+
+    /// Checks if a document with the given ID exists in the index
+    /// - Parameter documentID: The document ID to check
+    /// - Returns: True if the document exists, false otherwise
+    public func containsDocument(withID documentID: UUID) -> Bool {
+        documents.contains(where: { $0.id == documentID })
+    }
+
+    /// Updates the average document length after changes
+    private mutating func updateAverageDocumentLength() {
+        guard !documents.isEmpty else {
+            self.averageDocumentLength = 0
+            return
+        }
+        let totalLength = documentLengths.values.reduce(0, +)
+        self.averageDocumentLength = Float(totalLength) / Float(documents.count)
+    }
+
+    /// Increments term frequencies for a document
+    /// - Parameter document: The document whose terms should be incremented
+    private mutating func incrementTermFrequencies(for document: VecturaDocument) {
         let terms = Set(tokenize(document.text))
         for term in terms {
             documentFrequencies[term, default: 0] += 1
         }
+    }
 
-        let totalLength = documentLengths.values.reduce(0, +)
-        self.averageDocumentLength = Float(totalLength) / Float(documents.count)
+    /// Decrements term frequencies for a document
+    /// - Parameter document: The document whose terms should be decremented
+    private mutating func decrementTermFrequencies(for document: VecturaDocument) {
+        let terms = Set(tokenize(document.text))
+        for term in terms {
+            if let currentCount = documentFrequencies[term] {
+                if currentCount > 1 {
+                    documentFrequencies[term] = currentCount - 1
+                } else {
+                    documentFrequencies.removeValue(forKey: term)
+                }
+            }
+        }
     }
 
     private func termFrequency(term: String, in document: VecturaDocument) -> Float {
@@ -118,6 +200,17 @@ extension VecturaDocument {
     ///   - weight: Weight for vector score (0.0-1.0), BM25 weight will be (1-weight)
     /// - Returns: Combined score
     public func hybridScore(vectorScore: Float, bm25Score: Float, weight: Float = 0.5) -> Float {
+        VecturaDocument.calculateHybridScore(vectorScore: vectorScore, bm25Score: bm25Score, weight: weight)
+    }
+
+    /// Calculates a hybrid search score combining vector similarity and BM25
+    ///
+    /// - Parameters:
+    ///   - vectorScore: The vector similarity score
+    ///   - bm25Score: The BM25 score
+    ///   - weight: Weight for vector score (0.0-1.0), BM25 weight will be (1-weight)
+    /// - Returns: Combined score
+    public static func calculateHybridScore(vectorScore: Float, bm25Score: Float, weight: Float = 0.5) -> Float {
         let normalizedBM25 = min(max(bm25Score / 10.0, 0), 1)
         return weight * vectorScore + (1 - weight) * normalizedBM25
     }
