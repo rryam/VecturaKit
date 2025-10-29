@@ -4,7 +4,7 @@ VecturaKit is a Swift-based vector database designed for on-device apps through 
 
 Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
 
-The framework offers two primary modules: `VecturaKit`, which supports many embedding models via `swift-embeddings`, and `VecturaMLXKit`, which uses Apple's MLX framework. 
+The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration or `MLXEmbedder` for Apple's MLX framework acceleration.
 
 It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
@@ -25,8 +25,8 @@ Explore the following books to understand more about AI and iOS development:
 -   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specifies a custom directory for database storage.
 -   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
--   **MLX Support:** Uses Apple's MLX framework for embedding generation and search operations (`VecturaMLXKit`).
--   **CLI Tool:** Includes CLIs for database management, testing, and debugging both `VecturaKit` and `VecturaMLXKit`.
+-   **MLX Support:** Uses Apple's MLX framework for accelerated embedding generation through `MLXEmbedder`.
+-   **CLI Tools:** Includes `vectura-cli` (Swift embeddings) and `vectura-mlx-cli` (MLX embeddings) for database management and testing.
 
 ## Supported Platforms
 
@@ -73,7 +73,7 @@ import VecturaKit
 let config = VecturaConfig(
     name: "my-vector-db",
     directoryURL: nil,  // Optional custom storage location
-    dimension: nil,     // Auto-detect dimension from model (recommended)
+    dimension: nil,     // Auto-detect dimension from embedder (recommended)
     searchOptions: VecturaConfig.SearchOptions(
         defaultNumResults: 10,
         minThreshold: 0.7,
@@ -83,7 +83,9 @@ let config = VecturaConfig(
     )
 )
 
-let vectorDB = try await VecturaKit(config: config)
+// Create an embedder (SwiftEmbedder uses swift-embeddings library)
+let embedder = SwiftEmbedder(modelSource: .default)
+let vectorDB = try await VecturaKit(config: config, embedder: embedder)
 ```
 
 ### Add Documents
@@ -221,27 +223,28 @@ let vectorDB = try await VecturaKit(
 let documentId = try await vectorDB.addDocument(text: "Sample text")
 ```
 
-## VecturaMLXKit (MLX Version)
+## MLX Integration
 
-VecturaMLXKit harnesses Apple's MLX framework for accelerated processing, delivering optimized performance for on-device machine learning tasks.
+VecturaKit supports Apple's MLX framework through the `MLXEmbedder` for accelerated on-device machine learning performance.
 
-### Import VecturaMLXKit
+### Import MLX Support
 
 ```swift
-import VecturaMLXKit
+import VecturaKit
+import MLXEmbedders
 ```
 
-### Initialize Database
+### Initialize Database with MLX
 
 ```swift
-import VecturaMLXKit
-import MLXEmbedders
-
 let config = VecturaConfig(
   name: "my-mlx-vector-db",
-  dimension: 768 //  nomic_text_v1_5 model outputs 768-dimensional embeddings
+  dimension: nil  // Auto-detect dimension from MLX embedder
 )
-let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+
+// Create MLX embedder
+let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+let vectorDB = try await VecturaKit(config: config, embedder: embedder)
 ```
 
 ### Add Documents
@@ -297,9 +300,9 @@ try await vectorDB.reset()
 
 ## Command Line Interface
 
-VecturaKit includes a command-line interface for both the standard and MLX versions, facilitating easy database management.
+VecturaKit includes command-line tools for database management with different embedding backends.
 
-### Standard CLI Tool (`vectura-cli`)
+### Swift CLI Tool (`vectura-cli`)
 
 ```bash
 # Add documents (dimension auto-detected from model)
