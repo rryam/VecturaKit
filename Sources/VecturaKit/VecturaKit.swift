@@ -179,16 +179,9 @@ public final class VecturaKit: VecturaProtocol {
             b: config.searchOptions.b
         )
 
-        // Save documents using the storage provider in parallel
-        let storage = self.storageProvider
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for doc in documentsToSave {
-                group.addTask {
-                    try await storage.saveDocument(doc)
-                }
-            }
-
-            try await group.waitForAll()
+        // Save documents using the storage provider sequentially to avoid concurrency issues
+        for doc in documentsToSave {
+            try await storageProvider.saveDocument(doc)
         }
 
         return documentIds
