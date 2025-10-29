@@ -53,6 +53,11 @@ workflows:
           #!/bin/zsh
 
           swiftlint --strict
+      - name: Install Metal Toolchain
+        script: |
+          #!/bin/zsh
+
+          xcodebuild -downloadComponent MetalToolchain
       - name: Build Framework
         script: |
           #!/bin/zsh
