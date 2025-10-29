@@ -32,16 +32,19 @@ public struct BM25Index {
     public init(documents: [VecturaDocument], k1: Float = 1.2, b: Float = 0.75) {
         self.k1 = k1
         self.b = b
-        self.documents = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
+        // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
+        self.documents = documents.reduce(into: [:]) { dict, doc in
+            dict[doc.id] = doc
+        }
         self.documentFrequencies = [:]
 
         self.documentLengths = documents.reduce(into: [:]) { dict, doc in
             dict[doc.id] = tokenize(doc.text).count
         }
 
-        self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(documents.count)
+        self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
 
-        for document in documents {
+        for document in self.documents.values {
             let terms = Set(tokenize(document.text))
             for term in terms {
                 documentFrequencies[term, default: 0] += 1
