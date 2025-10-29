@@ -74,11 +74,8 @@ public actor VecturaKit {
         let storedDocuments = try await self.storageProvider.loadDocuments()
         for doc in storedDocuments {
             self.documents[doc.id] = doc
-            // Compute normalized embedding and store in cache.
-            let norm = l2Norm(doc.embedding)
-            var divisor = norm + 1e-9
-            var normalized = [Float](repeating: 0, count: doc.embedding.count)
-            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
+            // Compute normalized embedding and store in cache
+            let normalized = try normalizeEmbedding(doc.embedding)
             self.normalizedEmbeddings[doc.id] = normalized
         }
     }
@@ -125,11 +122,8 @@ public actor VecturaKit {
         }
 
         // Validate embeddings
-        for embedding in embeddings where embedding.count != dimension {
-            throw VecturaError.dimensionMismatch(
-                expected: dimension,
-                got: embedding.count
-            )
+        for embedding in embeddings {
+            try validateDimension(embedding)
         }
 
         var documentIds = [UUID]()
@@ -160,10 +154,7 @@ public actor VecturaKit {
 
         // Only update in-memory state after successful persistence
         for doc in documentsToSave {
-            let norm = l2Norm(doc.embedding)
-            var divisor = norm + 1e-9
-            var normalized = [Float](repeating: 0, count: doc.embedding.count)
-            vDSP_vsdiv(doc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(doc.embedding.count))
+            let normalized = try normalizeEmbedding(doc.embedding)
             normalizedEmbeddings[doc.id] = normalized
             documents[doc.id] = doc
 
@@ -213,23 +204,11 @@ public actor VecturaKit {
             throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
-        // Validate that embedder dimension matches config dimension if already set
-        if let configDimension = config.dimension, configDimension != dimension {
-            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
-        }
-
-        if queryEmbedding.count != dimension {
-            throw VecturaError.dimensionMismatch(
-                expected: dimension,
-                got: queryEmbedding.count
-            )
-        }
+        // Validate query embedding dimension
+        try validateDimension(queryEmbedding)
 
         // Normalize the query vector
-        let norm = l2Norm(queryEmbedding)
-        var divisor = norm + 1e-9
-        var normalizedQuery = [Float](repeating: 0, count: queryEmbedding.count)
-        vDSP_vsdiv(queryEmbedding, 1, &divisor, &normalizedQuery, 1, vDSP_Length(queryEmbedding.count))
+        let normalizedQuery = try normalizeEmbedding(queryEmbedding)
 
         // Build a matrix of normalized document embeddings in row-major order
         var docIds = [UUID]()
@@ -370,7 +349,8 @@ public actor VecturaKit {
             let hybridScore = VecturaDocument.calculateHybridScore(
                 vectorScore: result.score,
                 bm25Score: bm25Score,
-                weight: config.searchOptions.hybridWeight
+                weight: config.searchOptions.hybridWeight,
+                normalizationFactor: config.searchOptions.bm25NormalizationFactor
             )
 
             return VecturaSearchResult(
@@ -431,10 +411,13 @@ public actor VecturaKit {
         // Generate new embedding
         let newEmbedding = try await embedder.embed(text: newText)
 
-        // Validate dimension
-        if let dimension = actualDimension, newEmbedding.count != dimension {
-            throw VecturaError.dimensionMismatch(expected: dimension, got: newEmbedding.count)
+        // Detect dimension if not yet set
+        if actualDimension == nil {
+            actualDimension = try await embedder.dimension
         }
+
+        // Validate dimension
+        try validateDimension(newEmbedding)
 
         // Create updated document, preserving original creation date
         let updatedDoc = VecturaDocument(
@@ -450,10 +433,7 @@ public actor VecturaKit {
         // 2. Only update in-memory state after successful persistence
         documents[id] = updatedDoc
 
-        let norm = l2Norm(updatedDoc.embedding)
-        var divisor = norm + 1e-9
-        var normalized = [Float](repeating: 0, count: updatedDoc.embedding.count)
-        vDSP_vsdiv(updatedDoc.embedding, 1, &divisor, &normalized, 1, vDSP_Length(updatedDoc.embedding.count))
+        let normalized = try normalizeEmbedding(updatedDoc.embedding)
         normalizedEmbeddings[id] = normalized
 
         // 3. Incrementally update BM25 index
@@ -490,5 +470,39 @@ public actor VecturaKit {
         var sumSquares: Float = 0
         vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
         return sqrt(sumSquares)
+    }
+
+    /// Normalizes a vector using L2 normalization
+    /// - Parameter embedding: The vector to normalize
+    /// - Returns: The normalized vector
+    /// - Throws: VecturaError.invalidInput if the vector has zero norm
+    private func normalizeEmbedding(_ embedding: [Float]) throws -> [Float] {
+        let norm = l2Norm(embedding)
+
+        // Check for zero-norm vectors which cannot be normalized
+        if norm < 1e-10 {
+            throw VecturaError.invalidInput("Cannot normalize zero-norm embedding vector")
+        }
+
+        var divisor = norm
+        var normalized = [Float](repeating: 0, count: embedding.count)
+        vDSP_vsdiv(embedding, 1, &divisor, &normalized, 1, vDSP_Length(embedding.count))
+        return normalized
+    }
+
+    /// Validates that the embedding dimension matches the expected dimension
+    private func validateDimension(_ embedding: [Float]) throws {
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Dimension not yet determined")
+        }
+
+        if embedding.count != dimension {
+            throw VecturaError.dimensionMismatch(expected: dimension, got: embedding.count)
+        }
+
+        // Also validate against config dimension if specified
+        if let configDimension = config.dimension, configDimension != dimension {
+            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
+        }
     }
 }

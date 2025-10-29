@@ -74,7 +74,6 @@ struct VecturaMLXKitTests {
             let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
             return try await VecturaKit(config: config, embedder: embedder)
         } catch {
-            print("Skipping MLX test due to initialization failure: \(error.localizedDescription)")
             return nil
         }
     }
