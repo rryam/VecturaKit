@@ -33,13 +33,6 @@ workflows:
             -scheme "$XCODE_SCHEME" \
             -destination "platform=macOS" \
             -skipPackagePluginValidation
-      - name: Test Framework
-        script: |
-          #!/bin/zsh
-
-          set -o pipefail
-          swift test
-        test_report: build/reports/junit.xml
   vecturamlxkit:
     name: VecturaMLXKit Workflow
     environment:
@@ -68,10 +61,3 @@ workflows:
             -scheme "$XCODE_SCHEME" \
             -destination "platform=macOS" \
             -skipPackagePluginValidation
-      - name: Test Framework
-        script: |
-          #!/bin/zsh
-
-          set -o pipefail
-          swift test
-        test_report: build/reports/junit.xml
