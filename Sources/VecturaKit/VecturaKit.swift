@@ -1,16 +1,17 @@
 import Accelerate
-import CoreML
-import Embeddings
 import Foundation
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public final class VecturaKit: VecturaProtocol {
+public final class VecturaKit: @unchecked Sendable {
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
 
-    /// The actual dimension of vectors, either from config or auto-detected from model.
+    /// The embedder used to generate vector embeddings from text.
+    private let embedder: VecturaEmbedder
+
+    /// The actual dimension of vectors, either from config or auto-detected from embedder.
     private var actualDimension: Int?
 
     /// In-memory cache of all documents.
@@ -28,24 +29,21 @@ public final class VecturaKit: VecturaProtocol {
     /// BM25 index for text search
     private var bm25Index: BM25Index?
 
-    /// Swift-Embeddings model bundle that you can reuse (e.g. BERT, XLM-R, CLIP, etc.)
-    private var bertModel: Bert.ModelBundle?
-
-    /// Model2Vec model bundle for fast static embeddings
-    private var model2vecModel: Model2Vec.ModelBundle?
-
     // MARK: - Initialization
 
-    /// Initializes a new VecturaKit instance with the specified configuration.
+    /// Initializes a new VecturaKit instance with the specified configuration and embedder.
     ///
     /// - Parameters:
     ///   - config: Configuration options for the vector database.
+    ///   - embedder: The embedder to use for generating vector embeddings from text.
     ///   - storageProvider: Optional custom storage provider. If nil, uses FileStorageProvider.
     public init(
         config: VecturaConfig,
+        embedder: VecturaEmbedder,
         storageProvider: VecturaStorage? = nil
     ) async throws {
         self.config = config
+        self.embedder = embedder
         self.documents = [:]
 
         if let customStorageDirectory = config.directoryURL {
@@ -84,34 +82,40 @@ public final class VecturaKit: VecturaProtocol {
         }
     }
 
+    // MARK: - Public API
+
+    /// Adds a single document to the vector store.
+    ///
+    /// - Parameters:
+    ///   - text: The text content of the document.
+    ///   - id: Optional unique identifier for the document.
+    /// - Returns: The ID of the added document.
+    public func addDocument(text: String, id: UUID? = nil) async throws -> UUID {
+        let ids = try await addDocuments(texts: [text], ids: id.map { [$0] })
+        return ids[0]
+    }
+
     /// Adds multiple documents to the vector store in batch.
-    public func addDocuments(
-        texts: [String],
-        ids: [UUID]? = nil,
-        model: VecturaModelSource = .default
-    ) async throws -> [UUID] {
+    ///
+    /// - Parameters:
+    ///   - texts: The text contents of the documents.
+    ///   - ids: Optional unique identifiers for the documents.
+    /// - Returns: The IDs of the added documents.
+    public func addDocuments(texts: [String], ids: [UUID]? = nil) async throws -> [UUID] {
         if let ids = ids, ids.count != texts.count {
             throw VecturaError.invalidInput("Number of IDs must match number of texts")
         }
 
-        if isModel2VecModel(model) {
-            if model2vecModel == nil {
-                model2vecModel = try await Model2Vec.loadModelBundle(from: model)
-                if actualDimension == nil {
-                    actualDimension = try detectDimension()
-                }
-            }
-        } else {
-            if bertModel == nil {
-                bertModel = try await Bert.loadModelBundle(from: model)
-                if actualDimension == nil {
-                    actualDimension = try await detectDimensionAsync()
-                }
-            }
+        // Get embeddings from the embedder
+        let embeddings = try await embedder.embed(texts: texts)
+
+        // Detect dimension from first embedding
+        if actualDimension == nil {
+            actualDimension = try await embedder.dimension
         }
 
         guard let dimension = actualDimension else {
-            throw VecturaError.invalidInput("Could not determine model dimension")
+            throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
         // Validate dimension if specified in config
@@ -119,44 +123,25 @@ public final class VecturaKit: VecturaProtocol {
             throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
         }
 
-        let embeddingsTensor: MLTensor
-        if let model2vec = model2vecModel {
-            embeddingsTensor = try model2vec.batchEncode(texts)
-        } else if let bert = bertModel {
-            embeddingsTensor = try bert.batchEncode(texts)
-        } else {
-            throw VecturaError.invalidInput("Failed to load model: \(model)")
+        // Validate embeddings
+        for embedding in embeddings {
+            if embedding.count != dimension {
+                throw VecturaError.dimensionMismatch(
+                    expected: dimension,
+                    got: embedding.count
+                )
+            }
         }
-        let shape = embeddingsTensor.shape
-
-        if shape.count != 2 {
-            throw VecturaError.invalidInput("Expected shape [N, D], got \(shape)")
-        }
-
-        if shape[1] != dimension {
-            throw VecturaError.dimensionMismatch(
-                expected: dimension,
-                got: shape[1]
-            )
-        }
-
-        let embeddingShapedArray = await embeddingsTensor.cast(to: Float.self).shapedArray(
-            of: Float.self)
-        let allScalars = embeddingShapedArray.scalars
 
         var documentIds = [UUID]()
         var documentsToSave = [VecturaDocument]()
 
         for i in 0..<texts.count {
-            let startIndex = i * dimension
-            let endIndex = startIndex + dimension
-            let embeddingRow = Array(allScalars[startIndex..<endIndex])
-
             let docId = ids?[i] ?? UUID()
             let doc = VecturaDocument(
                 id: docId,
                 text: texts[i],
-                embedding: embeddingRow
+                embedding: embeddings[i]
             )
             documentsToSave.append(doc)
             documentIds.append(docId)
@@ -187,13 +172,25 @@ public final class VecturaKit: VecturaProtocol {
         return documentIds
     }
 
+    /// Searches for similar documents using a pre-computed query embedding.
+    ///
+    /// - Parameters:
+    ///   - query: The query vector to search with.
+    ///   - numResults: Maximum number of results to return.
+    ///   - threshold: Minimum similarity threshold.
+    /// - Returns: An array of search results ordered by similarity.
     public func search(
         query queryEmbedding: [Float],
         numResults: Int? = nil,
         threshold: Float? = nil
     ) async throws -> [VecturaSearchResult] {
+        // Detect dimension if not yet set
+        if actualDimension == nil {
+            actualDimension = try await embedder.dimension
+        }
+
         guard let dimension = actualDimension else {
-            throw VecturaError.invalidInput("Model dimension not detected")
+            throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
         if queryEmbedding.count != dimension {
@@ -278,35 +275,25 @@ public final class VecturaKit: VecturaProtocol {
         return Array(results.prefix(limit))
     }
 
+    /// Searches for similar documents using a text query with hybrid search (vector + BM25).
+    ///
+    /// - Parameters:
+    ///   - query: The text query to search with.
+    ///   - numResults: Maximum number of results to return.
+    ///   - threshold: Minimum similarity threshold.
+    /// - Returns: An array of search results ordered by hybrid score.
     public func search(
         query: String,
         numResults: Int? = nil,
-        threshold: Float? = nil,
-        model: VecturaModelSource = .default
+        threshold: Float? = nil
     ) async throws -> [VecturaSearchResult] {
-        if isModel2VecModel(model) {
-            if model2vecModel == nil {
-                model2vecModel = try await Model2Vec.loadModelBundle(from: model)
-                if actualDimension == nil {
-                    actualDimension = try detectDimension()
-                }
-            }
-        } else {
-            if bertModel == nil {
-                bertModel = try await Bert.loadModelBundle(from: model)
-                if actualDimension == nil {
-                    actualDimension = try await detectDimensionAsync()
-                }
-            }
+        // Detect dimension if not yet set
+        if actualDimension == nil {
+            actualDimension = try await embedder.dimension
         }
 
         guard let dimension = actualDimension else {
-            throw VecturaError.invalidInput("Could not determine model dimension")
-        }
-
-        // Validate dimension if specified in config
-        if let configDimension = config.dimension, configDimension != dimension {
-            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
+            throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
         // Initialize BM25 index if needed
@@ -320,23 +307,20 @@ public final class VecturaKit: VecturaProtocol {
         }
 
         // Get vector similarity results
-        let queryEmbeddingTensor: MLTensor
-        if let model2vec = model2vecModel {
-            queryEmbeddingTensor = try model2vec.encode(query)
-        } else if let bert = bertModel {
-            queryEmbeddingTensor = try bert.encode(query)
-        } else {
-            throw VecturaError.invalidInput("Failed to load model: \(model)")
+        let queryEmbedding = try await embedder.embed(text: query)
+
+        // Validate dimension
+        if queryEmbedding.count != dimension {
+            throw VecturaError.dimensionMismatch(expected: dimension, got: queryEmbedding.count)
         }
-        let queryEmbeddingFloatArray = await tensorToArray(queryEmbeddingTensor)
+
         let vectorResults = try await search(
-            query: queryEmbeddingFloatArray,
+            query: queryEmbedding,
             numResults: nil,
             threshold: nil
         )
 
-        let bm25Results =
-        bm25Index?.search(
+        let bm25Results = bm25Index?.search(
             query: query,
             topK: documents.count
         ) ?? []
@@ -378,23 +362,15 @@ public final class VecturaKit: VecturaProtocol {
         return Array(hybridResults.prefix(limit))
     }
 
-    @_disfavoredOverload
-    public func search(
-        query: String,
-        numResults: Int? = nil,
-        threshold: Float? = nil,
-        modelId: String = VecturaModelSource.defaultModelId
-    ) async throws -> [VecturaSearchResult] {
-        try await search(
-            query: query, numResults: numResults, threshold: threshold, model: .id(modelId))
-    }
-
+    /// Removes all documents from the vector store.
     public func reset() async throws {
-        // Delete all documents using the storage provider abstraction
         let documentIds = Array(documents.keys)
         try await deleteDocuments(ids: documentIds)
     }
 
+    /// Deletes specific documents from the vector store.
+    ///
+    /// - Parameter ids: The IDs of documents to delete.
     public func deleteDocuments(ids: [UUID]) async throws {
         if bm25Index != nil {
             let remainingDocs = documents.values.filter { !ids.contains($0.id) }
@@ -414,23 +390,14 @@ public final class VecturaKit: VecturaProtocol {
         }
     }
 
-    public func updateDocument(
-        id: UUID,
-        newText: String,
-        model: VecturaModelSource = .default
-    ) async throws {
+    /// Updates an existing document with new text.
+    ///
+    /// - Parameters:
+    ///   - id: The ID of the document to update.
+    ///   - newText: The new text content for the document.
+    public func updateDocument(id: UUID, newText: String) async throws {
         try await deleteDocuments(ids: [id])
-
-        _ = try await addDocument(text: newText, id: id, model: model)
-    }
-
-    @_disfavoredOverload
-    public func updateDocument(
-        id: UUID,
-        newText: String,
-        modelId: String = VecturaModelSource.defaultModelId
-    ) async throws {
-        try await updateDocument(id: id, newText: newText, model: .id(modelId))
+        _ = try await addDocument(text: newText, id: id)
     }
 
     // MARK: - Public Properties
@@ -448,70 +415,9 @@ public final class VecturaKit: VecturaProtocol {
 
     // MARK: - Private
 
-    private func tensorToArray(_ tensor: MLTensor) async -> [Float] {
-        let shaped = await tensor.cast(to: Float.self).shapedArray(of: Float.self)
-        return shaped.scalars
-    }
-
-    private func dotProduct(_ a: [Float], _ b: [Float]) -> Float {
-        var result: Float = 0
-        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
-        return result
-    }
-
     private func l2Norm(_ v: [Float]) -> Float {
         var sumSquares: Float = 0
         vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
         return sqrt(sumSquares)
-    }
-
-    private func isModel2VecModel(_ source: VecturaModelSource) -> Bool {
-        let modelId = source.description
-        return modelId.contains("minishlab") ||
-               modelId.contains("potion") ||
-               modelId.contains("model2vec") ||
-               modelId.contains("M2V")
-    }
-
-    private func detectDimension() throws -> Int {
-        if let model2vec = model2vecModel {
-            return model2vec.model.dimienstion
-        } else {
-            throw VecturaError.invalidInput("No model loaded to detect dimension")
-        }
-    }
-
-    private func detectDimensionAsync() async throws -> Int {
-        if let bert = bertModel {
-            // For BERT, we need to get dimension from a test encoding
-            let testEmbedding = try bert.encode("test")
-            return testEmbedding.shape.last ?? 0
-        } else {
-            throw VecturaError.invalidInput("No model loaded to detect dimension")
-        }
-    }
-}
-
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-extension Bert {
-    static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
-        switch source {
-        case .id(let modelId):
-            try await loadModelBundle(from: modelId)
-        case .folder(let url):
-            try await loadModelBundle(from: url)
-        }
-    }
-}
-
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-extension Model2Vec {
-    static func loadModelBundle(from source: VecturaModelSource) async throws -> Model2Vec.ModelBundle {
-        switch source {
-        case .id(let modelId):
-            try await loadModelBundle(from: modelId)
-        case .folder(let url):
-            try await loadModelBundle(from: url)
-        }
     }
 }

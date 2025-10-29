@@ -63,6 +63,7 @@ let package = Package(
     .executableTarget(
       name: "VecturaMLXCLI",
       dependencies: [
+        "VecturaKit",
         "VecturaMLXKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]

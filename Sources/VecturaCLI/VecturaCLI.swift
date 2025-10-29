@@ -24,7 +24,7 @@ struct VecturaCLI: AsyncParsableCommand {
         subcommands: [Add.self, Search.self, Update.self, Delete.self, Reset.self, Mock.self]
     )
 
-    static func setupDB(dbName: String, dimension: Int, numResults: Int, threshold: Float) async throws
+    static func setupDB(dbName: String, dimension: Int, numResults: Int, threshold: Float, modelId: String) async throws
     -> VecturaKit {
         let config = VecturaConfig(
             name: dbName,
@@ -34,7 +34,8 @@ struct VecturaCLI: AsyncParsableCommand {
                 minThreshold: threshold
             )
         )
-        return try await VecturaKit(config: config)
+        let embedder = SwiftEmbedder(modelSource: .id(modelId))
+        return try await VecturaKit(config: config, embedder: embedder)
     }
 }
 
@@ -65,7 +66,8 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: numResults,
-                threshold: threshold
+                threshold: threshold,
+                modelId: modelId
             )
 
             // First, reset the database
@@ -82,7 +84,7 @@ extension VecturaCLI {
                 "Where there's smoke, there's fire"
             ]
 
-            let ids = try await db.addDocuments(texts: sampleTexts, modelId: modelId)
+            let ids = try await db.addDocuments(texts: sampleTexts)
             print("Added \(ids.count) documents:")
             for (id, text) in zip(ids, sampleTexts) {
                 print("ID: \(id)")
@@ -95,8 +97,7 @@ extension VecturaCLI {
             let results = try await db.search(
                 query: "journey",
                 numResults: numResults,
-                threshold: threshold,
-                modelId: modelId
+                threshold: threshold
             )
 
             print("Found \(results.count) results:")
@@ -112,7 +113,7 @@ extension VecturaCLI {
             if let firstId = ids.first {
                 print("\n✏️ Updating first document...")
                 let newText = "The quick red fox jumps over the sleeping dog"
-                try await db.updateDocument(id: firstId, newText: newText, modelId: modelId)
+                try await db.updateDocument(id: firstId, newText: newText)
                 print("Updated document \(firstId) with new text: \(newText)")
             }
 
@@ -149,9 +150,10 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: 10,
-                threshold: 0.7
+                threshold: 0.7,
+                modelId: modelId
             )
-            let ids = try await db.addDocuments(texts: text, modelId: modelId)
+            let ids = try await db.addDocuments(texts: text)
             print("Added \(ids.count) documents:")
             for (id, text) in zip(ids, text) {
                 print("ID: \(id)")
@@ -189,13 +191,13 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: numResults,
-                threshold: threshold
+                threshold: threshold,
+                modelId: modelId
             )
             let results = try await db.search(
                 query: query,
                 numResults: numResults,
-                threshold: threshold,
-                modelId: modelId
+                threshold: threshold
             )
 
             print("Found \(results.count) results:")
@@ -234,9 +236,10 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: 10,
-                threshold: 0.7
+                threshold: 0.7,
+                modelId: modelId
             )
-            try await db.updateDocument(id: id.uuid, newText: newText, modelId: modelId)
+            try await db.updateDocument(id: id.uuid, newText: newText)
             print("Updated document \(id.uuid) with new text: \(newText)")
         }
     }
@@ -260,7 +263,8 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: 10,
-                threshold: 0.7
+                threshold: 0.7,
+                modelId: "sentence-transformers/all-MiniLM-L6-v2"
             )
             try await db.deleteDocuments(ids: ids.map(\.uuid))
             print("Deleted \(ids.count) documents")
@@ -283,7 +287,8 @@ extension VecturaCLI {
                 dbName: dbName,
                 dimension: dimension,
                 numResults: 10,
-                threshold: 0.7
+                threshold: 0.7,
+                modelId: "sentence-transformers/all-MiniLM-L6-v2"
             )
             try await db.reset()
             print("Database reset successfully")

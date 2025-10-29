@@ -24,7 +24,10 @@ struct TestExamples {
             )
         )
 
-        let vectorDB = try await VecturaKit(config: config)
+        let vectorDB = try await VecturaKit(
+            config: config,
+            embedder: SwiftEmbedder(modelSource: .id("sentence-transformers/all-MiniLM-L6-v2"))
+        )
         debugPrint("Database initialized successfully")
         debugPrint("no space here and use debugPrint everywhere")
         debugPrint("Document count: \(vectorDB.documentCount)")
@@ -37,8 +40,7 @@ struct TestExamples {
         let text = "Sample text to be embedded"
         let documentId = try await vectorDB.addDocument(
             text: text,
-            id: UUID(),  // Optional, will be generated if not provided
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional, this is the default
+            id: UUID()  // Optional, will be generated if not provided
         )
         debugPrint("Single document added with ID: \(documentId)")
         debugPrint("Document count: \(vectorDB.documentCount)")
@@ -52,8 +54,7 @@ struct TestExamples {
         ]
         let documentIds = try await vectorDB.addDocuments(
             texts: texts,
-            ids: nil,  // Optional array of UUIDs
-             model: .id("sentence-transformers/all-MiniLM-L6-v2") // Optional model
+            ids: nil  // Optional array of UUIDs
         )
         debugPrint("Batch documents added with IDs: \(documentIds)")
         debugPrint("Total document count: \(vectorDB.documentCount)")
@@ -66,8 +67,7 @@ struct TestExamples {
         let textResults = try await vectorDB.search(
             query: "document text",
             numResults: 5,      // Optional
-            threshold: 0.8,     // Optional
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+            threshold: 0.8     // Optional
         )
 
         debugPrint("Text search found \(textResults.count) results:")
@@ -105,8 +105,7 @@ struct TestExamples {
         let documentToUpdate = documentIds.first!
         try await vectorDB.updateDocument(
             id: documentToUpdate,
-            newText: "Updated text",
-            model: .id("sentence-transformers/all-MiniLM-L6-v2")  // Optional
+            newText: "Updated text"
         )
         debugPrint("Document updated")
 

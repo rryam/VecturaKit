@@ -4,7 +4,7 @@ import MLXEmbedders
 import VecturaKit
 import VecturaMLXKit
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
 struct VecturaMLXCLI: AsyncParsableCommand {
     struct DocumentID: ExpressibleByArgument, Decodable {
@@ -22,24 +22,31 @@ struct VecturaMLXCLI: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "vectura-mlx",
-        abstract: "A CLI tool for VecturaMLXKit vector database using MLX",
+        abstract: "A CLI tool for VecturaKit vector database using MLX embeddings",
         subcommands: [Add.self, Search.self, Update.self, Delete.self, Reset.self, Mock.self]
     )
 
     static func setupDB(
-        dbName: String, modelConfiguration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5
-    )
-    async throws
-    -> VecturaMLXKit {
+        dbName: String,
+        dimension: Int? = nil,
+        numResults: Int = 10,
+        threshold: Float = 0.7,
+        modelConfiguration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5
+    ) async throws -> VecturaKit {
         let config = VecturaConfig(
-            name: dbName
-            // Dimension will be auto-detected from the model
+            name: dbName,
+            dimension: dimension,
+            searchOptions: VecturaConfig.SearchOptions(
+                defaultNumResults: numResults,
+                minThreshold: threshold
+            )
         )
-        return try await VecturaMLXKit(config: config, modelConfiguration: modelConfiguration)
+        let embedder = try await MLXEmbedder(configuration: modelConfiguration)
+        return try await VecturaKit(config: config, embedder: embedder)
     }
 }
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension VecturaMLXCLI {
     struct Mock: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -49,11 +56,25 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
+        @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold")
+        var threshold: Float = 0.7
+
+        @Option(name: [.long, .customShort("n")], help: "Number of results to return")
+        var numResults: Int = 10
+
         mutating func run() async throws {
             print("Starting mock command...")
 
             print("Setting up database...")
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(
+                dbName: dbName,
+                dimension: dimension,
+                numResults: numResults,
+                threshold: threshold
+            )
             print("Database setup complete")
 
             // First, reset the database
@@ -81,7 +102,11 @@ extension VecturaMLXCLI {
 
             // Search for documents
             print("\n🔍 Searching for 'journey'...")
-            let results = try await db.search(query: "journey")
+            let results = try await db.search(
+                query: "journey",
+                numResults: numResults,
+                threshold: threshold
+            )
 
             print("Found \(results.count) results:")
             for result in results {
@@ -119,11 +144,14 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
         @Argument(help: "Text content to add")
         var text: [String]
 
         mutating func run() async throws {
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(dbName: dbName, dimension: dimension)
             let ids = try await db.addDocuments(texts: text)
             print("Added \(ids.count) documents:")
             for (id, text) in zip(ids, text) {
@@ -142,6 +170,9 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
         @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold")
         var threshold: Float?
 
@@ -157,7 +188,12 @@ extension VecturaMLXCLI {
                 throw ExitCode.failure
             }
 
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(
+                dbName: dbName,
+                dimension: dimension,
+                numResults: numResults ?? 10,
+                threshold: threshold ?? 0.7
+            )
             let results = try await db.search(
                 query: query,
                 numResults: numResults,
@@ -183,6 +219,9 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
         @Argument(help: "Document ID to update")
         var id: DocumentID
 
@@ -190,7 +229,7 @@ extension VecturaMLXCLI {
         var newText: String
 
         mutating func run() async throws {
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(dbName: dbName, dimension: dimension)
             try await db.updateDocument(id: id.uuid, newText: newText)
             print("Updated document \(id.uuid) with new text: \(newText)")
         }
@@ -204,11 +243,14 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
         @Argument(help: "Document IDs to delete")
         var ids: [DocumentID]
 
         mutating func run() async throws {
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(dbName: dbName, dimension: dimension)
             try await db.deleteDocuments(ids: ids.map(\.uuid))
             print("Deleted \(ids.count) documents")
         }
@@ -222,8 +264,11 @@ extension VecturaMLXCLI {
         @Option(name: [.long, .customShort("d")], help: "Database name")
         var dbName: String = "vectura-mlx-cli-db"
 
+        @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+        var dimension: Int?
+
         mutating func run() async throws {
-            let db = try await VecturaMLXCLI.setupDB(dbName: dbName)
+            let db = try await VecturaMLXCLI.setupDB(dbName: dbName, dimension: dimension)
             try await db.reset()
             print("Database reset successfully")
         }
