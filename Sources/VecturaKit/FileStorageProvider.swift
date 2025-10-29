@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// A file‑based storage provider that implements VecturaStorage using JSON files.
 /// This provider persists documents to disk without maintaining an in-memory cache,
@@ -6,6 +7,12 @@ import Foundation
 public actor FileStorageProvider: VecturaStorage {
     /// The storage directory where JSON files are stored.
     private let storageDirectory: URL
+
+    /// Logger for error reporting
+    private static let logger = Logger(
+        subsystem: "com.vecturakit",
+        category: "FileStorageProvider"
+    )
 
     /// Initializes the provider with the target storage directory.
     ///
@@ -43,7 +50,10 @@ public actor FileStorageProvider: VecturaStorage {
                         let decoder = JSONDecoder()
                         return try decoder.decode(VecturaDocument.self, from: data)
                     } catch {
-                        print("Failed to load document at \(fileURL.path): \(error.localizedDescription)")
+                        let path = fileURL.path(percentEncoded: false)
+                        Self.logger.warning(
+                            "Failed to load document at \(path): \(error.localizedDescription)"
+                        )
                         return nil
                     }
                 }
