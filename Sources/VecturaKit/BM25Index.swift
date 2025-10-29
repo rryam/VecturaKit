@@ -87,6 +87,11 @@ public struct BM25Index {
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
+        // If document already exists, decrement its old term frequencies first
+        if let oldDocument = documents[document.id] {
+            decrementTermFrequencies(for: oldDocument)
+        }
+
         documents[document.id] = document
 
         let length = tokenize(document.text).count
