@@ -166,6 +166,15 @@ Reset database:
 try await vectorDB.reset()
 ```
 
+### Database Information
+
+Get document count:
+
+```swift
+let count = await vectorDB.documentCount
+print("Database contains \(count) documents")
+```
+
 ### Custom Storage Provider
 
 VecturaKit allows you to implement your own storage backend by conforming to the `VecturaStorage` protocol. This is useful for integrating with different storage systems like SQLite, Core Data, or cloud storage.
