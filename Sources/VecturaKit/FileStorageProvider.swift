@@ -32,20 +32,31 @@ public final class FileStorageProvider: VecturaStorage {
             at: storageDirectory,
             includingPropertiesForKeys: nil
         )
-        let decoder = JSONDecoder()
 
-        return fileURLs.compactMap { fileURL in
-            guard fileURL.pathExtension.lowercased() == "json" else {
-                return nil
+        return await withTaskGroup(of: VecturaDocument?.self, returning: [VecturaDocument].self) { group in
+            let decoder = JSONDecoder()
+            for fileURL in fileURLs {
+                guard fileURL.pathExtension.lowercased() == "json" else { continue }
+
+                group.addTask {
+                    do {
+                        let data = try Data(contentsOf: fileURL)
+                        return try decoder.decode(VecturaDocument.self, from: data)
+                    } catch {
+                        print("Failed to load document at \(fileURL.path): \(error.localizedDescription)")
+                        return nil
+                    }
+                }
             }
 
-            do {
-                let data = try Data(contentsOf: fileURL)
-                return try decoder.decode(VecturaDocument.self, from: data)
-            } catch {
-                print("Failed to load document at \(fileURL.path): \(error.localizedDescription)")
-                return nil
+            var documents: [VecturaDocument] = []
+            documents.reserveCapacity(fileURLs.count)
+            for await document in group {
+                if let document {
+                    documents.append(document)
+                }
             }
+            return documents
         }
     }
 
