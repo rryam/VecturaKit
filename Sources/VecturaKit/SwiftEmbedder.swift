@@ -4,7 +4,7 @@ import Foundation
 
 /// An embedder implementation using swift-embeddings library (Bert and Model2Vec models).
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-public final class SwiftEmbedder: VecturaEmbedder, @unchecked Sendable {
+public actor SwiftEmbedder: VecturaEmbedder {
 
     private let modelSource: VecturaModelSource
     private var bertModel: Bert.ModelBundle?

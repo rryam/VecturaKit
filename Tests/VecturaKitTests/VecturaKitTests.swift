@@ -348,7 +348,7 @@ struct VecturaKitTests {
             config: .init(name: databaseName, directoryURL: customDirectoryURL),
             embedder: makeEmbedder()
         )
-        #expect(newInstance.documentCount == 1, "New instance should load document from disk")
+        #expect(await newInstance.documentCount == 1, "New instance should load document from disk")
 
         // Verify deletion removes file from disk
         try await newInstance.deleteDocuments(ids: [id])
@@ -362,7 +362,7 @@ struct VecturaKitTests {
             config: .init(name: databaseName, directoryURL: customDirectoryURL),
             embedder: makeEmbedder()
         )
-        #expect(thirdInstance.documentCount == 0, "Third instance should reflect deletion")
+        #expect(await thirdInstance.documentCount == 0, "Third instance should reflect deletion")
     }
 
     @Test("Custom storage provider")
@@ -383,7 +383,7 @@ struct VecturaKitTests {
         #expect(ids.count == 2)
 
         // Verify documents were stored in custom provider
-        #expect(customStorage.documentCount == 2)
+        #expect(await customStorage.documentCount == 2)
 
         // Search
         let results = try await vectura.search(query: "Custom storage")
@@ -391,7 +391,7 @@ struct VecturaKitTests {
 
         // Delete one document
         try await vectura.deleteDocuments(ids: [ids[0]])
-        #expect(customStorage.documentCount == 1)
+        #expect(await customStorage.documentCount == 1)
 
         // Create a new instance with the same custom storage
         let newVectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: customStorage)
@@ -474,7 +474,7 @@ struct VecturaKitTests {
 }
 
 /// A simple in-memory storage provider for testing custom storage implementations.
-final class InMemoryStorageProvider: VecturaStorage {
+actor InMemoryStorageProvider: VecturaStorage {
     private var documents: [UUID: VecturaDocument] = [:]
 
     var documentCount: Int {

@@ -3,7 +3,7 @@ import Foundation
 /// A file‑based storage provider that implements VecturaStorage using JSON files.
 /// This provider persists documents to disk without maintaining an in-memory cache,
 /// as caching is handled by the VecturaKit layer.
-public final class FileStorageProvider: VecturaStorage {
+public actor FileStorageProvider: VecturaStorage {
     /// The storage directory where JSON files are stored.
     private let storageDirectory: URL
 

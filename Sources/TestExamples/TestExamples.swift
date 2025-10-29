@@ -30,7 +30,7 @@ struct TestExamples {
         )
         debugPrint("Database initialized successfully")
         debugPrint("no space here and use debugPrint everywhere")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // Example 3: Add Documents
         debugPrint("3. Add Documents")
@@ -43,7 +43,7 @@ struct TestExamples {
             id: UUID()  // Optional, will be generated if not provided
         )
         debugPrint("Single document added with ID: \(documentId)")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // Multiple documents in batch:
         debugPrint("Adding multiple documents in batch...")
@@ -57,7 +57,7 @@ struct TestExamples {
             ids: nil  // Optional array of UUIDs
         )
         debugPrint("Batch documents added with IDs: \(documentIds)")
-        debugPrint("Total document count: \(vectorDB.documentCount)")
+        debugPrint("Total document count: \(await vectorDB.documentCount)")
 
         // Example 4: Search Documents
         debugPrint("4. Search Documents")
@@ -117,12 +117,12 @@ struct TestExamples {
         debugPrint("Deleting documents...")
         try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
         debugPrint("Documents deleted")
-        debugPrint("Document count after deletion: \(vectorDB.documentCount)")
+        debugPrint("Document count after deletion: \(await vectorDB.documentCount)")
 
         // Reset database:
         debugPrint("Resetting database...")
         try await vectorDB.reset()
         debugPrint("Database reset")
-        debugPrint("Document count after reset: \(vectorDB.documentCount)")
+        debugPrint("Document count after reset: \(await vectorDB.documentCount)")
     }
 }

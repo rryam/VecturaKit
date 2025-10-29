@@ -3,7 +3,7 @@ import MLX
 import MLXEmbedders
 import VecturaKit
 
-public final class MLXEmbedder: VecturaEmbedder, @unchecked Sendable {
+public actor MLXEmbedder: VecturaEmbedder {
   private let modelContainer: ModelContainer
   private let configuration: ModelConfiguration
   private var cachedDimension: Int?

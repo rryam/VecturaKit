@@ -21,7 +21,7 @@ struct TestMLXExamples {
             embedder: try await MLXEmbedder(configuration: .nomic_text_v1_5)
         )
         debugPrint("MLX Database initialized successfully")
-        debugPrint("Document count: \(vectorDB.documentCount)")
+        debugPrint("Document count: \(await vectorDB.documentCount)")
 
         // 3. Add Documents
         debugPrint("3. Add Documents")
@@ -33,7 +33,7 @@ struct TestMLXExamples {
         ]
         let documentIds = try await vectorDB.addDocuments(texts: texts)
         debugPrint("Documents added with IDs: \(documentIds)")
-        debugPrint("Total document count: \(vectorDB.documentCount)")
+        debugPrint("Total document count: \(await vectorDB.documentCount)")
 
         // 4. Search Documents
         debugPrint("4. Search Documents")
@@ -72,12 +72,12 @@ struct TestMLXExamples {
         debugPrint("Deleting documents...")
         try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
         debugPrint("Documents deleted")
-        debugPrint("Document count after deletion: \(vectorDB.documentCount)")
+        debugPrint("Document count after deletion: \(await vectorDB.documentCount)")
 
         // Reset database:
         debugPrint("Resetting database...")
         try await vectorDB.reset()
         debugPrint("Database reset")
-        debugPrint("Document count after reset: \(vectorDB.documentCount)")
+        debugPrint("Document count after reset: \(await vectorDB.documentCount)")
     }
 }

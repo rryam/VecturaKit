@@ -2,7 +2,7 @@ import Accelerate
 import Foundation
 
 /// A vector database implementation that stores and searches documents using their vector embeddings.
-public final class VecturaKit: @unchecked Sendable {
+public actor VecturaKit {
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig

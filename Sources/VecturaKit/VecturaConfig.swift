@@ -1,7 +1,7 @@
 import Foundation
 
 /// Configuration options for Vectura vector database.
-public struct VecturaConfig {
+public struct VecturaConfig: Sendable {
 
   /// The name of the database instance.
   public let name: String
@@ -14,7 +14,7 @@ public struct VecturaConfig {
   public let dimension: Int?
 
   /// Options for similarity search.
-  public struct SearchOptions {
+  public struct SearchOptions: Sendable {
     /// The default number of results to return.
     public var defaultNumResults: Int = 10
 
