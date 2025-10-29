@@ -96,8 +96,7 @@ Single document:
 let text = "Sample text to be embedded"
 let documentId = try await vectorDB.addDocument(
     text: text,
-    id: UUID(),  // Optional, will be generated if not provided
-    model: .default  // Uses Model2Vec 32M model by default
+    id: UUID()  // Optional, will be generated if not provided
 )
 ```
 
@@ -111,8 +110,7 @@ let texts = [
 ]
 let documentIds = try await vectorDB.addDocuments(
     texts: texts,
-    ids: nil,  // Optional array of UUIDs
-    model: .default  // Uses Model2Vec 32M model by default
+    ids: nil  // Optional array of UUIDs
 )
 ```
 
@@ -123,9 +121,8 @@ Search by text (hybrid search):
 ```swift
 let results = try await vectorDB.search(
     query: "search query",
-    numResults: 5,      // Optional
-    threshold: 0.8,     // Optional
-    model: .default     // Uses Model2Vec 32M model by default
+    numResults: 5,  // Optional
+    threshold: 0.8   // Optional
 )
 
 for result in results {
@@ -153,8 +150,7 @@ Update document:
 ```swift
 try await vectorDB.updateDocument(
     id: documentId,
-    newText: "Updated text",
-    model: .default  // Uses Model2Vec 32M model by default
+    newText: "Updated text"
 )
 ```
 
