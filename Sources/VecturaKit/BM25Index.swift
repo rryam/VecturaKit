@@ -18,7 +18,7 @@ private func tokenize(_ text: String) -> [String] {
 public struct BM25Index {
     private let k1: Float
     private let b: Float
-    private var documents: [VecturaDocument]
+    private var documents: [UUID: VecturaDocument]
     private var documentFrequencies: [String: Int]
     private var documentLengths: [UUID: Int]
     private var averageDocumentLength: Float
@@ -32,16 +32,25 @@ public struct BM25Index {
     public init(documents: [VecturaDocument], k1: Float = 1.2, b: Float = 0.75) {
         self.k1 = k1
         self.b = b
-        self.documents = documents
+        // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
+        self.documents = documents.reduce(into: [:]) { dict, doc in
+            dict[doc.id] = doc
+        }
         self.documentFrequencies = [:]
 
-        self.documentLengths = documents.reduce(into: [:]) { dict, doc in
-            dict[doc.id] = tokenize(doc.text).count
+        // Build documentLengths from deduplicated documents to avoid redundant tokenization
+        self.documentLengths = self.documents.reduce(into: [:]) { dict, pair in
+            dict[pair.key] = tokenize(pair.value.text).count
         }
 
-        self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(documents.count)
+        // Guard against division by zero when documents array is empty
+        if self.documents.isEmpty {
+            self.averageDocumentLength = 0
+        } else {
+            self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+        }
 
-        for document in documents {
+        for document in self.documents.values {
             let terms = Set(tokenize(document.text))
             for term in terms {
                 documentFrequencies[term, default: 0] += 1
@@ -59,12 +68,16 @@ public struct BM25Index {
         let queryTerms = tokenize(query)
         var scores: [(VecturaDocument, Float)] = []
 
-        for document in documents {
+        for document in documents.values {
             let docLength = Float(documentLengths[document.id] ?? 0)
             var score: Float = 0.0
 
+            // Tokenize document once and reuse for all query terms
+            let docTokens = tokenize(document.text)
+            let docTokenCounts = Dictionary(grouping: docTokens, by: { $0 }).mapValues { Float($0.count) }
+
             for term in queryTerms {
-                let tf = termFrequency(term: term, in: document)
+                let tf = docTokenCounts[term] ?? 0
                 let df = Float(documentFrequencies[term] ?? 0)
 
                 let idf = log((Float(documents.count) - df + 0.5) / (df + 0.5))
@@ -87,26 +100,18 @@ public struct BM25Index {
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
-        documents.append(document)
-
-        let length = tokenize(document.text).count
-        documentLengths[document.id] = length
-
-        incrementTermFrequencies(for: document)
-
-        updateAverageDocumentLength()
+        upsertDocument(document)
     }
 
     /// Remove a document from the index incrementally
     ///
     /// - Parameter documentID: The ID of the document to remove
     public mutating func removeDocument(_ documentID: UUID) {
-        guard let index = documents.firstIndex(where: { $0.id == documentID }) else {
+        guard let document = documents[documentID] else {
             return
         }
 
-        let document = documents[index]
-        documents.remove(at: index)
+        documents.removeValue(forKey: documentID)
 
         decrementTermFrequencies(for: document)
 
@@ -118,27 +123,27 @@ public struct BM25Index {
     ///
     /// - Parameter document: The updated document
     public mutating func updateDocument(_ document: VecturaDocument) {
-        // If an old document with the same ID exists, remove its contribution to the index first.
-        guard let oldDocIndex = documents.firstIndex(where: { $0.id == document.id }) else {
-            // If document doesn't exist, this is an add operation.
-            addDocument(document)
-            return
+        upsertDocument(document)
+    }
+
+    /// Internal helper that handles both adding new documents and updating existing ones
+    /// - Parameter document: The document to add or update
+    private mutating func upsertDocument(_ document: VecturaDocument) {
+        // If document already exists, decrement its old term frequencies first
+        if let oldDocument = documents[document.id] {
+            decrementTermFrequencies(for: oldDocument)
         }
-        let oldDocument = documents[oldDocIndex]
 
-        // Decrement frequencies for terms in old document.
-        decrementTermFrequencies(for: oldDocument)
+        documents[document.id] = document
 
-        // Replace old document with new one.
-        documents[oldDocIndex] = document
+        // Tokenize once and reuse for both length and term frequencies
+        let tokens = tokenize(document.text)
+        let length = tokens.count
+        documentLengths[document.id] = length
 
-        // Add contributions for the new/updated document.
-        let tokenizedText = tokenize(document.text)
-        documentLengths[document.id] = tokenizedText.count
+        let terms = Set(tokens)
+        incrementTermFrequencies(terms: terms)
 
-        incrementTermFrequencies(for: document)
-
-        // Update average document length once.
         updateAverageDocumentLength()
     }
 
@@ -146,7 +151,7 @@ public struct BM25Index {
     /// - Parameter documentID: The document ID to check
     /// - Returns: True if the document exists, false otherwise
     public func containsDocument(withID documentID: UUID) -> Bool {
-        documents.contains(where: { $0.id == documentID })
+        documents[documentID] != nil
     }
 
     /// Updates the average document length after changes
@@ -159,10 +164,9 @@ public struct BM25Index {
         self.averageDocumentLength = Float(totalLength) / Float(documents.count)
     }
 
-    /// Increments term frequencies for a document
-    /// - Parameter document: The document whose terms should be incremented
-    private mutating func incrementTermFrequencies(for document: VecturaDocument) {
-        let terms = Set(tokenize(document.text))
+    /// Increments term frequencies using pre-computed terms
+    /// - Parameter terms: The unique terms to increment
+    private mutating func incrementTermFrequencies(terms: Set<String>) {
         for term in terms {
             documentFrequencies[term, default: 0] += 1
         }
@@ -172,6 +176,12 @@ public struct BM25Index {
     /// - Parameter document: The document whose terms should be decremented
     private mutating func decrementTermFrequencies(for document: VecturaDocument) {
         let terms = Set(tokenize(document.text))
+        decrementTermFrequencies(terms: terms)
+    }
+
+    /// Decrements term frequencies using pre-computed terms
+    /// - Parameter terms: The unique terms to decrement
+    private mutating func decrementTermFrequencies(terms: Set<String>) {
         for term in terms {
             if let currentCount = documentFrequencies[term] {
                 if currentCount > 1 {
@@ -183,12 +193,6 @@ public struct BM25Index {
         }
     }
 
-    private func termFrequency(term: String, in document: VecturaDocument) -> Float {
-        Float(
-            tokenize(document.text)
-                .filter { $0 == term }
-                .count)
-    }
 }
 
 extension VecturaDocument {

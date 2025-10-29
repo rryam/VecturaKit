@@ -8,11 +8,58 @@ The framework offers `VecturaKit` as the core vector database with pluggable emb
 
 It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
+  <br>
+  <img src="https://img.shields.io/badge/iOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 17.0+">
+  <img src="https://img.shields.io/badge/macOS-14.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 14.0+">
+  <img src="https://img.shields.io/badge/watchOS-10.0+-000000?style=flat&logo=apple&logoColor=white" alt="watchOS 10.0+">
+  <img src="https://img.shields.io/badge/tvOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 17.0+">
+  <img src="https://img.shields.io/badge/visionOS-1.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 1.0+">
+</p>
+
 ## Learn More
+
+<p align="center">
+  <a href="https://academy.rudrank.com/product/on-device-ai" target="_blank">
+    <img src="https://img.shields.io/badge/Book-Exploring%20On--Device%20AI-blue?style=for-the-badge&logo=book&logoColor=white" alt="Exploring On-Device AI Book">
+  </a>
+  <a href="https://academy.rudrank.com/product/ai-assisted-coding" target="_blank">
+    <img src="https://img.shields.io/badge/Book-Exploring%20AI--Assisted%20Coding-blue?style=for-the-badge&logo=book&logoColor=white" alt="Exploring AI-Assisted Coding Book">
+  </a>
+</p>
 
 Explore the following books to understand more about AI and iOS development:
 - [Exploring On-Device AI for Apple Platforms Development](https://academy.rudrank.com/product/on-device-ai)
 - [Exploring AI-Assisted Coding for iOS Development](https://academy.rudrank.com/product/ai-assisted-coding)
+
+## Table of Contents
+
+- [Features](#features)
+- [Supported Platforms](#supported-platforms)
+- [Installation](#installation)
+  - [Swift Package Manager](#swift-package-manager)
+  - [Dependencies](#dependencies)
+- [Usage](#usage)
+  - [Import VecturaKit](#import-vecturakit)
+  - [Create Configuration and Initialize Database](#create-configuration-and-initialize-database)
+  - [Add Documents](#add-documents)
+  - [Search Documents](#search-documents)
+  - [Document Management](#document-management)
+  - [Database Information](#database-information)
+  - [Custom Storage Provider](#custom-storage-provider)
+- [MLX Integration](#mlx-integration)
+  - [Import MLX Support](#import-mlx-support)
+  - [Initialize Database with MLX](#initialize-database-with-mlx)
+  - [Add Documents](#add-documents-1)
+  - [Search Documents](#search-documents-1)
+  - [Document Management](#document-management-1)
+- [Command Line Interface](#command-line-interface)
+  - [Swift CLI Tool (`vectura-cli`)](#swift-cli-tool-vectura-cli)
+  - [MLX CLI Tool (`vectura-mlx-cli`)](#mlx-cli-tool-vectura-mlx-cli)
+- [License](#license)
+- [Contributing](#contributing)
+- [Support](#support)
 
 ## Features
 
@@ -38,7 +85,7 @@ Explore the following books to understand more about AI and iOS development:
 
 ## Installation
 
-### Swift Package Manager
+Swift Package Manager handles the distribution of Swift code and comes built into the Swift compiler.
 
 To integrate VecturaKit into your project using Swift Package Manager, add the following dependency in your `Package.swift` file:
 
@@ -55,6 +102,34 @@ VecturaKit uses the following Swift packages:
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
+
+## Quick Start
+
+Get up and running with VecturaKit in minutes. Here is an example of adding and searching documents:
+
+```swift
+import VecturaKit
+
+Task {
+    do {
+        let config = VecturaConfig(name: "my-db")
+        let embedder = SwiftEmbedder(modelSource: .default)
+        let vectorDB = try await VecturaKit(config: config, embedder: embedder)
+        
+        // Add documents
+        let ids = try await vectorDB.addDocuments(texts: [
+            "The quick brown fox jumps over the lazy dog",
+            "Swift is a powerful programming language"
+        ])
+        
+        // Search documents
+        let results = try await vectorDB.search(query: "programming language", numResults: 5)
+        print("Found \(results.count) results!")
+    } catch {
+        print("Error: \(error)")
+    }
+}
+```
 
 ## Usage
 
@@ -383,3 +458,23 @@ VecturaKit is released under the MIT License. See the LICENSE file for more info
 ## Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
+
+### Development Setup
+
+1. Clone the repository
+2. Open `Package.swift` in Xcode or VS Code
+3. Run tests to ensure everything works: `swift test`
+4. Make your changes and test them
+
+### Code Style
+
+- Follow SwiftLint rules (run `swiftlint lint`)
+- Use Swift 6.0+ features where appropriate
+- Maintain backward compatibility when possible
+- Document public APIs with DocC comments
+
+## Support
+
+- [Issues](https://github.com/rryam/VecturaKit/issues)
+- [Discussions](https://github.com/rryam/VecturaKit/discussions)
+- [Twitter](https://x.com/rudrankriyam)
