@@ -4,7 +4,6 @@ import Foundation
 ///
 /// Conforming types can generate vector embeddings from text using different underlying models
 /// (e.g., swift-embeddings, MLX, OpenAI, etc.).
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 public protocol VecturaEmbedder: Sendable {
 
     /// The dimensionality of the embedding vectors produced by this embedder.
@@ -25,7 +24,6 @@ public protocol VecturaEmbedder: Sendable {
 
 // MARK: - Default Implementation
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 public extension VecturaEmbedder {
 
     /// Default implementation of single-text embedding using batch embedding.

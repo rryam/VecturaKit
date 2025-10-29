@@ -3,7 +3,6 @@ import MLX
 import MLXEmbedders
 import VecturaKit
 
-@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 public final class MLXEmbedder: VecturaEmbedder, @unchecked Sendable {
   private let modelContainer: ModelContainer
   private let configuration: ModelConfiguration

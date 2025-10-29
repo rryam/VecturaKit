@@ -474,7 +474,6 @@ struct VecturaKitTests {
 }
 
 /// A simple in-memory storage provider for testing custom storage implementations.
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 final class InMemoryStorageProvider: VecturaStorage {
     private var documents: [UUID: VecturaDocument] = [:]
 

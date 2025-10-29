@@ -61,7 +61,6 @@ struct VecturaMLXKitTests {
         )
     }
 
-    @available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
     private func createVecturaKit(config: VecturaConfig) async throws -> VecturaKit? {
         guard shouldRunMLXTests else {
             return nil
@@ -82,9 +81,6 @@ struct VecturaMLXKitTests {
 
     @Test("Add and search")
     func addAndSearch() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -102,9 +98,6 @@ struct VecturaMLXKitTests {
 
     @Test("Delete documents")
     func deleteDocuments() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -123,9 +116,6 @@ struct VecturaMLXKitTests {
 
     @Test("Update document")
     func updateDocument() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -147,9 +137,6 @@ struct VecturaMLXKitTests {
 
     @Test("Reset removes documents")
     func reset() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -165,9 +152,6 @@ struct VecturaMLXKitTests {
 
     @Test("Search multiple documents")
     func searchMultipleDocuments() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -196,9 +180,6 @@ struct VecturaMLXKitTests {
 
     @Test("Search result limiting")
     func searchNumResultsLimiting() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -220,9 +201,6 @@ struct VecturaMLXKitTests {
 
     @Test("Search high threshold")
     func searchWithHighThreshold() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -249,9 +227,6 @@ struct VecturaMLXKitTests {
 
     @Test("Search no matches")
     func searchNoMatches() async throws {
-        guard #available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) else {
-            return
-        }
         let directory = try makeTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 

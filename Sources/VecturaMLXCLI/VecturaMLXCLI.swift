@@ -4,7 +4,6 @@ import MLXEmbedders
 import VecturaKit
 import VecturaMLXKit
 
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
 struct VecturaMLXCLI: AsyncParsableCommand {
     struct DocumentID: ExpressibleByArgument, Decodable {
@@ -46,7 +45,6 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     }
 }
 
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension VecturaMLXCLI {
     struct Mock: AsyncParsableCommand {
         static let configuration = CommandConfiguration(

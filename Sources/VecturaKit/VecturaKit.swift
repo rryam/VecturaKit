@@ -1,7 +1,6 @@
 import Accelerate
 import Foundation
 
-@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 /// A vector database implementation that stores and searches documents using their vector embeddings.
 public final class VecturaKit: @unchecked Sendable {
 
