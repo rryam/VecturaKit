@@ -169,7 +169,14 @@ public actor VecturaKit {
 
             // Incrementally update BM25 index
             if var index = bm25Index {
-                index.addDocument(doc)
+                // Check if document with this ID already exists in BM25 index
+                if index.containsDocument(withID: doc.id) {
+                    // Update existing document to keep index in sync
+                    index.updateDocument(doc)
+                } else {
+                    // Add new document
+                    index.addDocument(doc)
+                }
                 bm25Index = index
             } else {
                 // Initialize index if it doesn't exist

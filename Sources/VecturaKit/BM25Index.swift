@@ -142,6 +142,13 @@ public struct BM25Index {
         updateAverageDocumentLength()
     }
 
+    /// Checks if a document with the given ID exists in the index
+    /// - Parameter documentID: The document ID to check
+    /// - Returns: True if the document exists, false otherwise
+    public func containsDocument(withID documentID: UUID) -> Bool {
+        documents.contains(where: { $0.id == documentID })
+    }
+
     /// Updates the average document length after changes
     private mutating func updateAverageDocumentLength() {
         guard !documents.isEmpty else {
