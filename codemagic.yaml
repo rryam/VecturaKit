@@ -38,10 +38,7 @@ workflows:
           #!/bin/zsh
 
           set -o pipefail
-          xcodebuild clean test \
-            -scheme "$XCODE_SCHEME" \
-            -destination "platform=macOS" \
-            -skipPackagePluginValidation | xcpretty --report junit
+          swift test
         test_report: build/reports/junit.xml
   vecturamlxkit:
     name: VecturaMLXKit Workflow
@@ -76,8 +73,5 @@ workflows:
           #!/bin/zsh
 
           set -o pipefail
-          xcodebuild clean test \
-            -scheme "$XCODE_SCHEME" \
-            -destination "platform=macOS" \
-            -skipPackagePluginValidation | xcpretty --report junit
+          swift test
         test_report: build/reports/junit.xml
