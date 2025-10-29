@@ -50,7 +50,7 @@ public struct VecturaConfig: Sendable {
     ) {
       self.defaultNumResults = defaultNumResults
       self.minThreshold = minThreshold
-      self._hybridWeight = max(0.0, min(1.0, hybridWeight))
+      self.hybridWeight = hybridWeight
       self.k1 = k1
       self.b = b
       self.bm25NormalizationFactor = bm25NormalizationFactor

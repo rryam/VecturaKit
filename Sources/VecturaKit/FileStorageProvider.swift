@@ -77,11 +77,11 @@ public actor FileStorageProvider: VecturaStorage {
         let data = try encoder.encode(document)
         let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
 
-        // Write with secure file protection on supported platforms
-        #if os(iOS) || os(macOS) || os(tvOS) || os(watchOS) || os(visionOS)
-        try data.write(to: documentURL, options: .completeFileProtection)
+        // Write with secure file protection on supported platforms (iOS-family only)
+        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+        try data.write(to: documentURL, options: [.atomic, .completeFileProtection])
         #else
-        try data.write(to: documentURL)
+        try data.write(to: documentURL, options: .atomic)
         #endif
 
         // Set restrictive file permissions (owner read/write only)

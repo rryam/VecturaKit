@@ -122,11 +122,8 @@ public actor VecturaKit {
         }
 
         // Validate embeddings
-        for embedding in embeddings where embedding.count != dimension {
-            throw VecturaError.dimensionMismatch(
-                expected: dimension,
-                got: embedding.count
-            )
+        for embedding in embeddings {
+            try validateDimension(embedding)
         }
 
         var documentIds = [UUID]()
@@ -207,17 +204,8 @@ public actor VecturaKit {
             throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
-        // Validate that embedder dimension matches config dimension if already set
-        if let configDimension = config.dimension, configDimension != dimension {
-            throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
-        }
-
-        if queryEmbedding.count != dimension {
-            throw VecturaError.dimensionMismatch(
-                expected: dimension,
-                got: queryEmbedding.count
-            )
-        }
+        // Validate query embedding dimension
+        try validateDimension(queryEmbedding)
 
         // Normalize the query vector
         let normalizedQuery = try normalizeEmbedding(queryEmbedding)
@@ -423,10 +411,13 @@ public actor VecturaKit {
         // Generate new embedding
         let newEmbedding = try await embedder.embed(text: newText)
 
-        // Validate dimension
-        if let dimension = actualDimension, newEmbedding.count != dimension {
-            throw VecturaError.dimensionMismatch(expected: dimension, got: newEmbedding.count)
+        // Detect dimension if not yet set
+        if actualDimension == nil {
+            actualDimension = try await embedder.dimension
         }
+
+        // Validate dimension
+        try validateDimension(newEmbedding)
 
         // Create updated document, preserving original creation date
         let updatedDoc = VecturaDocument(

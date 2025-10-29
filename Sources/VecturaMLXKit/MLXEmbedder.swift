@@ -72,14 +72,4 @@ public actor MLXEmbedder: VecturaEmbedder {
       return result.map { $0.asArray(Float.self) }
     }
   }
-
-  /// Generates an embedding for a single text.
-  ///
-  /// - Parameter text: The text string to embed.
-  /// - Returns: The embedding vector for the input text.
-  /// - Throws: An error if embedding generation fails.
-  public func embed(text: String) async throws -> [Float] {
-    let batch = try await embed(texts: [text])
-    return batch[0]
-  }
 }
