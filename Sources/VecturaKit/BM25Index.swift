@@ -18,7 +18,7 @@ private func tokenize(_ text: String) -> [String] {
 public struct BM25Index {
     private let k1: Float
     private let b: Float
-    private var documents: [VecturaDocument]
+    private var documents: [UUID: VecturaDocument]
     private var documentFrequencies: [String: Int]
     private var documentLengths: [UUID: Int]
     private var averageDocumentLength: Float
@@ -32,7 +32,7 @@ public struct BM25Index {
     public init(documents: [VecturaDocument], k1: Float = 1.2, b: Float = 0.75) {
         self.k1 = k1
         self.b = b
-        self.documents = documents
+        self.documents = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
         self.documentFrequencies = [:]
 
         self.documentLengths = documents.reduce(into: [:]) { dict, doc in
@@ -59,7 +59,7 @@ public struct BM25Index {
         let queryTerms = tokenize(query)
         var scores: [(VecturaDocument, Float)] = []
 
-        for document in documents {
+        for document in documents.values {
             let docLength = Float(documentLengths[document.id] ?? 0)
             var score: Float = 0.0
 
@@ -87,7 +87,7 @@ public struct BM25Index {
     ///
     /// - Parameter document: The document to add
     public mutating func addDocument(_ document: VecturaDocument) {
-        documents.append(document)
+        documents[document.id] = document
 
         let length = tokenize(document.text).count
         documentLengths[document.id] = length
@@ -101,12 +101,11 @@ public struct BM25Index {
     ///
     /// - Parameter documentID: The ID of the document to remove
     public mutating func removeDocument(_ documentID: UUID) {
-        guard let index = documents.firstIndex(where: { $0.id == documentID }) else {
+        guard let document = documents[documentID] else {
             return
         }
 
-        let document = documents[index]
-        documents.remove(at: index)
+        documents.removeValue(forKey: documentID)
 
         decrementTermFrequencies(for: document)
 
@@ -119,18 +118,17 @@ public struct BM25Index {
     /// - Parameter document: The updated document
     public mutating func updateDocument(_ document: VecturaDocument) {
         // If an old document with the same ID exists, remove its contribution to the index first.
-        guard let oldDocIndex = documents.firstIndex(where: { $0.id == document.id }) else {
+        guard let oldDocument = documents[document.id] else {
             // If document doesn't exist, this is an add operation.
             addDocument(document)
             return
         }
-        let oldDocument = documents[oldDocIndex]
 
         // Decrement frequencies for terms in old document.
         decrementTermFrequencies(for: oldDocument)
 
         // Replace old document with new one.
-        documents[oldDocIndex] = document
+        documents[document.id] = document
 
         // Add contributions for the new/updated document.
         let tokenizedText = tokenize(document.text)
@@ -146,7 +144,7 @@ public struct BM25Index {
     /// - Parameter documentID: The document ID to check
     /// - Returns: True if the document exists, false otherwise
     public func containsDocument(withID documentID: UUID) -> Bool {
-        documents.contains(where: { $0.id == documentID })
+        documents[documentID] != nil
     }
 
     /// Updates the average document length after changes
