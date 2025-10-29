@@ -92,10 +92,7 @@ public struct BM25Index {
         let length = tokenize(document.text).count
         documentLengths[document.id] = length
 
-        let terms = Set(tokenize(document.text))
-        for term in terms {
-            documentFrequencies[term, default: 0] += 1
-        }
+        incrementTermFrequencies(for: document)
 
         updateAverageDocumentLength()
     }
@@ -111,17 +108,7 @@ public struct BM25Index {
         let document = documents[index]
         documents.remove(at: index)
 
-        // Update document frequencies by decrementing counts
-        let terms = Set(tokenize(document.text))
-        for term in terms {
-            if let currentCount = documentFrequencies[term] {
-                if currentCount > 1 {
-                    documentFrequencies[term] = currentCount - 1
-                } else {
-                    documentFrequencies.removeValue(forKey: term)
-                }
-            }
-        }
+        decrementTermFrequencies(for: document)
 
         documentLengths.removeValue(forKey: documentID)
         updateAverageDocumentLength()
@@ -140,14 +127,7 @@ public struct BM25Index {
         let oldDocument = documents[oldDocIndex]
 
         // Decrement frequencies for terms in old document.
-        let oldTerms = Set(tokenize(oldDocument.text))
-        for term in oldTerms {
-            if let count = documentFrequencies[term], count > 1 {
-                documentFrequencies[term] = count - 1
-            } else {
-                documentFrequencies.removeValue(forKey: term)
-            }
-        }
+        decrementTermFrequencies(for: oldDocument)
 
         // Replace old document with new one.
         documents[oldDocIndex] = document
@@ -156,10 +136,7 @@ public struct BM25Index {
         let tokenizedText = tokenize(document.text)
         documentLengths[document.id] = tokenizedText.count
 
-        let newTerms = Set(tokenizedText)
-        for term in newTerms {
-            documentFrequencies[term, default: 0] += 1
-        }
+        incrementTermFrequencies(for: document)
 
         // Update average document length once.
         updateAverageDocumentLength()
@@ -173,6 +150,30 @@ public struct BM25Index {
         }
         let totalLength = documentLengths.values.reduce(0, +)
         self.averageDocumentLength = Float(totalLength) / Float(documents.count)
+    }
+
+    /// Increments term frequencies for a document
+    /// - Parameter document: The document whose terms should be incremented
+    private mutating func incrementTermFrequencies(for document: VecturaDocument) {
+        let terms = Set(tokenize(document.text))
+        for term in terms {
+            documentFrequencies[term, default: 0] += 1
+        }
+    }
+
+    /// Decrements term frequencies for a document
+    /// - Parameter document: The document whose terms should be decremented
+    private mutating func decrementTermFrequencies(for document: VecturaDocument) {
+        let terms = Set(tokenize(document.text))
+        for term in terms {
+            if let currentCount = documentFrequencies[term] {
+                if currentCount > 1 {
+                    documentFrequencies[term] = currentCount - 1
+                } else {
+                    documentFrequencies.removeValue(forKey: term)
+                }
+            }
+        }
     }
 
     private func termFrequency(term: String, in document: VecturaDocument) -> Float {
