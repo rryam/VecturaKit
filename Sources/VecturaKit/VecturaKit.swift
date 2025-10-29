@@ -350,9 +350,12 @@ public actor VecturaKit {
             threshold: nil
         )
 
+        // Request reasonable limit for BM25 results (use 2x requested results to ensure good coverage)
+        let requestedLimit = numResults ?? config.searchOptions.defaultNumResults
+        let bm25Limit = min(requestedLimit * 2, documents.count)
         let bm25Results = bm25Index?.search(
             query: query,
-            topK: documents.count
+            topK: bm25Limit
         ) ?? []
 
         // Create a map of document IDs to their BM25 scores

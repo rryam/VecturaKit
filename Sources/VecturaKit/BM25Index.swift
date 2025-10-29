@@ -38,8 +38,9 @@ public struct BM25Index {
         }
         self.documentFrequencies = [:]
 
-        self.documentLengths = documents.reduce(into: [:]) { dict, doc in
-            dict[doc.id] = tokenize(doc.text).count
+        // Build documentLengths from deduplicated documents to avoid redundant tokenization
+        self.documentLengths = self.documents.reduce(into: [:]) { dict, pair in
+            dict[pair.key] = tokenize(pair.value.text).count
         }
 
         // Guard against division by zero when documents array is empty
