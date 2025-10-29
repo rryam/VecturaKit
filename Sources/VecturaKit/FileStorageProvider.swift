@@ -33,20 +33,20 @@ public final class FileStorageProvider: VecturaStorage {
             includingPropertiesForKeys: nil
         )
         let decoder = JSONDecoder()
-        var documents: [VecturaDocument] = []
 
-        for fileURL in fileURLs where fileURL.pathExtension.lowercased() == "json" {
+        return fileURLs.compactMap { fileURL in
+            guard fileURL.pathExtension.lowercased() == "json" else {
+                return nil
+            }
+
             do {
                 let data = try Data(contentsOf: fileURL)
-                let doc = try decoder.decode(VecturaDocument.self, from: data)
-                documents.append(doc)
+                return try decoder.decode(VecturaDocument.self, from: data)
             } catch {
-                // Log the error if needed
-                print("Failed to load \(fileURL.lastPathComponent): \(error.localizedDescription)")
+                print("Failed to load document at \(fileURL.path): \(error.localizedDescription)")
+                return nil
             }
         }
-
-        return documents
     }
 
     /// Saves a document by encoding it to JSON and writing it to disk.

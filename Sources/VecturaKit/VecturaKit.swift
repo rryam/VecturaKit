@@ -397,14 +397,9 @@ public final class VecturaKit: VecturaProtocol {
     }
 
     public func reset() async throws {
-        documents.removeAll()
-        normalizedEmbeddings.removeAll()
-
-        let files = try FileManager.default.contentsOfDirectory(
-            at: storageDirectory, includingPropertiesForKeys: nil)
-        for fileURL in files {
-            try FileManager.default.removeItem(at: fileURL)
-        }
+        // Delete all documents using the storage provider abstraction
+        let documentIds = Array(documents.keys)
+        try await deleteDocuments(ids: documentIds)
     }
 
     public func deleteDocuments(ids: [UUID]) async throws {
