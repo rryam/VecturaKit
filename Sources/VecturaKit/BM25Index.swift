@@ -80,10 +80,9 @@ public struct BM25Index {
                 let tf = docTokenCounts[term] ?? 0
                 let df = Float(documentFrequencies[term] ?? 0)
 
-                // Add defensive check to prevent division by zero
-                let idfNumerator = Float(documents.count) - df + 0.5
-                let idfDenominator = max(df + 0.5, 1e-9)
-                let idf = log(max(idfNumerator / idfDenominator, 1e-9))
+                // Ensure argument to log is positive for numerical stability
+                let idfArgument = (Float(documents.count) - df + 0.5) / (df + 0.5)
+                let idf = log(max(idfArgument, 1e-9))
 
                 let numerator = tf * (k1 + 1)
                 let denominator = tf + k1 * (1 - b + b * docLength / averageDocumentLength)
