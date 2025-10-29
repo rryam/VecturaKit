@@ -20,6 +20,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **Persistent Storage:** Automatically saves and loads document data, preserving the database state across app sessions.
 -   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specifies a custom directory for database storage.
+-   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
 -   **MLX Support:** Uses Apple's MLX framework for embedding generation and search operations (`VecturaMLXKit`).
 -   **CLI Tool:** Includes CLIs for database management, testing, and debugging both `VecturaKit` and `VecturaMLXKit`.
 
@@ -173,6 +174,59 @@ The project also has the following dependencies, as specified in `Package.resolv
 
     ```swift
     try await vectorDB.reset()
+    ```
+
+6.  **Custom Storage Provider**
+
+    VecturaKit allows you to implement your own storage backend by conforming to the `VecturaStorage` protocol. This is useful for integrating with different storage systems like SQLite, Core Data, or cloud storage.
+
+    Define a custom storage provider:
+
+    ```swift
+    import Foundation
+    import VecturaKit
+
+    final class MyCustomStorageProvider: VecturaStorage {
+        private var documents: [UUID: VecturaDocument] = [:]
+
+        func createStorageDirectoryIfNeeded() async throws {
+            // Initialize your storage system
+        }
+
+        func loadDocuments() async throws -> [VecturaDocument] {
+            // Load documents from your storage
+            return Array(documents.values)
+        }
+
+        func saveDocument(_ document: VecturaDocument) async throws {
+            // Save document to your storage
+            documents[document.id] = document
+        }
+
+        func deleteDocument(withID id: UUID) async throws {
+            // Delete document from your storage
+            documents.removeValue(forKey: id)
+        }
+
+        func updateDocument(_ document: VecturaDocument) async throws {
+            // Update document in your storage
+            documents[document.id] = document
+        }
+    }
+    ```
+
+    Use the custom storage provider:
+
+    ```swift
+    let config = VecturaConfig(name: "my-db")
+    let customStorage = MyCustomStorageProvider()
+    let vectorDB = try await VecturaKit(
+        config: config,
+        storageProvider: customStorage
+    )
+
+    // Use vectorDB normally - all storage operations will use your custom provider
+    let documentId = try await vectorDB.addDocument(text: "Sample text")
     ```
 
 ### VecturaMLXKit (MLX Version)

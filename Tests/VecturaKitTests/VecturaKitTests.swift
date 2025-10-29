@@ -329,14 +329,168 @@ struct VecturaKitTests {
         let id = UUID()
         _ = try await instance.addDocument(text: text, id: id)
 
-        let documentPath = customDirectoryURL
-            .appendingPathComponent(databaseName, isDirectory: true)
-            .appendingPathComponent("\(id).json")
-            .path
+        let dbDirectory = customDirectoryURL.appendingPathComponent(databaseName, isDirectory: true)
+        let documentPath = dbDirectory.appendingPathComponent("\(id).json").path
 
         #expect(
             FileManager.default.fileExists(atPath: documentPath),
             "Expected stored document at \(documentPath)"
         )
+
+        // Verify persistence: create new instance and load from disk
+        let newInstance = try await VecturaKit(
+            config: .init(name: databaseName, directoryURL: customDirectoryURL)
+        )
+        #expect(newInstance.documentCount == 1, "New instance should load document from disk")
+
+        // Verify deletion removes file from disk
+        try await newInstance.deleteDocuments(ids: [id])
+        #expect(
+            !FileManager.default.fileExists(atPath: documentPath),
+            "Document file should be deleted from disk"
+        )
+
+        // Verify third instance sees the deletion
+        let thirdInstance = try await VecturaKit(
+            config: .init(name: databaseName, directoryURL: customDirectoryURL)
+        )
+        #expect(thirdInstance.documentCount == 0, "Third instance should reflect deletion")
+    }
+
+    @Test("Custom storage provider")
+    func customStorageProvider() async throws {
+        guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
+            return
+        }
+        let (config, cleanup) = try makeVecturaConfig()
+        defer { cleanup() }
+
+        // Create a custom in-memory storage provider
+        let customStorage = InMemoryStorageProvider()
+        let vectura = try await VecturaKit(config: config, storageProvider: customStorage)
+
+        // Add documents
+        let texts = ["Custom storage document 1", "Custom storage document 2"]
+        let ids = try await vectura.addDocuments(texts: texts)
+        #expect(ids.count == 2)
+
+        // Verify documents were stored in custom provider
+        #expect(customStorage.documentCount == 2)
+
+        // Search
+        let results = try await vectura.search(query: "Custom storage")
+        #expect(results.count == 2)
+
+        // Delete one document
+        try await vectura.deleteDocuments(ids: [ids[0]])
+        #expect(customStorage.documentCount == 1)
+
+        // Create a new instance with the same custom storage
+        let newVectura = try await VecturaKit(config: config, storageProvider: customStorage)
+        let newResults = try await newVectura.search(query: "Custom")
+        #expect(newResults.count == 1)
+        #expect(newResults[0].id == ids[1])
+    }
+
+    @Test("FileStorageProvider is stateless and reads from disk")
+    func fileStorageProviderStateless() async throws {
+        guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
+            return
+        }
+        let (directory, cleanup) = try makeTestDirectory()
+        defer { cleanup() }
+
+        // Create a FileStorageProvider
+        let provider = try FileStorageProvider(storageDirectory: directory)
+
+        // Initially should have no documents
+        let initialDocs = try await provider.loadDocuments()
+        #expect(initialDocs.count == 0)
+
+        // Create a test document and save it
+        let doc1 = VecturaDocument(
+            id: UUID(),
+            text: "Test document 1",
+            embedding: [1.0, 2.0, 3.0]
+        )
+        try await provider.saveDocument(doc1)
+
+        // Verify the file was written to disk
+        let fileURL = directory.appendingPathComponent("\(doc1.id).json")
+        #expect(FileManager.default.fileExists(atPath: fileURL.path))
+
+        // Load documents - should read from disk
+        let loadedDocs1 = try await provider.loadDocuments()
+        #expect(loadedDocs1.count == 1)
+        #expect(loadedDocs1[0].id == doc1.id)
+        #expect(loadedDocs1[0].text == doc1.text)
+        #expect(loadedDocs1[0].embedding == doc1.embedding)
+
+        // Save another document
+        let doc2 = VecturaDocument(
+            id: UUID(),
+            text: "Test document 2",
+            embedding: [4.0, 5.0, 6.0]
+        )
+        try await provider.saveDocument(doc2)
+
+        // Load again - should now have 2 documents from disk
+        let loadedDocs2 = try await provider.loadDocuments()
+        #expect(loadedDocs2.count == 2)
+
+        // Delete one document
+        try await provider.deleteDocument(withID: doc1.id)
+
+        // Verify file was deleted
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
+
+        // Load again - should only have 1 document
+        let loadedDocs3 = try await provider.loadDocuments()
+        #expect(loadedDocs3.count == 1)
+        #expect(loadedDocs3[0].id == doc2.id)
+
+        // Update document
+        let updatedDoc2 = VecturaDocument(
+            id: doc2.id,
+            text: "Updated document 2",
+            embedding: [7.0, 8.0, 9.0]
+        )
+        try await provider.updateDocument(updatedDoc2)
+
+        // Load again - should have updated content
+        let loadedDocs4 = try await provider.loadDocuments()
+        #expect(loadedDocs4.count == 1)
+        #expect(loadedDocs4[0].text == "Updated document 2")
+        #expect(loadedDocs4[0].embedding == [7.0, 8.0, 9.0])
+    }
+}
+
+/// A simple in-memory storage provider for testing custom storage implementations.
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+final class InMemoryStorageProvider: VecturaStorage {
+    private var documents: [UUID: VecturaDocument] = [:]
+
+    var documentCount: Int {
+        documents.count
+    }
+
+    func createStorageDirectoryIfNeeded() async throws {
+        // No-op for in-memory storage
+    }
+
+    func loadDocuments() async throws -> [VecturaDocument] {
+        Array(documents.values)
+    }
+
+    func saveDocument(_ document: VecturaDocument) async throws {
+        documents[document.id] = document
+    }
+
+    func deleteDocument(withID id: UUID) async throws {
+        documents.removeValue(forKey: id)
+    }
+
+    func updateDocument(_ document: VecturaDocument) async throws {
+        documents[document.id] = document
     }
 }

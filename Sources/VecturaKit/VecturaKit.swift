@@ -36,7 +36,15 @@ public final class VecturaKit: VecturaProtocol {
 
     // MARK: - Initialization
 
-    public init(config: VecturaConfig) async throws {
+    /// Initializes a new VecturaKit instance with the specified configuration.
+    ///
+    /// - Parameters:
+    ///   - config: Configuration options for the vector database.
+    ///   - storageProvider: Optional custom storage provider. If nil, uses FileStorageProvider.
+    public init(
+        config: VecturaConfig,
+        storageProvider: VecturaStorage? = nil
+    ) async throws {
         self.config = config
         self.documents = [:]
 
@@ -55,13 +63,16 @@ public final class VecturaKit: VecturaProtocol {
                 .appendingPathComponent(config.name)
         }
 
-        try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-
-        // Instantiate the storage provider (currently the file-based implementation).
-        self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
+        // Use custom storage provider if provided, otherwise use FileStorageProvider.
+        if let customProvider = storageProvider {
+            self.storageProvider = customProvider
+        } else {
+            // Note: FileStorageProvider creates its storage directory in its initializer.
+            self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
+        }
 
         // Load existing documents using the storage provider.
-        let storedDocuments = try await storageProvider.loadDocuments()
+        let storedDocuments = try await self.storageProvider.loadDocuments()
         for doc in storedDocuments {
             self.documents[doc.id] = doc
             // Compute normalized embedding and store in cache.
@@ -168,17 +179,12 @@ public final class VecturaKit: VecturaProtocol {
             b: config.searchOptions.b
         )
 
+        // Save documents using the storage provider in parallel
+        let storage = self.storageProvider
         try await withThrowingTaskGroup(of: Void.self) { group in
-            let directory = self.storageDirectory
-
             for doc in documentsToSave {
                 group.addTask {
-                    let documentURL = directory.appendingPathComponent("\(doc.id).json")
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = .prettyPrinted
-
-                    let data = try encoder.encode(doc)
-                    try data.write(to: documentURL)
+                    try await storage.saveDocument(doc)
                 }
             }
 
@@ -415,8 +421,8 @@ public final class VecturaKit: VecturaProtocol {
             documents[id] = nil
             normalizedEmbeddings[id] = nil
 
-            let documentURL = storageDirectory.appendingPathComponent("\(id).json")
-            try FileManager.default.removeItem(at: documentURL)
+            // Delete using storage provider
+            try await storageProvider.deleteDocument(withID: id)
         }
     }
 
