@@ -18,6 +18,10 @@ public actor SwiftEmbedder: VecturaEmbedder {
         self.modelSource = modelSource
     }
 
+    /// The dimensionality of the embedding vectors produced by this embedder.
+    ///
+    /// This value is cached after first detection to avoid repeated computation.
+    /// - Throws: An error if the dimension cannot be determined.
     public var dimension: Int {
         get async throws {
             if let cached = cachedDimension {
@@ -50,6 +54,11 @@ public actor SwiftEmbedder: VecturaEmbedder {
         }
     }
 
+    /// Generates embeddings for multiple texts in batch.
+    ///
+    /// - Parameter texts: The text strings to embed.
+    /// - Returns: An array of embedding vectors, one for each input text.
+    /// - Throws: An error if embedding generation fails.
     public func embed(texts: [String]) async throws -> [[Float]] {
         try await ensureModelLoaded()
 
@@ -76,6 +85,11 @@ public actor SwiftEmbedder: VecturaEmbedder {
         }
     }
 
+    /// Generates an embedding for a single text.
+    ///
+    /// - Parameter text: The text string to embed.
+    /// - Returns: The embedding vector for the input text.
+    /// - Throws: An error if embedding generation fails.
     public func embed(text: String) async throws -> [Float] {
         try await ensureModelLoaded()
 
