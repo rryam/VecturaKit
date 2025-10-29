@@ -29,6 +29,8 @@ public actor SwiftEmbedder: VecturaEmbedder {
 
             let dim: Int
             if let model2vec = model2vecModel {
+                // Note: 'dimienstion' is a typo in the upstream swift-embeddings library
+                // See: swift-embeddings/Sources/Embeddings/Model2Vec/Model2VecModel.swift
                 dim = model2vec.model.dimienstion
             } else if let bert = bertModel {
                 // For BERT, we need to get dimension from a test encoding

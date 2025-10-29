@@ -58,4 +58,9 @@ public actor MLXEmbedder: VecturaEmbedder {
       return result.map { $0.asArray(Float.self) }
     }
   }
+
+  public func embed(text: String) async throws -> [Float] {
+    let batch = try await embed(texts: [text])
+    return batch[0]
+  }
 }

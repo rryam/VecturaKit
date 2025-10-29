@@ -76,7 +76,19 @@ public actor FileStorageProvider: VecturaStorage {
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(document)
         let documentURL = storageDirectory.appendingPathComponent("\(document.id).json")
+
+        // Write with secure file protection on supported platforms
+        #if os(iOS) || os(macOS) || os(tvOS) || os(watchOS) || os(visionOS)
+        try data.write(to: documentURL, options: .completeFileProtection)
+        #else
         try data.write(to: documentURL)
+        #endif
+
+        // Set restrictive file permissions (owner read/write only)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: documentURL.path(percentEncoded: false)
+        )
     }
 
     /// Deletes a document by removing its file from disk.

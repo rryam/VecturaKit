@@ -80,7 +80,11 @@ public struct BM25Index {
                 let tf = docTokenCounts[term] ?? 0
                 let df = Float(documentFrequencies[term] ?? 0)
 
-                let idf = log((Float(documents.count) - df + 0.5) / (df + 0.5))
+                // Add defensive check to prevent division by zero
+                let idfNumerator = Float(documents.count) - df + 0.5
+                let idfDenominator = max(df + 0.5, 1e-9)
+                let idf = log(max(idfNumerator / idfDenominator, 1e-9))
+
                 let numerator = tf * (k1 + 1)
                 let denominator = tf + k1 * (1 - b + b * docLength / averageDocumentLength)
 
@@ -202,9 +206,20 @@ extension VecturaDocument {
     ///   - vectorScore: The vector similarity score
     ///   - bm25Score: The BM25 score
     ///   - weight: Weight for vector score (0.0-1.0), BM25 weight will be (1-weight)
+    ///   - normalizationFactor: Factor to normalize BM25 scores to 0-1 range
     /// - Returns: Combined score
-    public func hybridScore(vectorScore: Float, bm25Score: Float, weight: Float = 0.5) -> Float {
-        VecturaDocument.calculateHybridScore(vectorScore: vectorScore, bm25Score: bm25Score, weight: weight)
+    public func hybridScore(
+        vectorScore: Float,
+        bm25Score: Float,
+        weight: Float = 0.5,
+        normalizationFactor: Float = 10.0
+    ) -> Float {
+        VecturaDocument.calculateHybridScore(
+            vectorScore: vectorScore,
+            bm25Score: bm25Score,
+            weight: weight,
+            normalizationFactor: normalizationFactor
+        )
     }
 
     /// Calculates a hybrid search score combining vector similarity and BM25
@@ -213,9 +228,15 @@ extension VecturaDocument {
     ///   - vectorScore: The vector similarity score
     ///   - bm25Score: The BM25 score
     ///   - weight: Weight for vector score (0.0-1.0), BM25 weight will be (1-weight)
+    ///   - normalizationFactor: Factor to normalize BM25 scores to 0-1 range
     /// - Returns: Combined score
-    public static func calculateHybridScore(vectorScore: Float, bm25Score: Float, weight: Float = 0.5) -> Float {
-        let normalizedBM25 = min(max(bm25Score / 10.0, 0), 1)
+    public static func calculateHybridScore(
+        vectorScore: Float,
+        bm25Score: Float,
+        weight: Float = 0.5,
+        normalizationFactor: Float = 10.0
+    ) -> Float {
+        let normalizedBM25 = min(max(bm25Score / normalizationFactor, 0), 1)
         return weight * vectorScore + (1 - weight) * normalizedBM25
     }
 }
