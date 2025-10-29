@@ -34,7 +34,9 @@ public actor SwiftEmbedder: VecturaEmbedder {
                 // For BERT, we need to get dimension from a test encoding
                 let testEmbedding = try bert.encode("test")
                 guard let lastDim = testEmbedding.shape.last else {
-                    throw VecturaError.invalidInput("Could not determine BERT model dimension from shape \(testEmbedding.shape)")
+                    throw VecturaError.invalidInput(
+                        "Could not determine BERT model dimension from shape \(testEmbedding.shape)"
+                    )
                 }
                 dim = lastDim
             } else {

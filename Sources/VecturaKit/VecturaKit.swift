@@ -123,13 +123,11 @@ public actor VecturaKit {
         }
 
         // Validate embeddings
-        for embedding in embeddings {
-            if embedding.count != dimension {
-                throw VecturaError.dimensionMismatch(
-                    expected: dimension,
-                    got: embedding.count
-                )
-            }
+        for embedding in embeddings where embedding.count != dimension {
+            throw VecturaError.dimensionMismatch(
+                expected: dimension,
+                got: embedding.count
+            )
         }
 
         var documentIds = [UUID]()
