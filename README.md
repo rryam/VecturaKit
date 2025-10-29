@@ -1,8 +1,12 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
+VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. 
 
-The framework offers two primary modules: `VecturaKit`, which supports many embedding models via `swift-embeddings`, and `VecturaMLXKit`, which uses Apple's MLX framework. It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
+Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
+
+The framework offers two primary modules: `VecturaKit`, which supports many embedding models via `swift-embeddings`, and `VecturaMLXKit`, which uses Apple's MLX framework. 
+
+It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
 ## Learn More
 
@@ -40,7 +44,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", branch: "main"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "1.1.0"),
 ],
 ```
 
@@ -52,262 +56,250 @@ VecturaKit uses the following Swift packages:
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
 
-The project also has the following dependencies, as specified in `Package.resolved`:
--   [GzipSwift](https://github.com/1024jp/GzipSwift)
--   [Jinja](https://github.com/johnmai-dev/Jinja)
--   [mlx-swift](https://github.com/ml-explore/mlx-swift)
--   [swift-collections](https://github.com/apple/swift-collections.git)
--   [swift-numerics](https://github.com/apple/swift-numerics)
--   [swift-safetensors](https://github.com/jkrukowski/swift-safetensors.git)
--   [swift-sentencepiece](https://github.com/jkrukowski/swift-sentencepiece)
--   [swift-transformers](https://github.com/huggingface/swift-transformers)
-
 ## Usage
 
-### Core VecturaKit
+### Import VecturaKit
 
-1.  **Import VecturaKit**
+```swift
+import VecturaKit
+```
 
-    ```swift
-    import VecturaKit
-    ```
+### Create Configuration and Initialize Database
 
-2.  **Create Configuration and Initialize Database**
+```swift
+import Foundation
+import VecturaKit
 
-    ```swift
-    import Foundation
-    import VecturaKit
-
-    let config = VecturaConfig(
-        name: "my-vector-db",
-        directoryURL: nil,  // Optional custom storage location
-        dimension: nil,     // Auto-detect dimension from model (recommended)
-        searchOptions: VecturaConfig.SearchOptions(
-            defaultNumResults: 10,
-            minThreshold: 0.7,
-            hybridWeight: 0.5,  // Balance between vector and text search
-            k1: 1.2,           // BM25 parameters
-            b: 0.75
-        )
+let config = VecturaConfig(
+    name: "my-vector-db",
+    directoryURL: nil,  // Optional custom storage location
+    dimension: nil,     // Auto-detect dimension from model (recommended)
+    searchOptions: VecturaConfig.SearchOptions(
+        defaultNumResults: 10,
+        minThreshold: 0.7,
+        hybridWeight: 0.5,  // Balance between vector and text search
+        k1: 1.2,           // BM25 parameters
+        b: 0.75
     )
+)
 
-    let vectorDB = try await VecturaKit(config: config)
-    ```
+let vectorDB = try await VecturaKit(config: config)
+```
 
-3.  **Add Documents**
+### Add Documents
 
-    Single document:
+Single document:
 
-    ```swift
-    let text = "Sample text to be embedded"
-    let documentId = try await vectorDB.addDocument(
-        text: text,
-        id: UUID(),  // Optional, will be generated if not provided
-        model: .default  // Uses Model2Vec 32M model by default
-    )
-    ```
+```swift
+let text = "Sample text to be embedded"
+let documentId = try await vectorDB.addDocument(
+    text: text,
+    id: UUID(),  // Optional, will be generated if not provided
+    model: .default  // Uses Model2Vec 32M model by default
+)
+```
 
-    Multiple documents in batch:
+Multiple documents in batch:
 
-    ```swift
-    let texts = [
-        "First document text",
-        "Second document text",
-        "Third document text"
-    ]
-    let documentIds = try await vectorDB.addDocuments(
-        texts: texts,
-        ids: nil,  // Optional array of UUIDs
-        model: .default  // Uses Model2Vec 32M model by default
-    )
-    ```
+```swift
+let texts = [
+    "First document text",
+    "Second document text",
+    "Third document text"
+]
+let documentIds = try await vectorDB.addDocuments(
+    texts: texts,
+    ids: nil,  // Optional array of UUIDs
+    model: .default  // Uses Model2Vec 32M model by default
+)
+```
 
-4.  **Search Documents**
+### Search Documents
 
-    Search by text (hybrid search):
+Search by text (hybrid search):
 
-    ```swift
-    let results = try await vectorDB.search(
-        query: "search query",
-        numResults: 5,      // Optional
-        threshold: 0.8,     // Optional
-        model: .default     // Uses Model2Vec 32M model by default
-    )
+```swift
+let results = try await vectorDB.search(
+    query: "search query",
+    numResults: 5,      // Optional
+    threshold: 0.8,     // Optional
+    model: .default     // Uses Model2Vec 32M model by default
+)
 
-    for result in results {
-        print("Document ID: \(result.id)")
-        print("Text: \(result.text)")
-        print("Similarity Score: \(result.score)")
-        print("Created At: \(result.createdAt)")
+for result in results {
+    print("Document ID: \(result.id)")
+    print("Text: \(result.text)")
+    print("Similarity Score: \(result.score)")
+    print("Created At: \(result.createdAt)")
+}
+```
+
+Search by vector embedding:
+
+```swift
+let results = try await vectorDB.search(
+    query: embeddingArray,  // [Float] matching config.dimension
+    numResults: 5,  // Optional
+    threshold: 0.8  // Optional
+)
+```
+
+### Document Management
+
+Update document:
+
+```swift
+try await vectorDB.updateDocument(
+    id: documentId,
+    newText: "Updated text",
+    model: .default  // Uses Model2Vec 32M model by default
+)
+```
+
+Delete documents:
+
+```swift
+try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
+```
+
+Reset database:
+
+```swift
+try await vectorDB.reset()
+```
+
+### Custom Storage Provider
+
+VecturaKit allows you to implement your own storage backend by conforming to the `VecturaStorage` protocol. This is useful for integrating with different storage systems like SQLite, Core Data, or cloud storage.
+
+Define a custom storage provider:
+
+```swift
+import Foundation
+import VecturaKit
+
+final class MyCustomStorageProvider: VecturaStorage {
+    private var documents: [UUID: VecturaDocument] = [:]
+
+    func createStorageDirectoryIfNeeded() async throws {
+        // Initialize your storage system
     }
-    ```
 
-    Search by vector embedding:
-
-    ```swift
-    let results = try await vectorDB.search(
-        query: embeddingArray,  // [Float] matching config.dimension
-        numResults: 5,  // Optional
-        threshold: 0.8  // Optional
-    )
-    ```
-
-5.  **Document Management**
-
-    Update document:
-
-    ```swift
-    try await vectorDB.updateDocument(
-        id: documentId,
-        newText: "Updated text",
-        model: .default  // Uses Model2Vec 32M model by default
-    )
-    ```
-
-    Delete documents:
-
-    ```swift
-    try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
-    ```
-
-    Reset database:
-
-    ```swift
-    try await vectorDB.reset()
-    ```
-
-6.  **Custom Storage Provider**
-
-    VecturaKit allows you to implement your own storage backend by conforming to the `VecturaStorage` protocol. This is useful for integrating with different storage systems like SQLite, Core Data, or cloud storage.
-
-    Define a custom storage provider:
-
-    ```swift
-    import Foundation
-    import VecturaKit
-
-    final class MyCustomStorageProvider: VecturaStorage {
-        private var documents: [UUID: VecturaDocument] = [:]
-
-        func createStorageDirectoryIfNeeded() async throws {
-            // Initialize your storage system
-        }
-
-        func loadDocuments() async throws -> [VecturaDocument] {
-            // Load documents from your storage
-            return Array(documents.values)
-        }
-
-        func saveDocument(_ document: VecturaDocument) async throws {
-            // Save document to your storage
-            documents[document.id] = document
-        }
-
-        func deleteDocument(withID id: UUID) async throws {
-            // Delete document from your storage
-            documents.removeValue(forKey: id)
-        }
-
-        func updateDocument(_ document: VecturaDocument) async throws {
-            // Update document in your storage
-            documents[document.id] = document
-        }
+    func loadDocuments() async throws -> [VecturaDocument] {
+        // Load documents from your storage
+        return Array(documents.values)
     }
-    ```
 
-    Use the custom storage provider:
+    func saveDocument(_ document: VecturaDocument) async throws {
+        // Save document to your storage
+        documents[document.id] = document
+    }
 
-    ```swift
-    let config = VecturaConfig(name: "my-db")
-    let customStorage = MyCustomStorageProvider()
-    let vectorDB = try await VecturaKit(
-        config: config,
-        storageProvider: customStorage
-    )
+    func deleteDocument(withID id: UUID) async throws {
+        // Delete document from your storage
+        documents.removeValue(forKey: id)
+    }
 
-    // Use vectorDB normally - all storage operations will use your custom provider
-    let documentId = try await vectorDB.addDocument(text: "Sample text")
-    ```
+    func updateDocument(_ document: VecturaDocument) async throws {
+        // Update document in your storage
+        documents[document.id] = document
+    }
+}
+```
 
-### VecturaMLXKit (MLX Version)
+Use the custom storage provider:
+
+```swift
+let config = VecturaConfig(name: "my-db")
+let customStorage = MyCustomStorageProvider()
+let vectorDB = try await VecturaKit(
+    config: config,
+    storageProvider: customStorage
+)
+
+// Use vectorDB normally - all storage operations will use your custom provider
+let documentId = try await vectorDB.addDocument(text: "Sample text")
+```
+
+## VecturaMLXKit (MLX Version)
 
 VecturaMLXKit harnesses Apple's MLX framework for accelerated processing, delivering optimized performance for on-device machine learning tasks.
 
-1.  **Import VecturaMLXKit**
+### Import VecturaMLXKit
 
-    ```swift
-    import VecturaMLXKit
-    ```
+```swift
+import VecturaMLXKit
+```
 
-2.  **Initialize Database**
+### Initialize Database
 
-    ```swift
-    import VecturaMLXKit
-    import MLXEmbedders
+```swift
+import VecturaMLXKit
+import MLXEmbedders
 
-    let config = VecturaConfig(
-      name: "my-mlx-vector-db",
-      dimension: 768 //  nomic_text_v1_5 model outputs 768-dimensional embeddings
-    )
-    let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
-    ```
+let config = VecturaConfig(
+  name: "my-mlx-vector-db",
+  dimension: 768 //  nomic_text_v1_5 model outputs 768-dimensional embeddings
+)
+let vectorDB = try await VecturaMLXKit(config: config, modelConfiguration: .nomic_text_v1_5)
+```
 
-3.  **Add Documents**
+### Add Documents
 
-    ```swift
-    let texts = [
-      "First document text",
-      "Second document text",
-      "Third document text"
-    ]
-    let documentIds = try await vectorDB.addDocuments(texts: texts)
-    ```
+```swift
+let texts = [
+  "First document text",
+  "Second document text",
+  "Third document text"
+]
+let documentIds = try await vectorDB.addDocuments(texts: texts)
+```
 
-4.  **Search Documents**
+### Search Documents
 
-    ```swift
-    let results = try await vectorDB.search(
-        query: "search query",
-        numResults: 5,      // Optional
-        threshold: 0.8     // Optional
-    )
+```swift
+let results = try await vectorDB.search(
+    query: "search query",
+    numResults: 5,      // Optional
+    threshold: 0.8     // Optional
+)
 
-    for result in results {
-        print("Document ID: \(result.id)")
-        print("Text: \(result.text)")
-        print("Similarity Score: \(result.score)")
-        print("Created At: \(result.createdAt)")
-    }
-    ```
+for result in results {
+    print("Document ID: \(result.id)")
+    print("Text: \(result.text)")
+    print("Similarity Score: \(result.score)")
+    print("Created At: \(result.createdAt)")
+}
+```
 
-5.  **Document Management**
+### Document Management
 
-    Update document:
+Update document:
 
-    ```swift
-    try await vectorDB.updateDocument(
-         id: documentId,
-         newText: "Updated text"
-     )
-    ```
+```swift
+try await vectorDB.updateDocument(
+     id: documentId,
+     newText: "Updated text"
+ )
+```
 
-    Delete documents:
+Delete documents:
 
-    ```swift
-    try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
-    ```
+```swift
+try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
+```
 
-    Reset database:
+Reset database:
 
-    ```swift
-    try await vectorDB.reset()
-    ```
+```swift
+try await vectorDB.reset()
+```
 
 ## Command Line Interface
 
 VecturaKit includes a command-line interface for both the standard and MLX versions, facilitating easy database management.
 
-**Standard CLI Tool (`vectura-cli`)**
+### Standard CLI Tool (`vectura-cli`)
 
 ```bash
 # Add documents (dimension auto-detected from model)
@@ -347,7 +339,7 @@ Common options for `vectura-cli`:
 -   `--num-results, -n`: Number of results to return (default: 10)
 -   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-retrieval-32M")
 
-**MLX CLI Tool (`vectura-mlx-cli`)**
+### MLX CLI Tool (`vectura-mlx-cli`)
 
 ```bash
 # Add documents
