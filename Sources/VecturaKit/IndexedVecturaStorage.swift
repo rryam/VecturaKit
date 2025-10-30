@@ -1,0 +1,81 @@
+import Foundation
+
+/// Extended storage protocol that supports indexed operations for large-scale datasets.
+///
+/// This protocol extends `VecturaStorage` with additional methods that enable efficient
+/// handling of large document collections through pagination and indexed searching.
+///
+/// ## Performance Characteristics
+///
+/// Implementing this protocol allows VecturaKit to use an "indexed" memory strategy that:
+/// - Loads documents on-demand rather than keeping everything in memory
+/// - Supports efficient candidate filtering for vector search
+/// - Scales to millions of documents with controlled memory usage
+///
+/// ## Implementation Notes
+///
+/// Storage providers that implement this protocol can enable VecturaKit's indexed mode,
+/// which performs a two-stage search:
+/// 1. **Candidate Selection**: Use `searchCandidates()` to identify promising document IDs
+/// 2. **Exact Scoring**: Load only those candidates via `loadDocuments(ids:)` for precise ranking
+///
+/// This approach dramatically reduces memory footprint for large datasets while maintaining
+/// search quality.
+public protocol IndexedVecturaStorage: VecturaStorage {
+    /// Loads a specific range of documents from storage.
+    ///
+    /// - Parameters:
+    ///   - offset: The starting index (0-based)
+    ///   - limit: Maximum number of documents to load
+    /// - Returns: Array of documents in the specified range
+    /// - Throws: Storage errors if loading fails
+    func loadDocuments(offset: Int, limit: Int) async throws -> [VecturaDocument]
+
+    /// Returns the total number of documents in storage.
+    ///
+    /// This method should be efficient (e.g., querying a count field rather than
+    /// loading all documents).
+    ///
+    /// - Returns: Total document count
+    /// - Throws: Storage errors if counting fails
+    func getTotalDocumentCount() async throws -> Int
+
+    /// Searches for candidate document IDs using an approximate vector search.
+    ///
+    /// This is the first stage of indexed search. Implementations should use an
+    /// approximate nearest neighbor (ANN) algorithm or similar technique to quickly
+    /// identify promising candidates without loading full document objects.
+    ///
+    /// - Parameters:
+    ///   - queryEmbedding: The query vector
+    ///   - topK: Number of final results desired
+    ///   - prefilterSize: Size of candidate pool (typically `topK * candidateMultiplier`)
+    /// - Returns: Array of document IDs that are potential matches
+    /// - Throws: Storage errors if search fails
+    ///
+    /// ## Implementation Strategy
+    ///
+    /// The `prefilterSize` parameter allows controlling the trade-off between accuracy
+    /// and performance:
+    /// - Larger values: Better recall but slower
+    /// - Smaller values: Faster but may miss relevant results
+    ///
+    /// A typical implementation might:
+    /// 1. Use a vector index (HNSW, IVF, etc.) to find `prefilterSize` candidates
+    /// 2. Return their IDs for exact rescoring by VecturaKit
+    func searchCandidates(
+        queryEmbedding: [Float],
+        topK: Int,
+        prefilterSize: Int
+    ) async throws -> [UUID]
+
+    /// Loads specific documents by their IDs.
+    ///
+    /// This is the second stage of indexed search, where only the candidate documents
+    /// identified by `searchCandidates()` are loaded for exact similarity computation.
+    ///
+    /// - Parameter ids: Array of document IDs to load
+    /// - Returns: Dictionary mapping IDs to their documents (may not include all requested IDs if some don't exist)
+    /// - Throws: Storage errors if loading fails
+    func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument]
+}

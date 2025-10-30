@@ -72,6 +72,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
 -   **Custom Storage Location:** Specifies a custom directory for database storage.
 -   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
+-   **Memory Management Strategies:** Choose between automatic, full-memory, or indexed modes to optimize performance for datasets ranging from thousands to millions of documents. [Learn more](Docs/INDEXED_STORAGE_GUIDE.md)
 -   **MLX Support:** Uses Apple's MLX framework for accelerated embedding generation through `MLXEmbedder`.
 -   **CLI Tools:** Includes `vectura-cli` (Swift embeddings) and `vectura-mlx-cli` (MLX embeddings) for database management and testing.
 
@@ -162,6 +163,22 @@ let config = VecturaConfig(
 let embedder = SwiftEmbedder(modelSource: .default)
 let vectorDB = try await VecturaKit(config: config, embedder: embedder)
 ```
+
+**For large-scale datasets (100K+ documents):**
+
+```swift
+let config = VecturaConfig(
+    name: "my-vector-db",
+    memoryStrategy: .indexed(candidateMultiplier: 10)
+)
+
+let vectorDB = try await VecturaKit(config: config, embedder: embedder)
+// Reduced memory footprint with on-demand document loading
+```
+
+> 💡 **Tip:** See the [Indexed Storage Guide](Docs/INDEXED_STORAGE_GUIDE.md) for detailed information on memory strategies and performance optimization for large-scale datasets.
+>
+> 📊 **Performance:** Check out the [Performance Test Results](Docs/TEST_RESULTS_SUMMARY.md) for detailed benchmarking data and recommendations. For documentation index, see [Docs/](Docs/).
 
 ### Add Documents
 
@@ -464,7 +481,8 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 1. Clone the repository
 2. Open `Package.swift` in Xcode or VS Code
 3. Run tests to ensure everything works: `swift test`
-4. Make your changes and test them
+4. Run performance benchmarks (optional): `swift test --filter BenchmarkSuite` — see [Performance Tests](Tests/PerformanceTests/)
+5. Make your changes and test them
 
 ### Code Style
 
