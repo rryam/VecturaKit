@@ -85,9 +85,9 @@ Peak memory = topK × candidateMultiplier × avg_document_size
 ```
 
 **Examples:**
-- `topK=10, candidateMultiplier=10`: ~10-50 MB (100 documents in memory)
-- `topK=100, candidateMultiplier=10`: ~100-500 MB (1,000 documents in memory)
-- `topK=100, candidateMultiplier=20`: ~200-1000 MB (2,000 documents in memory)
+- `topK=10, candidateMultiplier=10`: ~0.4-0.5 MB (100 documents in memory)
+- `topK=100, candidateMultiplier=10`: ~4-5 MB (1,000 documents in memory)
+- `topK=100, candidateMultiplier=20`: ~8-10 MB (2,000 documents in memory)
 
 **Note:** The actual memory footprint depends on:
 - Document text length

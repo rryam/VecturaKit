@@ -514,7 +514,7 @@ public actor VecturaKit {
         storageProvider: VecturaStorage
     ) async throws -> Bool {
         // If no indexed storage is available, always use in-memory
-        guard indexedStorage != nil else {
+        guard let indexed = indexedStorage else {
             return false
         }
 
@@ -522,18 +522,10 @@ public actor VecturaKit {
         case .automatic(let threshold):
             // Get document count to decide strategy
             let totalCount: Int
-            if let indexed = indexedStorage {
-                do {
-                    totalCount = try await indexed.getTotalDocumentCount()
-                } catch {
-                    throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
-                }
-            } else {
-                do {
-                    totalCount = try await storageProvider.loadDocuments().count
-                } catch {
-                    throw VecturaError.loadFailed("Failed to load documents for counting: \(error.localizedDescription)")
-                }
+            do {
+                totalCount = try await indexed.getTotalDocumentCount()
+            } catch {
+                throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
             }
             return totalCount >= threshold
 
