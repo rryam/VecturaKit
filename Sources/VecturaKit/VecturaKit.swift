@@ -703,7 +703,10 @@ public actor VecturaKit {
             batchSize = batch
             maxConcurrentBatches = maxConcurrent
         case .fullMemory:
-            // Use defaults if somehow full memory mode calls this function
+            // This case should be unreachable because searchWithIndex is only called
+            // when shouldUseIndexedMode() returns true, which never happens for fullMemory strategy.
+            assertionFailure("searchWithIndex should not be called with fullMemory strategy")
+            
             candidateMultiplier = VecturaConfig.MemoryStrategy.defaultCandidateMultiplier
             batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
             maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
