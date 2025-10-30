@@ -58,7 +58,7 @@ struct AccuracyTests {
 
     // MARK: - Basic Accuracy Tests
 
-    @Test("Accuracy: indexed vs fullMemory at 2K docs")
+    @Test("Accuracy: indexed vs fullMemory at 1K docs")
     @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
     func basicAccuracyTest() async throws {
         let documentCount = 1_000

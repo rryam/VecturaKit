@@ -170,7 +170,7 @@ struct MemoryProfilerSuite {
 
     // MARK: - Memory Efficiency Comparison
 
-    @Test("Memory: strategy comparison at 2K documents")
+    @Test("Memory: strategy comparison at 1K documents")
     @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
     func strategyMemoryComparison() async throws {
         let documentCount = 1_000
