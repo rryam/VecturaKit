@@ -24,13 +24,10 @@ actor MockIndexedStorage: IndexedVecturaStorage {
     }
 
     func saveDocument(_ document: VecturaDocument) async throws {
-        if documents[document.id] == nil {
-            documentList.append(document)
+        if let index = documentList.firstIndex(where: { $0.id == document.id }) {
+            documentList[index] = document
         } else {
-            // Update existing document in list
-            if let index = documentList.firstIndex(where: { $0.id == document.id }) {
-                documentList[index] = document
-            }
+            documentList.append(document)
         }
         documents[document.id] = document
     }

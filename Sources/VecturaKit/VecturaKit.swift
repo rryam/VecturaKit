@@ -57,9 +57,18 @@ public actor VecturaKit {
     ) async throws {
         // Validate memory strategy parameters
         switch config.memoryStrategy {
-        case .automatic(let threshold):
+        case .automatic(let threshold, let multiplier, let batch, let maxConcurrent):
             guard threshold >= 0 else {
                 throw VecturaError.invalidInput("Automatic threshold must be non-negative, got \(threshold)")
+            }
+            guard multiplier > 0 else {
+                throw VecturaError.invalidInput("candidateMultiplier must be positive, got \(multiplier)")
+            }
+            guard batch > 0 else {
+                throw VecturaError.invalidInput("batchSize must be positive, got \(batch)")
+            }
+            guard maxConcurrent > 0 else {
+                throw VecturaError.invalidInput("maxConcurrentBatches must be positive, got \(maxConcurrent)")
             }
         case .indexed(let multiplier, let batch, let maxConcurrent):
             guard multiplier > 0 else {
@@ -519,7 +528,7 @@ public actor VecturaKit {
         }
 
         switch strategy {
-        case .automatic(let threshold):
+        case .automatic(let threshold, _, _, _):
             // Get document count to decide strategy
             let totalCount: Int
             do {
@@ -684,11 +693,17 @@ public actor VecturaKit {
         let batchSize: Int
         let maxConcurrentBatches: Int
 
-        if case .indexed(let multiplier, let batch, let maxConcurrent) = config.memoryStrategy {
+        switch config.memoryStrategy {
+        case .indexed(let multiplier, let batch, let maxConcurrent):
             candidateMultiplier = multiplier
             batchSize = batch
             maxConcurrentBatches = maxConcurrent
-        } else {
+        case .automatic(_, let multiplier, let batch, let maxConcurrent):
+            candidateMultiplier = multiplier
+            batchSize = batch
+            maxConcurrentBatches = maxConcurrent
+        case .fullMemory:
+            // Use defaults if somehow full memory mode calls this function
             candidateMultiplier = VecturaConfig.MemoryStrategy.defaultCandidateMultiplier
             batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
             maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches

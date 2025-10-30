@@ -324,11 +324,3 @@ struct ParameterTuningSuite {
         #expect(results.count == workloads.count)
     }
 }
-
-// MARK: - String Extension
-
-private extension String {
-    static func * (lhs: String, rhs: Int) -> String {
-        String(repeating: lhs, count: rhs)
-    }
-}

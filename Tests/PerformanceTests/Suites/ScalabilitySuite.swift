@@ -298,11 +298,3 @@ struct ScalabilitySuite {
         #expect(indexedResults.count == dataSizes.count)
     }
 }
-
-// MARK: - String Extension
-
-private extension String {
-    static func * (lhs: String, rhs: Int) -> String {
-        String(repeating: lhs, count: rhs)
-    }
-}

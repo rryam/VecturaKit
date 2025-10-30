@@ -487,18 +487,18 @@ struct PartialFailureTests {
 
         // Add documents
         let texts = [
-            "Machine learning basics",
-            "Deep learning fundamentals",
-            "Neural network architecture",
-            "AI and robotics",
-            "Computer vision techniques"
+            "AI and robotics",              // Batch 0 (will fail)
+            "Computer vision techniques",   // Batch 0 (will fail)
+            "Neural network architecture",  // Batch 0 (will fail)
+            "Machine learning basics",      // Batch 1 (will succeed)
+            "Deep learning fundamentals"    // Batch 1 (will succeed)
         ]
         let ids = try await vectura.addDocuments(texts: texts)
 
         // Configure storage to fail for one document (simulating one batch failure)
         // With batchSize=3, documents will be split into batches:
-        // - Batch 0: ids[0], ids[1], ids[2]
-        // - Batch 1: ids[3], ids[4]
+        // - Batch 0: ids[0], ids[1], ids[2] (no "learning" matches)
+        // - Batch 1: ids[3], ids[4] (contains "learning" matches)
         // Setting ids[0] to fail should cause Batch 0 to fail
         await mockStorage.setFailingIds(Set([ids[0]]))
 
@@ -506,18 +506,17 @@ struct PartialFailureTests {
         let results = try await vectura.search(query: "learning")
 
         // We should get results from the documents that didn't fail
-        // Since we're using indexed mode and searchCandidates returns all IDs,
-        // the failing batch (containing ids[0]) should be skipped,
-        // but successful batches should return results
-        #expect(results.count >= 0)
+        // Batch 1 contains documents matching "learning", so we expect results
+        #expect(results.count > 0, "Should get results from successful batches")
 
         // Verify that the failed document is not in results
         let resultIds = Set(results.map { $0.id })
         #expect(!resultIds.contains(ids[0]), "Failed document should not appear in results")
 
-        // At least one result from successful batches should be present
-        // (assuming "learning" matches some of the other documents)
-        // Note: This may be 0 if none of the successful documents match "learning"
+        // Verify that results come from the successful batch (Batch 1)
+        let successfulBatchIds = Set([ids[3], ids[4]])
+        let hasSuccessfulResults = resultIds.intersection(successfulBatchIds).count > 0
+        #expect(hasSuccessfulResults, "Should have at least one result from successful batch")
     }
 }
 

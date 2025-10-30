@@ -112,13 +112,23 @@ public struct VecturaConfig: Sendable {
     /// Automatic mode: Selects the optimal strategy based on document count.
     ///
     /// - Uses `fullMemory` for datasets < threshold
-    /// - Uses `indexed` mode for larger datasets
+    /// - Uses `indexed` mode for larger datasets with specified parameters
     ///
     /// - Parameters:
     ///   - threshold: Document count threshold for switching strategies (default: 10,000)
+    ///   - candidateMultiplier: Candidate pool size for indexed mode (default: 10)
+    ///   - batchSize: Batch size for concurrent loading in indexed mode (default: 100)
+    ///   - maxConcurrentBatches: Max concurrent batches in indexed mode (default: 4)
     ///
-    /// This is the recommended default for most use cases.
-    case automatic(threshold: Int = defaultAutomaticThreshold)
+    /// This is the recommended default for most use cases. When the dataset size
+    /// exceeds the threshold and switches to indexed mode, it will use the
+    /// specified parameters for indexed search operations.
+    case automatic(
+      threshold: Int = defaultAutomaticThreshold,
+      candidateMultiplier: Int = defaultCandidateMultiplier,
+      batchSize: Int = defaultBatchSize,
+      maxConcurrentBatches: Int = defaultMaxConcurrentBatches
+    )
 
     /// Full memory mode: Load all documents into memory.
     ///
