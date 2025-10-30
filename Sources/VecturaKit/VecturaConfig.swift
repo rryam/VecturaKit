@@ -13,6 +13,15 @@ public struct VecturaConfig: Sendable {
   /// The dimension of vectors to be stored. If nil, will be auto-detected from the model.
   public let dimension: Int?
 
+  /// Memory management strategy for handling large-scale datasets.
+  ///
+  /// This setting controls how VecturaKit loads and manages documents in memory.
+  /// Choose a strategy based on your dataset size and performance requirements.
+  ///
+  /// - Note: The strategy is fixed at initialization time and cannot be changed after
+  ///   the VecturaKit instance is created.
+  public let memoryStrategy: MemoryStrategy
+
   /// Options for similarity search.
   public struct SearchOptions: Sendable {
     /// The default number of results to return.
@@ -64,12 +73,91 @@ public struct VecturaConfig: Sendable {
     name: String,
     directoryURL: URL? = nil,
     dimension: Int? = nil,
-    searchOptions: SearchOptions = SearchOptions()
+    searchOptions: SearchOptions = SearchOptions(),
+    memoryStrategy: MemoryStrategy = .automatic()
   ) {
     self.name = name
     self.directoryURL = directoryURL
     self.dimension = dimension
     self.searchOptions = searchOptions
+    self.memoryStrategy = memoryStrategy
+  }
+
+  // MARK: - Memory Strategy
+
+  /// Memory management strategy for handling documents in VecturaKit.
+  ///
+  /// This enum defines how VecturaKit loads and manages documents in memory,
+  /// allowing you to optimize performance based on your dataset size.
+  public enum MemoryStrategy: Equatable, Sendable {
+    /// Default threshold for automatic strategy switching.
+    public static let defaultAutomaticThreshold = 10_000
+
+    /// Default candidate multiplier for indexed mode.
+    /// This value balances between search accuracy and performance.
+    /// - Higher values (15-20): Better recall at the cost of slower searches
+    /// - Lower values (5-10): Faster searches but may miss some relevant results
+    public static let defaultCandidateMultiplier = 10
+
+    /// Default batch size for concurrent document loading in indexed mode.
+    /// Documents are loaded in batches to balance concurrency and memory usage.
+    /// - Smaller batches (50-100): More concurrent tasks, higher overhead
+    /// - Larger batches (100-200): Fewer concurrent tasks, better throughput
+    public static let defaultBatchSize = 100
+
+    /// Default maximum number of concurrent batch loading operations.
+    /// Limits the number of simultaneous storage queries to prevent resource exhaustion.
+    public static let defaultMaxConcurrentBatches = 4
+
+    /// Automatic mode: Selects the optimal strategy based on document count.
+    ///
+    /// - Uses `fullMemory` for datasets < threshold
+    /// - Uses `indexed` mode for larger datasets
+    ///
+    /// - Parameters:
+    ///   - threshold: Document count threshold for switching strategies (default: 10,000)
+    ///
+    /// This is the recommended default for most use cases.
+    case automatic(threshold: Int = defaultAutomaticThreshold)
+
+    /// Full memory mode: Load all documents into memory.
+    ///
+    /// Best for small to medium datasets (< 100,000 documents) where:
+    /// - Fast search performance is critical (< 10ms)
+    /// - Memory usage is not a constraint
+    /// - Dataset fits comfortably in RAM
+    ///
+    /// Memory usage: ~4-5 KB per document (text + embedding + metadata)
+    case fullMemory
+
+    /// Indexed mode: Use storage-layer indexing with on-demand loading.
+    ///
+    /// Best for large datasets (> 100,000 documents) where:
+    /// - Memory efficiency is important
+    /// - Moderate search latency is acceptable
+    /// - Storage provider supports `IndexedVecturaStorage`
+    ///
+    /// - Parameters:
+    ///   - candidateMultiplier: Candidate pool size = topK × multiplier.
+    ///     Higher values improve accuracy but increase search time.
+    ///     Recommended: 5-20 (default: 10)
+    ///   - batchSize: Number of documents to load per batch during concurrent loading.
+    ///     Smaller batches increase concurrency but may have overhead.
+    ///     Recommended: 50-200 (default: 100)
+    ///   - maxConcurrentBatches: Maximum number of concurrent batch loading operations.
+    ///     Prevents resource exhaustion by limiting simultaneous storage queries.
+    ///     Recommended: 2-8 (default: 4)
+    ///
+    /// - Note: If the storage provider doesn't implement `IndexedVecturaStorage`,
+    ///   VecturaKit will automatically fall back to `fullMemory` mode.
+    ///
+    /// - Important: Parameter validation occurs when initializing VecturaKit, not during
+    ///   config creation. All parameters must be positive integers.
+    case indexed(
+      candidateMultiplier: Int = defaultCandidateMultiplier,
+      batchSize: Int = defaultBatchSize,
+      maxConcurrentBatches: Int = defaultMaxConcurrentBatches
+    )
   }
 
 }

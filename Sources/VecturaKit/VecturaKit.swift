@@ -1,8 +1,15 @@
 import Accelerate
 import Foundation
+import OSLog
 
 /// A vector database implementation that stores and searches documents using their vector embeddings.
 public actor VecturaKit {
+
+    /// Logger for error reporting and warnings
+    private static let logger = Logger(
+        subsystem: "com.vecturakit",
+        category: "VecturaKit"
+    )
 
     /// The configuration for this vector database instance.
     private let config: VecturaConfig
@@ -21,6 +28,13 @@ public actor VecturaKit {
 
     /// The storage provider that handles document persistence.
     private let storageProvider: VecturaStorage
+
+    /// Optional indexed storage provider for efficient large-scale operations.
+    private let indexedStorage: IndexedVecturaStorage?
+
+    /// Cached decision on whether to use indexed search mode.
+    /// This is computed once during initialization to avoid repeated strategy evaluation.
+    private let useIndexedMode: Bool
 
     /// Cached normalized embeddings for faster searches.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
@@ -41,6 +55,26 @@ public actor VecturaKit {
         embedder: VecturaEmbedder,
         storageProvider: VecturaStorage? = nil
     ) async throws {
+        // Validate memory strategy parameters
+        switch config.memoryStrategy {
+        case .automatic(let threshold):
+            guard threshold >= 0 else {
+                throw VecturaError.invalidInput("Automatic threshold must be non-negative, got \(threshold)")
+            }
+        case .indexed(let multiplier, let batch, let maxConcurrent):
+            guard multiplier > 0 else {
+                throw VecturaError.invalidInput("candidateMultiplier must be positive, got \(multiplier)")
+            }
+            guard batch > 0 else {
+                throw VecturaError.invalidInput("batchSize must be positive, got \(batch)")
+            }
+            guard maxConcurrent > 0 else {
+                throw VecturaError.invalidInput("maxConcurrentBatches must be positive, got \(maxConcurrent)")
+            }
+        case .fullMemory:
+            break  // No validation needed
+        }
+
         self.config = config
         self.embedder = embedder
         self.documents = [:]
@@ -70,14 +104,25 @@ public actor VecturaKit {
             self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory)
         }
 
-        // Load existing documents using the storage provider.
-        let storedDocuments = try await self.storageProvider.loadDocuments()
-        for doc in storedDocuments {
-            self.documents[doc.id] = doc
-            // Compute normalized embedding and store in cache
-            let normalized = try normalizeEmbedding(doc.embedding)
-            self.normalizedEmbeddings[doc.id] = normalized
+        // Check if storage provider supports indexed operations
+        self.indexedStorage = self.storageProvider as? IndexedVecturaStorage
+
+        // Determine effective strategy once during initialization
+        self.useIndexedMode = try await Self.determineIndexedMode(
+            strategy: config.memoryStrategy,
+            indexedStorage: self.indexedStorage,
+            storageProvider: self.storageProvider
+        )
+
+        // Log if indexed mode was requested but fallback occurred
+        if case .indexed = config.memoryStrategy, !useIndexedMode {
+            Self.logger.info(
+                "Indexed mode requested but storage provider doesn't support IndexedVecturaStorage. Falling back to fullMemory mode."
+            )
         }
+
+        // Initialize based on memory strategy
+        try await initializeWithStrategy()
     }
 
     // MARK: - Public API
@@ -207,76 +252,22 @@ public actor VecturaKit {
         // Validate query embedding dimension
         try validateDimension(queryEmbedding)
 
-        // Normalize the query vector
-        let normalizedQuery = try normalizeEmbedding(queryEmbedding)
+        // Use the cached strategy decision
+        let shouldUseIndexed = shouldUseIndexedMode()
 
-        // Build a matrix of normalized document embeddings in row-major order
-        var docIds = [UUID]()
-        var matrix = [Float]()
-        matrix.reserveCapacity(documents.count * dimension)  // Pre-allocate for better performance
-
-        for doc in documents.values {
-            if let normalized = normalizedEmbeddings[doc.id] {
-                docIds.append(doc.id)
-                matrix.append(contentsOf: normalized)
-            }
+        if shouldUseIndexed {
+            return try await searchWithIndex(
+                query: queryEmbedding,
+                numResults: numResults,
+                threshold: threshold
+            )
+        } else {
+            return try await searchInMemory(
+                query: queryEmbedding,
+                numResults: numResults,
+                threshold: threshold
+            )
         }
-
-        let docsCount = docIds.count
-        if docsCount == 0 {
-            return []
-        }
-
-        let M = Int32(docsCount)  // number of rows (documents)
-        let N = Int32(dimension)  // number of columns (embedding dimension)
-        var similarities = [Float](repeating: 0, count: docsCount)
-
-        // Convert Int32 to Int for LAPACK compatibility
-        let mInt = Int(M)  // Convert number of rows
-        let nInt = Int(N)  // Convert number of columns
-        let ldInt = Int(N) // Convert leading dimension
-
-        // Compute all similarities at once using matrix-vector multiplication
-        // Matrix is in row-major order, so we use CblasNoTrans
-        cblas_sgemv(
-            CblasRowMajor,    // matrix layout
-            CblasNoTrans,     // no transpose needed for row-major
-            mInt,             // number of rows (documents) as Int
-            nInt,             // number of columns (dimension) as Int
-            1.0,              // alpha scaling factor
-            matrix,           // matrix
-            ldInt,            // leading dimension as Int
-            normalizedQuery,  // vector
-            1,                // vector increment
-            0.0,              // beta scaling factor
-            &similarities,    // result vector
-            1                 // result increment
-        )
-
-        // Construct the results
-        var results = [VecturaSearchResult]()
-        results.reserveCapacity(docsCount)  // Pre-allocate for better performance
-
-        for (i, similarity) in similarities.enumerated() {
-            if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
-                continue
-            }
-            if let doc = documents[docIds[i]] {
-                results.append(
-                    VecturaSearchResult(
-                        id: doc.id,
-                        text: doc.text,
-                        score: similarity,
-                        createdAt: doc.createdAt
-                    )
-                )
-            }
-        }
-
-        results.sort { $0.score > $1.score }
-
-        let limit = numResults ?? config.searchOptions.defaultNumResults
-        return Array(results.prefix(limit))
     }
 
     /// Searches for similar documents using a text query with hybrid search (vector + BM25).
@@ -503,6 +494,391 @@ public actor VecturaKit {
         // Also validate against config dimension if specified
         if let configDimension = config.dimension, configDimension != dimension {
             throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
+        }
+    }
+
+    // MARK: - Initialization Strategies
+
+    /// Determines whether to use indexed mode based on strategy and storage capabilities.
+    ///
+    /// This is called once during initialization to avoid repeated evaluation.
+    ///
+    /// - Parameters:
+    ///   - strategy: The configured memory strategy
+    ///   - indexedStorage: Optional indexed storage provider
+    ///   - storageProvider: The storage provider
+    /// - Returns: True if indexed mode should be used, false otherwise
+    private static func determineIndexedMode(
+        strategy: VecturaConfig.MemoryStrategy,
+        indexedStorage: IndexedVecturaStorage?,
+        storageProvider: VecturaStorage
+    ) async throws -> Bool {
+        // If no indexed storage is available, always use in-memory
+        guard indexedStorage != nil else {
+            return false
+        }
+
+        switch strategy {
+        case .automatic(let threshold):
+            // Get document count to decide strategy
+            let totalCount: Int
+            if let indexed = indexedStorage {
+                do {
+                    totalCount = try await indexed.getTotalDocumentCount()
+                } catch {
+                    throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
+                }
+            } else {
+                do {
+                    totalCount = try await storageProvider.loadDocuments().count
+                } catch {
+                    throw VecturaError.loadFailed("Failed to load documents for counting: \(error.localizedDescription)")
+                }
+            }
+            return totalCount >= threshold
+
+        case .fullMemory:
+            return false
+
+        case .indexed:
+            return true
+        }
+    }
+
+    /// Initializes VecturaKit based on the configured memory strategy.
+    private func initializeWithStrategy() async throws {
+        // If using in-memory mode, load all documents upfront
+        if !useIndexedMode {
+            try await loadAllDocuments()
+        }
+        // Otherwise, documents will be loaded on-demand during search
+    }
+
+    /// Loads all documents into memory (backward-compatible behavior).
+    private func loadAllDocuments() async throws {
+        let storedDocuments = try await self.storageProvider.loadDocuments()
+        for doc in storedDocuments {
+            self.documents[doc.id] = doc
+            // Compute normalized embedding and store in cache
+            let normalized = try normalizeEmbedding(doc.embedding)
+            self.normalizedEmbeddings[doc.id] = normalized
+        }
+    }
+
+    /// Gets the total document count efficiently.
+    private func getTotalDocumentCount() async throws -> Int {
+        if let indexed = indexedStorage {
+            do {
+                return try await indexed.getTotalDocumentCount()
+            } catch {
+                throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
+            }
+        } else {
+            // Fallback: load all documents to count them
+            do {
+                return try await storageProvider.loadDocuments().count
+            } catch {
+                throw VecturaError.loadFailed("Failed to load documents for counting: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Search Strategies
+
+    /// Determines whether to use indexed search mode.
+    ///
+    /// This method simply returns the cached decision made during initialization.
+    private func shouldUseIndexedMode() -> Bool {
+        return useIndexedMode
+    }
+
+    /// In-memory vector search (original implementation).
+    private func searchInMemory(
+        query queryEmbedding: [Float],
+        numResults: Int?,
+        threshold: Float?
+    ) async throws -> [VecturaSearchResult] {
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Model dimension not detected")
+        }
+
+        // Normalize the query vector
+        let normalizedQuery = try normalizeEmbedding(queryEmbedding)
+
+        // Build a matrix of normalized document embeddings in row-major order
+        var docIds = [UUID]()
+        var matrix = [Float]()
+        matrix.reserveCapacity(documents.count * dimension)
+
+        for doc in documents.values {
+            if let normalized = normalizedEmbeddings[doc.id] {
+                docIds.append(doc.id)
+                matrix.append(contentsOf: normalized)
+            }
+        }
+
+        let docsCount = docIds.count
+        if docsCount == 0 {
+            return []
+        }
+
+        let M = Int32(docsCount)
+        let N = Int32(dimension)
+        var similarities = [Float](repeating: 0, count: docsCount)
+
+        let mInt = Int(M)
+        let nInt = Int(N)
+        let ldInt = Int(N)
+
+        // Compute all similarities using matrix-vector multiplication
+        cblas_sgemv(
+            CblasRowMajor,
+            CblasNoTrans,
+            mInt,
+            nInt,
+            1.0,
+            matrix,
+            ldInt,
+            normalizedQuery,
+            1,
+            0.0,
+            &similarities,
+            1
+        )
+
+        // Construct results
+        var results = [VecturaSearchResult]()
+        results.reserveCapacity(docsCount)
+
+        for (i, similarity) in similarities.enumerated() {
+            if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
+                continue
+            }
+            if let doc = documents[docIds[i]] {
+                results.append(
+                    VecturaSearchResult(
+                        id: doc.id,
+                        text: doc.text,
+                        score: similarity,
+                        createdAt: doc.createdAt
+                    )
+                )
+            }
+        }
+
+        results.sort { $0.score > $1.score }
+
+        let limit = numResults ?? config.searchOptions.defaultNumResults
+        return Array(results.prefix(limit))
+    }
+
+    /// Indexed vector search using storage-layer filtering.
+    private func searchWithIndex(
+        query queryEmbedding: [Float],
+        numResults: Int?,
+        threshold: Float?
+    ) async throws -> [VecturaSearchResult] {
+        guard let indexedStorage = self.indexedStorage else {
+            // Fallback to in-memory search
+            return try await searchInMemory(
+                query: queryEmbedding,
+                numResults: numResults,
+                threshold: threshold
+            )
+        }
+
+        guard actualDimension != nil else {
+            throw VecturaError.invalidInput("Model dimension not detected")
+        }
+
+        let topK = numResults ?? config.searchOptions.defaultNumResults
+
+        // Extract configuration parameters based on strategy
+        let candidateMultiplier: Int
+        let batchSize: Int
+        let maxConcurrentBatches: Int
+
+        if case .indexed(let multiplier, let batch, let maxConcurrent) = config.memoryStrategy {
+            candidateMultiplier = multiplier
+            batchSize = batch
+            maxConcurrentBatches = maxConcurrent
+        } else {
+            candidateMultiplier = VecturaConfig.MemoryStrategy.defaultCandidateMultiplier
+            batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
+            maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
+        }
+
+        let prefilterSize = topK * candidateMultiplier
+
+        // Stage 1: Get candidate document IDs from storage layer
+        let candidateIds = try await indexedStorage.searchCandidates(
+            queryEmbedding: queryEmbedding,
+            topK: topK,
+            prefilterSize: prefilterSize
+        )
+
+        if candidateIds.isEmpty {
+            return []
+        }
+
+        // Stage 2: Load candidate documents in batches with error handling
+        let candidates = try await loadDocumentsBatched(
+            ids: candidateIds,
+            batchSize: batchSize,
+            maxConcurrentBatches: maxConcurrentBatches,
+            storage: indexedStorage
+        )
+
+        if candidates.isEmpty {
+            return []
+        }
+
+        // Stage 3: Compute exact similarities for candidates
+        let normalizedQuery = try normalizeEmbedding(queryEmbedding)
+
+        var results = [VecturaSearchResult]()
+        results.reserveCapacity(candidates.count)
+
+        for (id, doc) in candidates {
+            // Normalize document embedding
+            let normalizedDoc = try normalizeEmbedding(doc.embedding)
+
+            // Compute cosine similarity
+            var similarity: Float = 0
+            vDSP_dotpr(normalizedQuery, 1, normalizedDoc, 1, &similarity, vDSP_Length(normalizedQuery.count))
+
+            if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
+                continue
+            }
+
+            results.append(
+                VecturaSearchResult(
+                    id: id,
+                    text: doc.text,
+                    score: similarity,
+                    createdAt: doc.createdAt
+                )
+            )
+        }
+
+        // Sort by score and return top K
+        results.sort { $0.score > $1.score }
+        return Array(results.prefix(topK))
+    }
+
+    // MARK: - Batch Loading with Error Handling
+
+    /// Information about a failed batch load operation.
+    private struct BatchLoadFailure: Error {
+        let batchIndex: Int
+        let error: Error
+        let affectedIds: [UUID]
+    }
+
+    /// Loads documents in batches with controlled concurrency and error handling.
+    ///
+    /// This method implements a robust batch loading strategy:
+    /// 1. Splits document IDs into batches for parallel processing
+    /// 2. Limits concurrent operations to prevent resource exhaustion
+    /// 3. Handles partial failures gracefully (failed batches are logged but don't fail the entire operation)
+    /// 4. Uses streaming aggregation to avoid large memory allocations
+    ///
+    /// - Parameters:
+    ///   - ids: Array of document IDs to load
+    ///   - batchSize: Number of documents per batch (default: 100)
+    ///   - maxConcurrentBatches: Maximum number of concurrent batch operations (default: 4)
+    ///   - storage: The indexed storage provider to use for loading
+    /// - Returns: Dictionary mapping document IDs to their documents (may not include all requested IDs if some batches failed)
+    /// - Throws: Only if ALL batches fail; otherwise returns partial results
+    private func loadDocumentsBatched(
+        ids: [UUID],
+        batchSize: Int,
+        maxConcurrentBatches: Int,
+        storage: IndexedVecturaStorage
+    ) async throws -> [UUID: VecturaDocument] {
+        // For small candidate sets, load directly without batching overhead
+        guard ids.count > batchSize else {
+            return try await storage.loadDocuments(ids: ids)
+        }
+
+        // Split IDs into batches
+        let batches = stride(from: 0, to: ids.count, by: batchSize).map { startIndex -> (index: Int, ids: [UUID]) in
+            let endIndex = min(startIndex + batchSize, ids.count)
+            return (index: startIndex / batchSize, ids: Array(ids[startIndex..<endIndex]))
+        }
+
+        // Load batches with controlled concurrency
+        var allDocuments: [UUID: VecturaDocument] = [:]
+        var failures: [BatchLoadFailure] = []
+
+        // Process batches with concurrency limit
+        for batchGroup in batches.chunked(into: maxConcurrentBatches) {
+            let groupResults = await withTaskGroup(of: Result<(Int, [UUID: VecturaDocument]), BatchLoadFailure>.self) { group in
+                for batch in batchGroup {
+                    group.addTask {
+                        do {
+                            let docs = try await storage.loadDocuments(ids: batch.ids)
+                            return .success((batch.index, docs))
+                        } catch {
+                            return .failure(BatchLoadFailure(
+                                batchIndex: batch.index,
+                                error: error,
+                                affectedIds: batch.ids
+                            ))
+                        }
+                    }
+                }
+
+                var results: [Result<(Int, [UUID: VecturaDocument]), BatchLoadFailure>] = []
+                for await result in group {
+                    results.append(result)
+                }
+                return results
+            }
+
+            // Process results: merge successes, collect failures
+            for result in groupResults {
+                switch result {
+                case .success(let (_, documents)):
+                    // Stream aggregation: merge documents incrementally
+                    allDocuments.merge(documents) { _, new in new }
+                case .failure(let failure):
+                    failures.append(failure)
+                }
+            }
+        }
+
+        // Log failures if any (without failing the entire operation)
+        if !failures.isEmpty {
+            let totalFailedIds = failures.reduce(0) { $0 + $1.affectedIds.count }
+            Self.logger.warning(
+                "Warning: \(failures.count) batch(es) failed to load, \(totalFailedIds) documents unavailable"
+            )
+            for failure in failures {
+                Self.logger.warning(
+                    "  - Batch \(failure.batchIndex): \(failure.error.localizedDescription)"
+                )
+            }
+        }
+
+        // Only throw if we got NO results at all
+        if allDocuments.isEmpty && !failures.isEmpty {
+            throw VecturaError.loadFailed(
+                "Failed to load any candidate documents. All \(failures.count) batch(es) failed. First error: \(failures.first?.error.localizedDescription ?? "unknown")"
+            )
+        }
+
+        return allDocuments
+    }
+}
+
+// MARK: - Array Extension for Chunking
+
+private extension Array {
+    /// Splits the array into chunks of the specified size.
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }
