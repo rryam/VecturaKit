@@ -614,23 +614,17 @@ public actor VecturaKit {
             return []
         }
 
-        let M = Int32(docsCount)
-        let N = Int32(dimension)
         var similarities = [Float](repeating: 0, count: docsCount)
-
-        let mInt = Int(M)
-        let nInt = Int(N)
-        let ldInt = Int(N)
 
         // Compute all similarities using matrix-vector multiplication
         cblas_sgemv(
             CblasRowMajor,
             CblasNoTrans,
-            mInt,
-            nInt,
+            docsCount,
+            dimension,
             1.0,
             matrix,
-            ldInt,
+            dimension,
             normalizedQuery,
             1,
             0.0,
@@ -728,24 +722,64 @@ public actor VecturaKit {
         // Stage 3: Compute exact similarities for candidates
         let normalizedQuery = try normalizeEmbedding(queryEmbedding)
 
-        var results = [VecturaSearchResult]()
-        results.reserveCapacity(candidates.count)
+        guard let dimension = actualDimension else {
+            throw VecturaError.invalidInput("Model dimension not detected")
+        }
+
+        // Build a matrix of normalized candidate embeddings
+        var candidateDocIds = [UUID]()
+        var candidateDocs = [VecturaDocument]()
+        var matrix = [Float]()
+        matrix.reserveCapacity(candidates.count * dimension)
 
         for (id, doc) in candidates {
-            // Normalize document embedding
             let normalizedDoc = try normalizeEmbedding(doc.embedding)
+            candidateDocIds.append(id)
+            candidateDocs.append(doc)
+            matrix.append(contentsOf: normalizedDoc)
+        }
 
-            // Compute cosine similarity
-            var similarity: Float = 0
-            vDSP_dotpr(normalizedQuery, 1, normalizedDoc, 1, &similarity, vDSP_Length(normalizedQuery.count))
+        let candidatesCount = candidateDocIds.count
+        if candidatesCount == 0 {
+            return []
+        }
 
+        let M = Int32(candidatesCount)
+        let N = Int32(dimension)
+        var similarities = [Float](repeating: 0, count: candidatesCount)
+
+        let mInt = Int(M)
+        let nInt = Int(N)
+        let ldInt = Int(N)
+
+        // Compute similarities using matrix-vector multiplication
+        cblas_sgemv(
+            CblasRowMajor,
+            CblasNoTrans,
+            mInt,
+            nInt,
+            1.0,
+            matrix,
+            ldInt,
+            normalizedQuery,
+            1,
+            0.0,
+            &similarities,
+            1
+        )
+
+        // Construct results
+        var results = [VecturaSearchResult]()
+        results.reserveCapacity(candidatesCount)
+
+        for (i, similarity) in similarities.enumerated() {
             if let minT = threshold ?? config.searchOptions.minThreshold, similarity < minT {
                 continue
             }
-
+            let doc = candidateDocs[i]
             results.append(
                 VecturaSearchResult(
-                    id: id,
+                    id: doc.id,
                     text: doc.text,
                     score: similarity,
                     createdAt: doc.createdAt
