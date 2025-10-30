@@ -1,0 +1,33 @@
+======================================================================
+Performance Report: 1K docs - fullMemory
+======================================================================
+
+Dataset:
+  Documents: 1,000
+
+Initialization:
+  Time: 0.50 ms
+
+Search Latency:
+  Average: 11.31 ms
+  P50:     11.03 ms
+  P95:     13.03 ms
+  P99:     20.92 ms
+  Samples: 50
+
+Memory Usage:
+  Peak:     180.22 MB
+  Per Doc:  184.54 KB
+
+Throughput:
+  Add Documents: 156 docs/sec
+======================================================================
+
+Test Date: 2025-10-30
+Platform: macOS (arm64e-apple-macos14.0)
+Status: PASSED (7.028 seconds)
+
+Notes:
+- Optimized from 10K documents to 1K to address CoreML memory constraints
+- Full memory strategy keeps all document embeddings in RAM
+- Suitable for small to medium datasets (< 5K documents)

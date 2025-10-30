@@ -4,6 +4,23 @@
 > characteristics are still being measured and optimized. We welcome feedback
 > and real-world performance data from the community.
 
+## Performance Data Reliability
+
+Before using the performance metrics in this guide, understand their reliability:
+
+| Data Category | Reliability | Verification Status |
+|---------------|-------------|---------------------|
+| **1K docs, fullMemory** | ✅ **High** | Measured on Apple M-series (debug build) |
+| **10K+ docs, fullMemory** | ⚠️ **Medium** | Linear extrapolation (not yet measured) |
+| **indexed mode recall** | ❓ **Unknown** | Based on typical ANN algorithms (HNSW, IVF) |
+| **indexed mode performance** | ❓ **Unknown** | Requires `IndexedVecturaStorage` implementation |
+
+**Key points:**
+- Small dataset (1K docs) performance is well-tested and reliable
+- Larger dataset estimates are based on linear scaling assumptions
+- Indexed mode metrics assume a production ANN implementation (not yet available)
+- `MockIndexedStorage` used in tests provides ideal (100% recall) but unrealistic performance
+
 This guide explains how to use VecturaKit's indexed storage capabilities for handling large-scale datasets efficiently.
 
 ## Overview
@@ -49,7 +66,7 @@ let vectura = try await VecturaKit(config: config)
 - Sub-10ms search latency requirements
 - When memory usage is not a constraint
 
-**Memory usage:** ~4-5 KB per document (text + embedding + metadata)
+**Memory usage:** ~180-200 KB per document (with 384-dimensional embeddings)
 
 ### Indexed Mode
 
@@ -186,26 +203,36 @@ public final class SQLiteIndexedStorageProvider: IndexedVecturaStorage {
 
 ## Performance Comparison
 
-> ⚠️ **Important**: The following table contains **estimated values** based on theoretical analysis, not actual benchmarks. Real-world performance depends heavily on:
-> - Hardware specifications (CPU, RAM, storage type)
-> - Storage provider implementation
-> - Document size and embedding dimensions
-> - Network latency (for remote storage)
->
-> **We strongly recommend profiling your specific use case before making optimization decisions.**
+> 📊 **For detailed benchmark results and methodology**, see [Performance Test Results](./TEST_RESULTS_SUMMARY.md).
 
-| Dataset Size | Strategy | Memory Usage | Init Time | Search Time | Notes |
-|--------------|----------|--------------|-----------|-------------|-------|
-| 1K docs | fullMemory | ~5 MB | < 0.1s | < 5ms | *(estimated)* |
-| 10K docs | fullMemory | ~50 MB | < 1s | < 10ms | *(estimated)* |
-| 100K docs | fullMemory | ~500 MB | < 5s | < 50ms | *(estimated)* |
-| 100K docs | indexed | Variable* | Variable | Variable | *(depends on storage)* |
-| 1M docs | indexed | Variable* | Variable | Variable | *(depends on storage)* |
+The following table shows measured and estimated performance characteristics:
+
+| Dataset Size | Strategy | Memory Usage | Init Time | Search Latency (Avg) | Data Source |
+|--------------|----------|--------------|-----------|---------------------|-------------|
+| 1K docs | fullMemory | 180-183 MB | 0.5-1.1 ms | 10-11 ms | ✅ **Measured** (Apple M-series, 384-dim) |
+| 10K docs | fullMemory | ~1.8 GB | ~5-10 ms | ~100 ms | ⚠️ **Extrapolated** (linear scaling, not verified) |
+| 100K docs | fullMemory | ~18 GB | ~50-100 ms | ~1000 ms | ⚠️ **Extrapolated** (may hit system limits) |
+| 100K docs | indexed | Variable* | Variable | Variable | ❓ **Implementation-dependent** |
+| 1M docs | indexed | Variable* | Variable | Variable | ❓ **Implementation-dependent** |
+
+**Data reliability:**
+- ✅ **Measured**: Actual benchmark results (see [TEST_RESULTS_SUMMARY.md](./TEST_RESULTS_SUMMARY.md))
+  - Test environment: Debug build, macOS on Apple Silicon, 384-dimensional embeddings
+  - Performance may be 20-30% better in release builds
+- ⚠️ **Extrapolated**: Linear scaling assumptions from measured 1K baseline
+  - Not yet verified with actual tests due to memory constraints
+  - Actual values may differ based on hardware, caching, and system load
+- ❓ **Implementation-dependent**: Requires `IndexedVecturaStorage` implementation
+  - Current `FileStorageProvider` falls back to `fullMemory` mode
+  - Performance depends on chosen ANN algorithm (HNSW, IVF, PQ, etc.)
+  - Storage layer characteristics (SQLite, PostgreSQL, etc.)
 
 *Memory usage for indexed mode depends on:
 - Candidate pool size (`candidateMultiplier × topK`)
 - Storage provider's internal buffering
 - Vector index overhead (if using HNSW, IVF, etc.)
+
+**Recommendation:** Profile your specific use case before making optimization decisions. See [TEST_RESULTS_SUMMARY.md](./TEST_RESULTS_SUMMARY.md) for detailed analysis.
 
 ## Migration Guide
 
@@ -267,12 +294,22 @@ let results = try await vectura.search(
 
 ### Q: How accurate is indexed search?
 
-**A:** It depends on `candidateMultiplier`. Higher values improve accuracy:
-- `candidateMultiplier: 5` → ~90% recall
-- `candidateMultiplier: 10` → ~95% recall
-- `candidateMultiplier: 20` → ~98% recall
+**A:** Accuracy depends on `candidateMultiplier` and the underlying ANN (Approximate Nearest Neighbor) algorithm used by your `IndexedVecturaStorage` implementation.
 
-The second-stage exact ranking ensures results within the candidate pool are perfectly sorted.
+**Theoretical estimates** (based on typical ANN algorithms like HNSW/IVF):
+- `candidateMultiplier: 5` → ~90% recall (⚠️ **estimated, not measured**)
+- `candidateMultiplier: 10` → ~95% recall (⚠️ **estimated, not measured**)
+- `candidateMultiplier: 20` → ~98% recall (⚠️ **estimated, not measured**)
+
+**Important notes:**
+- These estimates assume a production-grade ANN index (HNSW, IVF, etc.)
+- `MockIndexedStorage` (used in tests) achieves 100% recall because it performs exact similarity computation on all documents, which is not representative of real ANN performance
+- Actual recall will vary based on:
+  - Dataset characteristics (size, distribution, dimensionality)
+  - ANN algorithm choice and tuning
+  - Index build parameters
+
+The second-stage exact ranking ensures results within the candidate pool are perfectly sorted, but the quality of candidates depends on the ANN algorithm's effectiveness.
 
 ### Q: Can I switch strategies after initialization?
 

@@ -60,3 +60,12 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Performance Tests
+#
+# Ignore large test data files
+Tests/PerformanceTests/TestData/*.txt
+Tests/PerformanceTests/TestData/*.json
+Tests/PerformanceTests/TestData/*.csv
+# Keep README
+!Tests/PerformanceTests/TestData/README.md

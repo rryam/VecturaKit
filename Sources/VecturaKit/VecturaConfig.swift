@@ -127,7 +127,7 @@ public struct VecturaConfig: Sendable {
     /// - Memory usage is not a constraint
     /// - Dataset fits comfortably in RAM
     ///
-    /// Memory usage: ~4-5 KB per document (text + embedding + metadata)
+    /// Memory usage: ~180-200 KB per document (with 384-dimensional embeddings)
     case fullMemory
 
     /// Indexed mode: Use storage-layer indexing with on-demand loading.
