@@ -404,8 +404,26 @@ public actor VecturaKit {
     ///   - id: The ID of the document to update.
     ///   - newText: The new text content for the document.
     public func updateDocument(id: UUID, newText: String) async throws {
-        guard let oldDocument = documents[id] else {
-            throw VecturaError.documentNotFound(id)
+        // Try to get from cache first, otherwise load from storage
+        let oldDocument: VecturaDocument
+        if let cached = documents[id] {
+            oldDocument = cached
+        } else {
+            // In indexed mode, document may not be in memory - load it from storage
+            if let indexed = indexedStorage {
+                let loaded = try await indexed.loadDocuments(ids: [id])
+                guard let doc = loaded[id] else {
+                    throw VecturaError.documentNotFound(id)
+                }
+                oldDocument = doc
+            } else {
+                // Fall back to loading all documents and finding the target
+                let allDocs = try await storageProvider.loadDocuments()
+                guard let doc = allDocs.first(where: { $0.id == id }) else {
+                    throw VecturaError.documentNotFound(id)
+                }
+                oldDocument = doc
+            }
         }
 
         // Generate new embedding
