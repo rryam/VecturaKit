@@ -373,7 +373,10 @@ public actor VecturaKit {
 
     /// Removes all documents from the vector store.
     public func reset() async throws {
-        let documentIds = Array(documents.keys)
+        // Get all document IDs from storage, not just from memory cache
+        // This ensures we delete persisted documents even in indexed mode
+        let allDocs = try await storageProvider.loadDocuments()
+        let documentIds = allDocs.map { $0.id }
         try await deleteDocuments(ids: documentIds)
     }
 
