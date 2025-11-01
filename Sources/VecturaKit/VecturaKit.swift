@@ -32,9 +32,9 @@ public actor VecturaKit {
     /// Optional indexed storage provider for efficient large-scale operations.
     private let indexedStorage: IndexedVecturaStorage?
 
-    /// Cached decision on whether to use indexed search mode.
-    /// This is computed once during initialization to avoid repeated strategy evaluation.
-    private let useIndexedMode: Bool
+    /// Indicates whether indexed storage is available for use.
+    /// This is determined at initialization based on storage provider capabilities.
+    private let indexedModeAvailable: Bool
 
     /// Cached normalized embeddings for faster searches.
     private var normalizedEmbeddings: [UUID: [Float]] = [:]
@@ -116,15 +116,14 @@ public actor VecturaKit {
         // Check if storage provider supports indexed operations
         self.indexedStorage = self.storageProvider as? IndexedVecturaStorage
 
-        // Determine effective strategy once during initialization
-        self.useIndexedMode = try await Self.determineIndexedMode(
+        // Determine if indexed mode is available based on storage capabilities and strategy
+        self.indexedModeAvailable = Self.isIndexedModeAvailable(
             strategy: config.memoryStrategy,
-            indexedStorage: self.indexedStorage,
-            storageProvider: self.storageProvider
+            indexedStorage: self.indexedStorage
         )
 
         // Log if indexed mode was requested but fallback occurred
-        if case .indexed = config.memoryStrategy, !useIndexedMode {
+        if case .indexed = config.memoryStrategy, !indexedModeAvailable {
             Self.logger.info(
                 "Indexed mode requested but storage provider doesn't support IndexedVecturaStorage. Falling back to fullMemory mode."
             )
@@ -261,8 +260,8 @@ public actor VecturaKit {
         // Validate query embedding dimension
         try validateDimension(queryEmbedding)
 
-        // Use the cached strategy decision
-        let shouldUseIndexed = shouldUseIndexedMode()
+        // Dynamically determine which search strategy to use
+        let shouldUseIndexed = try await shouldUseIndexedMode()
 
         if shouldUseIndexed {
             return try await searchWithIndex(
@@ -529,48 +528,37 @@ public actor VecturaKit {
 
     // MARK: - Initialization Strategies
 
-    /// Determines whether to use indexed mode based on strategy and storage capabilities.
-    ///
-    /// This is called once during initialization to avoid repeated evaluation.
+    /// Determines whether indexed mode is available based on strategy and storage capabilities.
     ///
     /// - Parameters:
     ///   - strategy: The configured memory strategy
     ///   - indexedStorage: Optional indexed storage provider
-    ///   - storageProvider: The storage provider
-    /// - Returns: True if indexed mode should be used, false otherwise
-    private static func determineIndexedMode(
+    /// - Returns: True if indexed mode is available, false otherwise
+    private static func isIndexedModeAvailable(
         strategy: VecturaConfig.MemoryStrategy,
-        indexedStorage: IndexedVecturaStorage?,
-        storageProvider: VecturaStorage
-    ) async throws -> Bool {
-        // If no indexed storage is available, always use in-memory
-        guard let indexed = indexedStorage else {
+        indexedStorage: IndexedVecturaStorage?
+    ) -> Bool {
+        // If no indexed storage is available, indexed mode cannot be used
+        guard indexedStorage != nil else {
             return false
         }
 
+        // Check if strategy allows indexed mode
         switch strategy {
-        case .automatic(let threshold, _, _, _):
-            // Get document count to decide strategy
-            let totalCount: Int
-            do {
-                totalCount = try await indexed.getTotalDocumentCount()
-            } catch {
-                throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
-            }
-            return totalCount >= threshold
-
+        case .automatic, .indexed:
+            return true
         case .fullMemory:
             return false
-
-        case .indexed:
-            return true
         }
     }
 
     /// Initializes VecturaKit based on the configured memory strategy.
     private func initializeWithStrategy() async throws {
-        // If using in-memory mode, load all documents upfront
-        if !useIndexedMode {
+        // Determine if we should start with indexed mode
+        let useIndexed = try await shouldUseIndexedMode()
+
+        // If not using indexed mode, load all documents upfront
+        if !useIndexed {
             try await loadAllDocuments()
         }
         // Otherwise, documents will be loaded on-demand during search
@@ -609,9 +597,24 @@ public actor VecturaKit {
 
     /// Determines whether to use indexed search mode.
     ///
-    /// This method simply returns the cached decision made during initialization.
-    private func shouldUseIndexedMode() -> Bool {
-        return useIndexedMode
+    /// For automatic strategy, this dynamically evaluates based on current document count.
+    /// For other strategies, returns a fixed decision based on strategy and availability.
+    private func shouldUseIndexedMode() async throws -> Bool {
+        // If indexed storage is not available, cannot use indexed mode
+        guard indexedModeAvailable else {
+            return false
+        }
+
+        switch config.memoryStrategy {
+        case .automatic(let threshold, _, _, _):
+            // Re-evaluate based on current document count
+            let currentCount = try await getTotalDocumentCount()
+            return currentCount >= threshold
+        case .indexed:
+            return true
+        case .fullMemory:
+            return false
+        }
     }
 
     /// In-memory vector search (original implementation).
