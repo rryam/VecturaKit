@@ -280,11 +280,14 @@ public actor VecturaKit {
 
     /// Searches for similar documents using a text query with hybrid search (vector + BM25).
     ///
+    /// Note: Hybrid search is only available in fullMemory mode. In indexed mode,
+    /// only vector search is performed to avoid loading all documents into memory.
+    ///
     /// - Parameters:
     ///   - query: The text query to search with.
     ///   - numResults: Maximum number of results to return.
     ///   - threshold: Minimum similarity threshold.
-    /// - Returns: An array of search results ordered by hybrid score.
+    /// - Returns: An array of search results ordered by hybrid score (fullMemory) or vector score (indexed).
     public func search(
         query: String,
         numResults: Int? = nil,
@@ -304,6 +307,38 @@ public actor VecturaKit {
             throw VecturaError.dimensionMismatch(expected: configDimension, got: dimension)
         }
 
+        // Get vector embedding and perform vector search
+        let queryEmbedding = try await embedder.embed(text: query)
+
+        // Validate dimension
+        if queryEmbedding.count != dimension {
+            throw VecturaError.dimensionMismatch(expected: dimension, got: queryEmbedding.count)
+        }
+
+        // Get all vector results first (no filtering) for potential hybrid scoring
+        let vectorResults = try await search(
+            query: queryEmbedding,
+            numResults: nil,
+            threshold: nil
+        )
+
+        // Check if we should use hybrid search
+        // Hybrid search is only supported in fullMemory mode to avoid loading all documents
+        let useIndexed = try await shouldUseIndexedMode()
+        if useIndexed {
+            // Indexed mode: return vector-only results with filtering
+            var results = vectorResults
+
+            if let threshold = threshold ?? config.searchOptions.minThreshold {
+                results = results.filter { $0.score >= threshold }
+            }
+
+            let limit = numResults ?? config.searchOptions.defaultNumResults
+            return Array(results.prefix(limit))
+        }
+
+        // FullMemory mode: perform hybrid search with BM25
+
         // Initialize BM25 index if needed
         if bm25Index == nil {
             let docs = documents.values.map { $0 }
@@ -314,21 +349,7 @@ public actor VecturaKit {
             )
         }
 
-        // Get vector similarity results
-        let queryEmbedding = try await embedder.embed(text: query)
-
-        // Validate dimension
-        if queryEmbedding.count != dimension {
-            throw VecturaError.dimensionMismatch(expected: dimension, got: queryEmbedding.count)
-        }
-
-        let vectorResults = try await search(
-            query: queryEmbedding,
-            numResults: nil,
-            threshold: nil
-        )
-
-        // Request reasonable limit for BM25 results (use 2x requested results to ensure good coverage)
+        // Get BM25 text search results
         let requestedLimit = numResults ?? config.searchOptions.defaultNumResults
         let bm25Limit = min(requestedLimit * 2, documents.count)
         let bm25Results = bm25Index?.search(
