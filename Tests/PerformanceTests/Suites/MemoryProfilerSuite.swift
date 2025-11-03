@@ -116,9 +116,9 @@ struct MemoryProfilerSuite {
         print("-" * 70)
 
         for index in 0..<memorySnapshots.count {
-            let (phase, memory) = memorySnapshots[index]
-            let delta = index > 0 ? memory - memorySnapshots[0].memoryMB : 0
-            print(String(format: "%-25s %-20.2f %-20.2f", phase, memory, delta))
+            let snapshot = memorySnapshots[index]
+            let delta = index > 0 ? snapshot.memoryMB - memorySnapshots[0].memoryMB : 0
+            print(String(format: "%-25s %-20.2f %-20.2f", snapshot.phase, snapshot.memoryMB, delta))
         }
         print("=" * 70 + "\n")
 
@@ -135,10 +135,10 @@ struct MemoryProfilerSuite {
         defer { cleanup() }
 
         let generator = TestDataGenerator()
-        var memorySnapshots: [(phase: String, memoryMB: Double)] = []
+        var memorySnapshots: [MemorySnapshot] = []
 
         // Baseline
-        memorySnapshots.append(("Baseline", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "Baseline", memoryMB: getCurrentMemoryMB()))
 
         // After initialization
         let config = VecturaConfig(
@@ -173,9 +173,9 @@ struct MemoryProfilerSuite {
         print("-" * 70)
 
         for index in 0..<memorySnapshots.count {
-            let (phase, memory) = memorySnapshots[index]
-            let delta = index > 0 ? memory - memorySnapshots[0].memoryMB : 0
-            print(String(format: "%-25s %-20.2f %-20.2f", phase, memory, delta))
+            let snapshot = memorySnapshots[index]
+            let delta = index > 0 ? snapshot.memoryMB - memorySnapshots[0].memoryMB : 0
+            print(String(format: "%-25s %-20.2f %-20.2f", snapshot.phase, snapshot.memoryMB, delta))
         }
         print("=" * 70 + "\n")
 
@@ -244,8 +244,8 @@ struct MemoryProfilerSuite {
         print(String(format: "%-20s %-20s %-20s", "Strategy", "Peak Memory (MB)", "Per Document (KB)"))
         print("-" * 70)
 
-        for (strategy, peak, perDoc) in results {
-            print(String(format: "%-20s %-20.2f %-20.2f", strategy, peak, perDoc))
+        for result in results {
+            print(String(format: "%-20s %-20.2f %-20.2f", result.strategy, result.peakMB, result.perDocKB))
         }
 
         if results.count == 2 {
