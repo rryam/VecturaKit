@@ -85,7 +85,8 @@ public struct BM25Index {
                 let idf = log(max(idfArgument, 1e-9))
 
                 let numerator = tf * (k1 + 1)
-                let denominator = tf + k1 * (1 - b + b * docLength / averageDocumentLength)
+                let avgDocLen = max(averageDocumentLength, 1e-9)  // Prevent division by zero
+                let denominator = tf + k1 * (1 - b + b * docLength / avgDocLen)
 
                 score += idf * (numerator / denominator)
             }
