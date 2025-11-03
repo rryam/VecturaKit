@@ -253,7 +253,7 @@ public actor VecturaKit {
             actualDimension = try await embedder.dimension
         }
 
-        guard let dimension = actualDimension else {
+        guard actualDimension != nil else {
             throw VecturaError.invalidInput("Could not determine embedder dimension")
         }
 
@@ -602,7 +602,8 @@ public actor VecturaKit {
             do {
                 return try await indexed.getTotalDocumentCount()
             } catch {
-                throw VecturaError.loadFailed("Failed to retrieve document count from indexed storage: \(error.localizedDescription)")
+                let errMsg = "Failed to retrieve document count from indexed storage: \(error.localizedDescription)"
+                throw VecturaError.loadFailed(errMsg)
             }
         } else {
             // Fallback: load all documents to count them
@@ -712,6 +713,40 @@ public actor VecturaKit {
         return Array(results.prefix(limit))
     }
 
+    // MARK: - Indexed Search Parameters
+
+    /// Stores indexed search configuration parameters.
+    private struct IndexedSearchParams {
+        let candidateMultiplier: Int
+        let batchSize: Int
+        let maxConcurrentBatches: Int
+    }
+
+    /// Extracts indexed search parameters from current strategy configuration.
+    private func extractIndexedSearchParams() -> IndexedSearchParams {
+        switch config.memoryStrategy {
+        case .indexed(let multiplier, let batch, let maxConcurrent):
+            return IndexedSearchParams(
+                candidateMultiplier: multiplier,
+                batchSize: batch,
+                maxConcurrentBatches: maxConcurrent
+            )
+        case .automatic(_, let multiplier, let batch, let maxConcurrent):
+            return IndexedSearchParams(
+                candidateMultiplier: multiplier,
+                batchSize: batch,
+                maxConcurrentBatches: maxConcurrent
+            )
+        case .fullMemory:
+            assertionFailure("searchWithIndex should not be called with fullMemory strategy")
+            return IndexedSearchParams(
+                candidateMultiplier: VecturaConfig.MemoryStrategy.defaultCandidateMultiplier,
+                batchSize: VecturaConfig.MemoryStrategy.defaultBatchSize,
+                maxConcurrentBatches: VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
+            )
+        }
+    }
+
     /// Indexed vector search using storage-layer filtering.
     private func searchWithIndex(
         query queryEmbedding: [Float],
@@ -732,32 +767,8 @@ public actor VecturaKit {
         }
 
         let topK = numResults ?? config.searchOptions.defaultNumResults
-
-        // Extract configuration parameters based on strategy
-        let candidateMultiplier: Int
-        let batchSize: Int
-        let maxConcurrentBatches: Int
-
-        switch config.memoryStrategy {
-        case .indexed(let multiplier, let batch, let maxConcurrent):
-            candidateMultiplier = multiplier
-            batchSize = batch
-            maxConcurrentBatches = maxConcurrent
-        case .automatic(_, let multiplier, let batch, let maxConcurrent):
-            candidateMultiplier = multiplier
-            batchSize = batch
-            maxConcurrentBatches = maxConcurrent
-        case .fullMemory:
-            // This case should be unreachable because searchWithIndex is only called
-            // when shouldUseIndexedMode() returns true, which never happens for fullMemory strategy.
-            assertionFailure("searchWithIndex should not be called with fullMemory strategy")
-            
-            candidateMultiplier = VecturaConfig.MemoryStrategy.defaultCandidateMultiplier
-            batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
-            maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
-        }
-
-        let prefilterSize = topK * candidateMultiplier
+        let params = extractIndexedSearchParams()
+        let prefilterSize = topK * params.candidateMultiplier
 
         // Stage 1: Get candidate document IDs from storage layer
         let candidateIds = try await indexedStorage.searchCandidates(
@@ -773,8 +784,8 @@ public actor VecturaKit {
         // Stage 2: Load candidate documents in batches with error handling
         let candidates = try await loadDocumentsBatched(
             ids: candidateIds,
-            batchSize: batchSize,
-            maxConcurrentBatches: maxConcurrentBatches,
+            batchSize: params.batchSize,
+            maxConcurrentBatches: params.maxConcurrentBatches,
             storage: indexedStorage
         )
 
@@ -877,7 +888,8 @@ public actor VecturaKit {
     ///   - batchSize: Number of documents per batch (default: 100)
     ///   - maxConcurrentBatches: Maximum number of concurrent batch operations (default: 4)
     ///   - storage: The indexed storage provider to use for loading
-    /// - Returns: Dictionary mapping document IDs to their documents (may not include all requested IDs if some batches failed)
+    /// - Returns: Dictionary mapping document IDs to their documents (may not include all requested
+    ///   IDs if some batches failed)
     /// - Throws: Only if ALL batches fail; otherwise returns partial results
     private func loadDocumentsBatched(
         ids: [UUID],
@@ -901,8 +913,9 @@ public actor VecturaKit {
         var failures: [BatchLoadFailure] = []
 
         // Process batches with concurrency limit
+        typealias BatchResult = Result<(Int, [UUID: VecturaDocument]), BatchLoadFailure>
         for batchGroup in batches.chunked(into: maxConcurrentBatches) {
-            let groupResults = await withTaskGroup(of: Result<(Int, [UUID: VecturaDocument]), BatchLoadFailure>.self) { group in
+            let groupResults = await withTaskGroup(of: BatchResult.self) { group in
                 for batch in batchGroup {
                     group.addTask {
                         do {
@@ -952,9 +965,10 @@ public actor VecturaKit {
 
         // Only throw if we got NO results at all
         if allDocuments.isEmpty && !failures.isEmpty {
-            throw VecturaError.loadFailed(
-                "Failed to load any candidate documents. All \(failures.count) batch(es) failed. First error: \(failures.first?.error.localizedDescription ?? "unknown")"
-            )
+            let firstErrorMsg = failures.first?.error.localizedDescription ?? "unknown"
+            let errMsg = "Failed to load any candidate documents. " +
+                "All \(failures.count) batch(es) failed. First error: \(firstErrorMsg)"
+            throw VecturaError.loadFailed(errMsg)
         }
 
         return allDocuments

@@ -54,6 +54,21 @@ struct MemoryProfilerSuite {
         return 0
     }
 
+    // MARK: - Data Models
+
+    /// Represents a memory usage snapshot at a specific phase.
+    private struct MemorySnapshot {
+        let phase: String
+        let memoryMB: Double
+    }
+
+    /// Represents memory comparison results across strategies.
+    private struct MemoryResult {
+        let strategy: String
+        let peakMB: Double
+        let perDocKB: Double
+    }
+
     // MARK: - Memory Lifecycle Tests
 
     @Test("Memory: fullMemory strategy lifecycle")
@@ -63,10 +78,10 @@ struct MemoryProfilerSuite {
         defer { cleanup() }
 
         let generator = TestDataGenerator()
-        var memorySnapshots: [(phase: String, memoryMB: Double)] = []
+        var memorySnapshots: [MemorySnapshot] = []
 
         // Baseline
-        memorySnapshots.append(("Baseline", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "Baseline", memoryMB: getCurrentMemoryMB()))
 
         // After initialization
         let config = VecturaConfig(
@@ -75,24 +90,24 @@ struct MemoryProfilerSuite {
             memoryStrategy: .fullMemory
         )
         let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
-        memorySnapshots.append(("After Init", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After Init", memoryMB: getCurrentMemoryMB()))
 
         // After adding documents
         let docs1k = generator.generateDocuments(count: 500, seed: 12345)
         _ = try await vectura.addDocuments(texts: docs1k)
-        memorySnapshots.append(("After 500 docs", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 500 docs", memoryMB: getCurrentMemoryMB()))
 
         // After adding more docs
         let docs2k = generator.generateDocuments(count: 500, seed: 54321)
         _ = try await vectura.addDocuments(texts: docs2k)
-        memorySnapshots.append(("After 1K docs", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 1K docs", memoryMB: getCurrentMemoryMB()))
 
         // After searches
         let queries = generator.generateQueries(count: 30, seed: 99999)
         for query in queries {
             _ = try await vectura.search(query: query, numResults: 10)
         }
-        memorySnapshots.append(("After 30 searches", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 30 searches", memoryMB: getCurrentMemoryMB()))
 
         // Print lifecycle report
         print("\n📊 Full Memory Strategy - Memory Lifecycle:")
@@ -132,24 +147,24 @@ struct MemoryProfilerSuite {
             memoryStrategy: .indexed()
         )
         let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
-        memorySnapshots.append(("After Init", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After Init", memoryMB: getCurrentMemoryMB()))
 
         // After adding documents
         let docs1k = generator.generateDocuments(count: 500, seed: 12345)
         _ = try await vectura.addDocuments(texts: docs1k)
-        memorySnapshots.append(("After 500 docs", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 500 docs", memoryMB: getCurrentMemoryMB()))
 
         // After adding more docs
         let docs2k = generator.generateDocuments(count: 500, seed: 54321)
         _ = try await vectura.addDocuments(texts: docs2k)
-        memorySnapshots.append(("After 1K docs", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 1K docs", memoryMB: getCurrentMemoryMB()))
 
         // After searches
         let queries = generator.generateQueries(count: 30, seed: 99999)
         for query in queries {
             _ = try await vectura.search(query: query, numResults: 10)
         }
-        memorySnapshots.append(("After 30 searches", getCurrentMemoryMB()))
+        memorySnapshots.append(MemorySnapshot(phase: "After 30 searches", memoryMB: getCurrentMemoryMB()))
 
         // Print lifecycle report
         print("\n📊 Indexed Strategy - Memory Lifecycle:")
@@ -177,7 +192,7 @@ struct MemoryProfilerSuite {
         let generator = TestDataGenerator()
         let documents = generator.generateDocuments(count: documentCount, seed: 12345)
 
-        var results: [(strategy: String, peakMB: Double, perDocKB: Double)] = []
+        var results: [MemoryResult] = []
 
         // Test fullMemory strategy
         do {
@@ -198,7 +213,7 @@ struct MemoryProfilerSuite {
             let memoryUsed = peakMemory - baselineMemory
             let perDoc = memoryUsed * 1024.0 / Double(documentCount)
 
-            results.append(("fullMemory", memoryUsed, perDoc))
+            results.append(MemoryResult(strategy: "fullMemory", peakMB: memoryUsed, perDocKB: perDoc))
         }
 
         // Test indexed strategy
@@ -220,7 +235,7 @@ struct MemoryProfilerSuite {
             let memoryUsed = peakMemory - baselineMemory
             let perDoc = memoryUsed * 1024.0 / Double(documentCount)
 
-            results.append(("indexed", memoryUsed, perDoc))
+            results.append(MemoryResult(strategy: "indexed", peakMB: memoryUsed, perDocKB: perDoc))
         }
 
         // Print comparison

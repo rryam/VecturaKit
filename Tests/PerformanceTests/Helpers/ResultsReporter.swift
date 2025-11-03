@@ -91,8 +91,12 @@ public struct ResultsReporter: Sendable {
         print("=".repeating(count: 100))
 
         // Header
-        let header = String(format: "%-30s %8s %8s %8s %8s %10s %10s",
-                           "Configuration", "Avg (ms)", "P95 (ms)", "P99 (ms)", "Init (ms)", "Peak (MB)", "Per Doc (KB)")
+        let headerFormat = "%-30s %8s %8s %8s %8s %10s %10s"
+        let columnNames = [
+            "Configuration", "Avg (ms)", "P95 (ms)", "P99 (ms)", "Init (ms)", "Peak (MB)", "Per Doc (KB)"
+        ]
+        let header = String(format: headerFormat, columnNames[0], columnNames[1], columnNames[2],
+                           columnNames[3], columnNames[4], columnNames[5], columnNames[6])
         print(header)
         print("-".repeating(count: 100))
 

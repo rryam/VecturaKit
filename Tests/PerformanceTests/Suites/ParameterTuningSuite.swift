@@ -41,6 +41,22 @@ struct ParameterTuningSuite {
         SwiftEmbedder(modelSource: modelSource)
     }
 
+    // MARK: - Data Models
+
+    /// Configuration for parameter testing.
+    private struct TestConfiguration {
+        let multiplier: Int
+        let batchSize: Int
+        let concurrency: Int
+    }
+
+    /// Result from testing a workload configuration.
+    private struct WorkloadResult {
+        let label: String
+        let metrics: PerformanceMetrics
+        let description: String
+    }
+
     /// Run a benchmark with specific indexed strategy parameters.
     @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
     private func runParameterBenchmark(
@@ -206,23 +222,23 @@ struct ParameterTuningSuite {
     @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
     func optimalParameterCombination() async throws {
         // Test several promising combinations
-        let configurations: [(mult: Int, batch: Int, conc: Int)] = [
-            (5, 50, 2),    // Fast but less accurate
-            (10, 100, 4),  // Balanced (default)
-            (15, 100, 4)   // Better accuracy
+        let configurations: [TestConfiguration] = [
+            TestConfiguration(multiplier: 5, batchSize: 50, concurrency: 2),    // Fast
+            TestConfiguration(multiplier: 10, batchSize: 100, concurrency: 4),  // Balanced
+            TestConfiguration(multiplier: 15, batchSize: 100, concurrency: 4)   // Better accuracy
         ]
 
         var results: [(label: String, metrics: PerformanceMetrics)] = []
 
-        for (mult, batch, conc) in configurations {
+        for config in configurations {
             let metrics = try await runParameterBenchmark(
                 documentCount: 1_500,
                 queryCount: 20,
-                candidateMultiplier: mult,
-                batchSize: batch,
-                maxConcurrentBatches: conc
+                candidateMultiplier: config.multiplier,
+                batchSize: config.batchSize,
+                maxConcurrentBatches: config.concurrency
             )
-            let label = "M\(mult)-B\(batch)-C\(conc)"
+            let label = "M\(config.multiplier)-B\(config.batchSize)-C\(config.concurrency)"
             results.append((label: label, metrics: metrics))
         }
 
@@ -248,9 +264,12 @@ struct ParameterTuningSuite {
         }
 
         print("\n🎖️ Best Configurations:")
-        print("  Lowest Latency:      \(bestLatency.label) (\(String(format: "%.2f ms", bestLatency.metrics.avgLatency)))")
-        print("  Lowest Memory:       \(bestMemory.label) (\(String(format: "%.2f MB", bestMemory.metrics.memoryPeakMB)))")
-        print("  Highest Throughput:  \(bestThroughput.label) (\(String(format: "%.0f docs/s", bestThroughput.metrics.addDocumentThroughput ?? 0)))\n")
+        let latencyMs = String(format: "%.2f ms", bestLatency.metrics.avgLatency)
+        print("  Lowest Latency:      \(bestLatency.label) (\(latencyMs))")
+        let memoryMB = String(format: "%.2f MB", bestMemory.metrics.memoryPeakMB)
+        print("  Lowest Memory:       \(bestMemory.label) (\(memoryMB))")
+        let throughput = String(format: "%.0f docs/s", bestThroughput.metrics.addDocumentThroughput ?? 0)
+        print("  Highest Throughput:  \(bestThroughput.label) (\(throughput))\n")
 
         #expect(results.count == configurations.count)
     }
@@ -293,7 +312,7 @@ struct ParameterTuningSuite {
             )
         ]
 
-        var results: [(label: String, metrics: PerformanceMetrics, description: String)] = []
+        var results: [WorkloadResult] = []
 
         for workload in workloads {
             let metrics = try await runParameterBenchmark(
@@ -303,20 +322,20 @@ struct ParameterTuningSuite {
                 batchSize: workload.batch,
                 maxConcurrentBatches: workload.conc
             )
-            results.append((label: workload.name, metrics: metrics, description: workload.description))
+            results.append(WorkloadResult(label: workload.name, metrics: metrics, description: workload.description))
         }
 
         // Print recommendations
         print("\n💼 Workload-Specific Recommendations:")
         print("=" * 90)
 
-        for (name, metrics, description) in results {
-            print("\n\(name):")
-            print("  \(description)")
+        for result in results {
+            print("\n\(result.label):")
+            print("  \(result.description)")
             print(String(format: "  Avg Latency: %.2f ms  |  Memory: %.2f MB  |  Throughput: %.0f docs/s",
-                        metrics.avgLatency,
-                        metrics.memoryPeakMB,
-                        metrics.addDocumentThroughput ?? 0))
+                        result.metrics.avgLatency,
+                        result.metrics.memoryPeakMB,
+                        result.metrics.addDocumentThroughput ?? 0))
         }
 
         print("\n" + "=" * 90 + "\n")

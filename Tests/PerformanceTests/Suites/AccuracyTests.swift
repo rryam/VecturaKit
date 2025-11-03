@@ -66,6 +66,13 @@ struct AccuracyTests {
         let speedup: Double
     }
 
+    /// Represents accuracy comparison results.
+    private struct AccuracyResult {
+        let multiplier: Int
+        let recall: Double
+        let overlap: Double
+    }
+
     // MARK: - Basic Accuracy Tests
 
     @Test("Accuracy: indexed vs fullMemory at 1K docs")
@@ -101,7 +108,11 @@ struct AccuracyTests {
             memoryStrategy: .indexed(candidateMultiplier: 10)
         )
         let mockStorage = MockIndexedStorage()
-        let indexedVectura = try await VecturaKit(config: config2, embedder: makeEmbedder(), storageProvider: mockStorage)
+        let indexedVectura = try await VecturaKit(
+            config: config2,
+            embedder: makeEmbedder(),
+            storageProvider: mockStorage
+        )
         // Use the same document IDs to ensure comparison is valid
         _ = try await indexedVectura.addDocuments(texts: documents, ids: documentIds)
 
@@ -168,7 +179,7 @@ struct AccuracyTests {
 
         // Test different multipliers
         let multipliers = [5, 10, 15]
-        var accuracyResults: [(mult: Int, recall: Double, overlap: Double)] = []
+        var accuracyResults: [AccuracyResult] = []
 
         for mult in multipliers {
             let (dir, cleanup) = try makeTestDirectory()
@@ -199,7 +210,7 @@ struct AccuracyTests {
             let avgRecall = recalls.reduce(0, +) / Double(recalls.count)
             let avgOverlap = Double(overlaps.reduce(0, +)) / Double(overlaps.count)
 
-            accuracyResults.append((mult: mult, recall: avgRecall, overlap: avgOverlap))
+            accuracyResults.append(AccuracyResult(multiplier: mult, recall: avgRecall, overlap: avgOverlap))
         }
 
         // Print results
@@ -208,8 +219,8 @@ struct AccuracyTests {
         print(String(format: "%-20s %-25s %-25s", "Multiplier", "Recall@10", "Avg Overlap (out of 10)"))
         print("-" * 80)
 
-        for (mult, recall, overlap) in accuracyResults {
-            print(String(format: "%-20d %-25.1f%% %-25.1f", mult, recall * 100, overlap))
+        for result in accuracyResults {
+            print(String(format: "%-20d %-25.1f%% %-25.1f", result.multiplier, result.recall * 100, result.overlap))
         }
 
         print("=" * 80)
@@ -295,20 +306,28 @@ struct AccuracyTests {
             let avgLatency = Double(latencies.reduce(0, +)) / Double(latencies.count) / 1_000_000.0
             let speedup = baselineAvgLatency / avgLatency
 
-            tradeoffResults.append(TradeoffResult(multiplier: mult, recall: avgRecall, latency: avgLatency, speedup: speedup))
+            let tradeoff = TradeoffResult(
+                multiplier: mult,
+                recall: avgRecall,
+                latency: avgLatency,
+                speedup: speedup
+            )
+            tradeoffResults.append(tradeoff)
         }
 
         // Print trade-off analysis
         print("\n⚖️  Accuracy vs Performance Trade-off:")
         print("=" * 95)
-        print(String(format: "%-15s %-20s %-25s %-25s", "Multiplier", "Recall@10", "Avg Latency (ms)", "Speedup vs Baseline"))
+        let headerFormat = "%-15s %-20s %-25s %-25s"
+        print(String(format: headerFormat, "Multiplier", "Recall@10", "Avg Latency (ms)", "Speedup vs Baseline"))
         print("-" * 95)
 
         print(String(format: "%-15s %-20s %-25.2f %-25s", "Baseline", "100.0%", baselineAvgLatency, "1.00x"))
         print("-" * 95)
 
         for result in tradeoffResults {
-            print(String(format: "%-15d %-20.1f%% %-25.2f %-25.2fx", result.multiplier, result.recall * 100, result.latency, result.speedup))
+            let dataFormat = "%-15d %-20.1f%% %-25.2f %-25.2fx"
+            print(String(format: dataFormat, result.multiplier, result.recall * 100, result.latency, result.speedup))
         }
 
         print("=" * 95)
@@ -355,7 +374,11 @@ struct AccuracyTests {
             memoryStrategy: .indexed(candidateMultiplier: 15)
         )
         let mockStorage = MockIndexedStorage()
-        let indexedVectura = try await VecturaKit(config: config2, embedder: makeEmbedder(), storageProvider: mockStorage)
+        let indexedVectura = try await VecturaKit(
+            config: config2,
+            embedder: makeEmbedder(),
+            storageProvider: mockStorage
+        )
         // Use the same document IDs to ensure comparison is valid
         _ = try await indexedVectura.addDocuments(texts: documents, ids: documentIds)
 
@@ -367,10 +390,9 @@ struct AccuracyTests {
             let indexedResults = try await indexedVectura.search(query: query, numResults: 10)
 
             var matches = 0
-            for i in 0..<min(baselineResults.count, indexedResults.count) {
-                if baselineResults[i].id == indexedResults[i].id {
-                    matches += 1
-                }
+            for i in 0..<min(baselineResults.count, indexedResults.count)
+                where baselineResults[i].id == indexedResults[i].id {
+                matches += 1
             }
             topKMatches.append(matches)
         }
