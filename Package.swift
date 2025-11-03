@@ -86,7 +86,12 @@ let package = Package(
     ),
     .testTarget(
       name: "PerformanceTests",
-      dependencies: ["VecturaKit"]
+      dependencies: ["VecturaKit"],
+      resources: [
+        .copy("README.md"),
+        .copy("ArchivedResults"),
+        .copy("TestData"),
+      ]
     ),
   ]
 )
