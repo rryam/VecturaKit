@@ -5,7 +5,7 @@ import OSLog
 /// This provider adopts CachableVecturaStorage and implements caching logic internally
 /// for thread-safe document management.
 public actor FileStorageProvider {
-  
+
   /// The storage directory where JSON files are stored.
   private let storageDirectory: URL
 

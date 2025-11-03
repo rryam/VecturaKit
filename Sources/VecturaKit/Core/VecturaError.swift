@@ -15,9 +15,9 @@ public enum VecturaError {
   /// Thrown when attempting to access a document that doesn't exist.
   case documentNotFound(UUID)
 }
-    
+
 // MARK: - LocalizedError
-    
+
 extension VecturaError: LocalizedError {
 
   public var errorDescription: String? {

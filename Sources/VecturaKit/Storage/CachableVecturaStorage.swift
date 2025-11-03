@@ -27,7 +27,7 @@ import Foundation
 /// }
 /// ```
 public protocol CachableVecturaStorage: VecturaStorage {
-  
+
   /// Loads documents from the underlying storage without using the cache
   func loadDocumentsFromStorage() async throws -> [VecturaDocument]
 

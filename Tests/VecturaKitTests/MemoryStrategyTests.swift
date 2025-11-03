@@ -261,7 +261,7 @@ struct MockIndexedStorageTests {
       return Array(documents.keys)
     }
 
-    func loadDocuments(ids: [UUID]) async throws -> [UUID : VecturaDocument] {
+    func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument] {
       var result: [UUID: VecturaDocument] = [:]
       for id in ids {
         if let doc = documents[id] {
@@ -429,7 +429,7 @@ struct PartialFailureTests {
       return Array(documents.keys)
     }
 
-    func loadDocuments(ids: [UUID]) async throws -> [UUID : VecturaDocument] {
+    func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument] {
       // Simulate failure for specific IDs
       for id in ids {
         if failingIds.contains(id) {
@@ -519,4 +519,3 @@ struct PartialFailureTests {
     #expect(hasSuccessfulResults, "Should have at least one result from successful batch")
   }
 }
-

@@ -2,7 +2,7 @@ import Foundation
 
 /// A document stored in the vector database.
 public struct VecturaDocument: Identifiable, Codable, Sendable {
-  
+
   /// The unique identifier of the document.
   public let id: UUID
 

@@ -18,7 +18,7 @@ public actor SwiftEmbedder {
     self.modelSource = modelSource
   }
 }
-    
+
 // MARK: - VecturaEmbedder
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
@@ -146,7 +146,7 @@ extension SwiftEmbedder: VecturaEmbedder {
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension Bert {
-  
+
   static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
     switch source {
     case .id(let modelId):
@@ -159,7 +159,7 @@ extension Bert {
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 extension Model2Vec {
-  
+
   static func loadModelBundle(from source: VecturaModelSource) async throws -> Model2Vec.ModelBundle {
     switch source {
     case .id(let modelId):

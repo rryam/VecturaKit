@@ -2,7 +2,7 @@ import Foundation
 
 /// Specifies where to obtain the resources for an embedding model.
 public enum VecturaModelSource: Sendable {
-  
+
   /// Automatically fetch the model from a remote repository based on its id.
   ///
   /// - Parameter id: The identifier of the model to fetch from the remote repository.
@@ -14,7 +14,7 @@ public enum VecturaModelSource: Sendable {
 }
 
 public extension VecturaModelSource {
-  
+
   /// The default model identifier when not otherwise specified.
   static let defaultModelId = "minishlab/potion-retrieval-32M"
 
@@ -25,7 +25,7 @@ public extension VecturaModelSource {
 // MARK: - CustomStringConvertible
 
 extension VecturaModelSource: CustomStringConvertible {
-  
+
   /// A human-readable description of the model source.
   ///
   /// For `.id` cases, returns the model identifier.

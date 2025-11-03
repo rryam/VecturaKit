@@ -22,7 +22,7 @@ import Foundation
 /// This approach dramatically reduces memory footprint for large datasets while maintaining
 /// search quality.
 public protocol IndexedVecturaStorage: VecturaStorage {
-  
+
   /// Loads a specific range of documents from storage.
   ///
   /// - Parameters:
