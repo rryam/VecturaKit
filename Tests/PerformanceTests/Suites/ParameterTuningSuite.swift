@@ -20,6 +20,22 @@ import Testing
 @Suite("Parameter Tuning Tests", .serialized)
 struct ParameterTuningSuite {
 
+  // MARK: - Data Models
+
+  /// Represents a parameter configuration for testing.
+  private struct ParameterConfiguration {
+    let mult: Int
+    let batch: Int
+    let conc: Int
+  }
+
+  /// Represents a test result with label and metrics.
+  private struct TestResult {
+    let label: String
+    let metrics: PerformanceMetrics
+    let description: String
+  }
+
   // MARK: - Test Infrastructure
 
   private func makeTestDirectory() throws -> (URL, () -> Void) {
@@ -206,23 +222,23 @@ struct ParameterTuningSuite {
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   func optimalParameterCombination() async throws {
     // Test several promising combinations
-    let configurations: [(mult: Int, batch: Int, conc: Int)] = [
-      (5, 50, 2),    // Fast but less accurate
-      (10, 100, 4),  // Balanced (default)
-      (15, 100, 4)  // Better accuracy
+    let configurations: [ParameterConfiguration] = [
+      ParameterConfiguration(mult: 5, batch: 50, conc: 2),    // Fast but less accurate
+      ParameterConfiguration(mult: 10, batch: 100, conc: 4),  // Balanced (default)
+      ParameterConfiguration(mult: 15, batch: 100, conc: 4)  // Better accuracy
     ]
 
     var results: [(label: String, metrics: PerformanceMetrics)] = []
 
-    for (mult, batch, conc) in configurations {
+    for config in configurations {
       let metrics = try await runParameterBenchmark(
         documentCount: 1_500,
         queryCount: 20,
-        candidateMultiplier: mult,
-        batchSize: batch,
-        maxConcurrentBatches: conc
+        candidateMultiplier: config.mult,
+        batchSize: config.batch,
+        maxConcurrentBatches: config.conc
       )
-      let label = "M\(mult)-B\(batch)-C\(conc)"
+      let label = "M\(config.mult)-B\(config.batch)-C\(config.conc)"
       results.append((label: label, metrics: metrics))
     }
 
@@ -250,7 +266,8 @@ struct ParameterTuningSuite {
     print("\n🎖️ Best Configurations:")
     print("  Lowest Latency:      \(bestLatency.label) (\(String(format: "%.2f ms", bestLatency.metrics.avgLatency)))")
     print("  Lowest Memory:       \(bestMemory.label) (\(String(format: "%.2f MB", bestMemory.metrics.memoryPeakMB)))")
-    print("  Highest Throughput:  \(bestThroughput.label) (\(String(format: "%.0f docs/s", bestThroughput.metrics.addDocumentThroughput ?? 0)))\n")
+    let throughputValue = bestThroughput.metrics.addDocumentThroughput ?? 0
+    print("  Highest Throughput:  \(bestThroughput.label) (\(String(format: "%.0f docs/s", throughputValue)))\n")
 
     #expect(results.count == configurations.count)
   }
@@ -293,7 +310,7 @@ struct ParameterTuningSuite {
       )
     ]
 
-    var results: [(label: String, metrics: PerformanceMetrics, description: String)] = []
+    var results: [TestResult] = []
 
     for workload in workloads {
       let metrics = try await runParameterBenchmark(
@@ -303,20 +320,20 @@ struct ParameterTuningSuite {
         batchSize: workload.batch,
         maxConcurrentBatches: workload.conc
       )
-      results.append((label: workload.name, metrics: metrics, description: workload.description))
+      results.append(TestResult(label: workload.name, metrics: metrics, description: workload.description))
     }
 
     // Print recommendations
     print("\n💼 Workload-Specific Recommendations:")
     print("=" * 90)
 
-    for (name, metrics, description) in results {
-      print("\n\(name):")
-      print("  \(description)")
+    for result in results {
+      print("\n\(result.label):")
+      print("  \(result.description)")
       print(String(format: "  Avg Latency: %.2f ms  |  Memory: %.2f MB  |  Throughput: %.0f docs/s",
-            metrics.avgLatency,
-            metrics.memoryPeakMB,
-            metrics.addDocumentThroughput ?? 0))
+            result.metrics.avgLatency,
+            result.metrics.memoryPeakMB,
+            result.metrics.addDocumentThroughput ?? 0))
     }
 
     print("\n" + "=" * 90 + "\n")

@@ -16,6 +16,15 @@ import Testing
 @Suite("Memory Profiling Tests", .serialized)
 struct MemoryProfilerSuite {
 
+  // MARK: - Data Models
+
+  /// Represents memory usage results for a strategy.
+  private struct MemoryResult {
+    let strategy: String
+    let peakMB: Double
+    let perDocKB: Double
+  }
+
   // MARK: - Test Infrastructure
 
   private func makeTestDirectory() throws -> (URL, () -> Void) {
@@ -177,7 +186,7 @@ struct MemoryProfilerSuite {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
 
-    var results: [(strategy: String, peakMB: Double, perDocKB: Double)] = []
+    var results: [MemoryResult] = []
 
     // Test fullMemory strategy
     do {
@@ -198,7 +207,7 @@ struct MemoryProfilerSuite {
       let memoryUsed = peakMemory - baselineMemory
       let perDoc = memoryUsed * 1024.0 / Double(documentCount)
 
-      results.append(("fullMemory", memoryUsed, perDoc))
+      results.append(MemoryResult(strategy: "fullMemory", peakMB: memoryUsed, perDocKB: perDoc))
     }
 
     // Test indexed strategy
@@ -220,7 +229,7 @@ struct MemoryProfilerSuite {
       let memoryUsed = peakMemory - baselineMemory
       let perDoc = memoryUsed * 1024.0 / Double(documentCount)
 
-      results.append(("indexed", memoryUsed, perDoc))
+      results.append(MemoryResult(strategy: "indexed", peakMB: memoryUsed, perDocKB: perDoc))
     }
 
     // Print comparison
@@ -229,8 +238,8 @@ struct MemoryProfilerSuite {
     print(String(format: "%-20s %-20s %-20s", "Strategy", "Peak Memory (MB)", "Per Document (KB)"))
     print("-" * 70)
 
-    for (strategy, peak, perDoc) in results {
-      print(String(format: "%-20s %-20.2f %-20.2f", strategy, peak, perDoc))
+    for result in results {
+      print(String(format: "%-20s %-20.2f %-20.2f", result.strategy, result.peakMB, result.perDocKB))
     }
 
     if results.count == 2 {

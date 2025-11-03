@@ -20,6 +20,23 @@ import Testing
 @Suite("Search Accuracy Tests", .serialized)
 struct AccuracyTests {
 
+  // MARK: - Data Models
+
+  /// Represents accuracy comparison results.
+  private struct AccuracyResult {
+    let mult: Int
+    let recall: Double
+    let overlap: Double
+  }
+
+  /// Represents a tradeoff result between accuracy and performance.
+  private struct TradeoffResult {
+    let mult: Int
+    let recall: Double
+    let latency: Double
+    let speedup: Double
+  }
+
   // MARK: - Test Infrastructure
 
   private func makeTestDirectory() throws -> (URL, () -> Void) {
@@ -158,7 +175,7 @@ struct AccuracyTests {
 
     // Test different multipliers
     let multipliers = [5, 10, 15]
-    var accuracyResults: [(mult: Int, recall: Double, overlap: Double)] = []
+    var accuracyResults: [AccuracyResult] = []
 
     for mult in multipliers {
       let (dir, cleanup) = try makeTestDirectory()
@@ -189,7 +206,7 @@ struct AccuracyTests {
       let avgRecall = recalls.reduce(0, +) / Double(recalls.count)
       let avgOverlap = Double(overlaps.reduce(0, +)) / Double(overlaps.count)
 
-      accuracyResults.append((mult: mult, recall: avgRecall, overlap: avgOverlap))
+      accuracyResults.append(AccuracyResult(mult: mult, recall: avgRecall, overlap: avgOverlap))
     }
 
     // Print results
@@ -198,8 +215,8 @@ struct AccuracyTests {
     print(String(format: "%-20s %-25s %-25s", "Multiplier", "Recall@10", "Avg Overlap (out of 10)"))
     print("-" * 80)
 
-    for (mult, recall, overlap) in accuracyResults {
-      print(String(format: "%-20d %-25.1f%% %-25.1f", mult, recall * 100, overlap))
+    for result in accuracyResults {
+      print(String(format: "%-20d %-25.1f%% %-25.1f", result.mult, result.recall * 100, result.overlap))
     }
 
     print("=" * 80)
@@ -250,7 +267,7 @@ struct AccuracyTests {
 
     // Test different multipliers with timing
     let multipliers = [5, 10, 15]
-    var tradeoffResults: [(mult: Int, recall: Double, latency: Double, speedup: Double)] = []
+    var tradeoffResults: [TradeoffResult] = []
 
     for mult in multipliers {
       let (dir, cleanup) = try makeTestDirectory()
@@ -285,20 +302,30 @@ struct AccuracyTests {
       let avgLatency = Double(latencies.reduce(0, +)) / Double(latencies.count) / 1_000_000.0
       let speedup = baselineAvgLatency / avgLatency
 
-      tradeoffResults.append((mult: mult, recall: avgRecall, latency: avgLatency, speedup: speedup))
+      tradeoffResults.append(TradeoffResult(mult: mult, recall: avgRecall, latency: avgLatency, speedup: speedup))
     }
 
     // Print trade-off analysis
     print("\n⚖️  Accuracy vs Performance Trade-off:")
     print("=" * 95)
-    print(String(format: "%-15s %-20s %-25s %-25s", "Multiplier", "Recall@10", "Avg Latency (ms)", "Speedup vs Baseline"))
+    print(
+      String(
+        format: "%-15s %-20s %-25s %-25s",
+        "Multiplier", "Recall@10", "Avg Latency (ms)", "Speedup vs Baseline"
+      )
+    )
     print("-" * 95)
 
     print(String(format: "%-15s %-20s %-25.2f %-25s", "Baseline", "100.0%", baselineAvgLatency, "1.00x"))
     print("-" * 95)
 
-    for (mult, recall, latency, speedup) in tradeoffResults {
-      print(String(format: "%-15d %-20.1f%% %-25.2f %-25.2fx", mult, recall * 100, latency, speedup))
+    for result in tradeoffResults {
+      print(
+        String(
+          format: "%-15d %-20.1f%% %-25.2f %-25.2fx",
+          result.mult, result.recall * 100, result.latency, result.speedup
+        )
+      )
     }
 
     print("=" * 95)
@@ -356,12 +383,9 @@ struct AccuracyTests {
       let baselineResults = try await baselineVectura.search(query: .text(query), numResults: 10)
       let indexedResults = try await indexedVectura.search(query: .text(query), numResults: 10)
 
-      var matches = 0
-      for i in 0..<min(baselineResults.count, indexedResults.count) {
-        if baselineResults[i].id == indexedResults[i].id {
-          matches += 1
-        }
-      }
+      let matches = zip(baselineResults, indexedResults)
+        .filter { $0.id == $1.id }
+        .count
       topKMatches.append(matches)
     }
 

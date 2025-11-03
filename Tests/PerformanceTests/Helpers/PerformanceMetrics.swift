@@ -84,10 +84,10 @@ public struct PerformanceMetrics: Sendable {
 
   // MARK: - Private Helpers
 
-  private func percentile(_ p: Double, of values: [UInt64]) -> Double {
+  private func percentile(_ percentileValue: Double, of values: [UInt64]) -> Double {
     guard !values.isEmpty else { return 0 }
     let sorted = values.sorted()
-    let index = Int(Double(sorted.count) * p)
+    let index = Int(Double(sorted.count) * percentileValue)
     let clampedIndex = min(index, sorted.count - 1)
     return Double(sorted[clampedIndex]) / 1_000_000.0  // Convert to milliseconds
   }

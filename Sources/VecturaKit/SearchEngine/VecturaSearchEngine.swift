@@ -12,7 +12,11 @@ import Foundation
 /// using type casting:
 ///
 /// ```swift
-/// func search(query: SearchQuery, storage: VecturaStorage, options: SearchOptions) async throws -> [VecturaSearchResult] {
+/// func search(
+///     query: SearchQuery,
+///     storage: VecturaStorage,
+///     options: SearchOptions
+/// ) async throws -> [VecturaSearchResult] {
 ///     // Detect indexed storage capability
 ///     if let indexedStorage = storage as? IndexedVecturaStorage {
 ///         // Use indexed operations
