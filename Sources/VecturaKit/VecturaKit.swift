@@ -124,9 +124,8 @@ public actor VecturaKit {
 
         // Log if indexed mode was requested but fallback occurred
         if case .indexed = config.memoryStrategy, !indexedModeAvailable {
-            Self.logger.info(
-                "Indexed mode requested but storage provider doesn't support IndexedVecturaStorage. Falling back to fullMemory mode."
-            )
+            let msg = "Indexed mode requested but storage provider doesn't support it. Using fullMemory."
+            Self.logger.info("\(msg)")
         }
 
         // Initialize based on memory strategy
@@ -972,16 +971,5 @@ public actor VecturaKit {
         }
 
         return allDocuments
-    }
-}
-
-// MARK: - Array Extension for Chunking
-
-private extension Array {
-    /// Splits the array into chunks of the specified size.
-    func chunked(into size: Int) -> [[Element]] {
-        stride(from: 0, to: count, by: size).map {
-            Array(self[$0..<Swift.min($0 + size, count)])
-        }
     }
 }
