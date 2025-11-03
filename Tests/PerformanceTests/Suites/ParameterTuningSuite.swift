@@ -209,7 +209,7 @@ struct ParameterTuningSuite {
         let configurations: [(mult: Int, batch: Int, conc: Int)] = [
             (5, 50, 2),    // Fast but less accurate
             (10, 100, 4),  // Balanced (default)
-            (15, 100, 4),  // Better accuracy
+            (15, 100, 4)   // Better accuracy
         ]
 
         var results: [(label: String, metrics: PerformanceMetrics)] = []
@@ -290,7 +290,7 @@ struct ParameterTuningSuite {
                 batch: 100,
                 conc: 4,
                 description: "Optimized for best search quality"
-            ),
+            )
         ]
 
         var results: [(label: String, metrics: PerformanceMetrics, description: String)] = []

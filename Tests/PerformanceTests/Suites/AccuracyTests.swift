@@ -56,6 +56,16 @@ struct AccuracyTests {
         return baselineSet.intersection(candidateSet).count
     }
 
+    // MARK: - Data Models
+
+    /// Represents a tradeoff result between accuracy and performance.
+    private struct TradeoffResult {
+        let multiplier: Int
+        let recall: Double
+        let latency: Double
+        let speedup: Double
+    }
+
     // MARK: - Basic Accuracy Tests
 
     @Test("Accuracy: indexed vs fullMemory at 1K docs")
@@ -250,7 +260,7 @@ struct AccuracyTests {
 
         // Test different multipliers with timing
         let multipliers = [5, 10, 15]
-        var tradeoffResults: [(mult: Int, recall: Double, latency: Double, speedup: Double)] = []
+        var tradeoffResults: [TradeoffResult] = []
 
         for mult in multipliers {
             let (dir, cleanup) = try makeTestDirectory()
@@ -285,7 +295,7 @@ struct AccuracyTests {
             let avgLatency = Double(latencies.reduce(0, +)) / Double(latencies.count) / 1_000_000.0
             let speedup = baselineAvgLatency / avgLatency
 
-            tradeoffResults.append((mult: mult, recall: avgRecall, latency: avgLatency, speedup: speedup))
+            tradeoffResults.append(TradeoffResult(multiplier: mult, recall: avgRecall, latency: avgLatency, speedup: speedup))
         }
 
         // Print trade-off analysis
@@ -297,8 +307,8 @@ struct AccuracyTests {
         print(String(format: "%-15s %-20s %-25.2f %-25s", "Baseline", "100.0%", baselineAvgLatency, "1.00x"))
         print("-" * 95)
 
-        for (mult, recall, latency, speedup) in tradeoffResults {
-            print(String(format: "%-15d %-20.1f%% %-25.2f %-25.2fx", mult, recall * 100, latency, speedup))
+        for result in tradeoffResults {
+            print(String(format: "%-15d %-20.1f%% %-25.2f %-25.2fx", result.multiplier, result.recall * 100, result.latency, result.speedup))
         }
 
         print("=" * 95)

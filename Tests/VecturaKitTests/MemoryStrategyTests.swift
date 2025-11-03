@@ -261,7 +261,7 @@ struct MockIndexedStorageTests {
             return Array(documents.keys)
         }
 
-        func loadDocuments(ids: [UUID]) async throws -> [UUID : VecturaDocument] {
+        func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument] {
             var result: [UUID: VecturaDocument] = [:]
             for id in ids {
                 if let doc = documents[id] {
@@ -342,7 +342,7 @@ struct MockIndexedStorageTests {
         // Verify pages are different
         let page1Ids = Set(page1.map { $0.id })
         let page2Ids = Set(page2.map { $0.id })
-        #expect(page1Ids.intersection(page2Ids).isEmpty)
+        #expect(page1Ids.isDisjoint(with: page2Ids))
     }
 
     @Test("Mock indexed storage handles batch loading with custom parameters")
@@ -429,12 +429,10 @@ struct PartialFailureTests {
             return Array(documents.keys)
         }
 
-        func loadDocuments(ids: [UUID]) async throws -> [UUID : VecturaDocument] {
+        func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument] {
             // Simulate failure for specific IDs
-            for id in ids {
-                if failingIds.contains(id) {
-                    throw VecturaError.loadFailed("Simulated failure for batch containing \(id)")
-                }
+            for id in ids where failingIds.contains(id) {
+                throw VecturaError.loadFailed("Simulated failure for batch containing \(id)")
             }
 
             var result: [UUID: VecturaDocument] = [:]
@@ -519,4 +517,3 @@ struct PartialFailureTests {
         #expect(hasSuccessfulResults, "Should have at least one result from successful batch")
     }
 }
-
