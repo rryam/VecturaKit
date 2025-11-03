@@ -90,7 +90,7 @@ struct VecturaMLXKitTests {
     let ids = try await kit.addDocuments(texts: [text])
     #expect(ids.count == 1, "Should add exactly one document.")
 
-    let results = try await kit.search(query: text)
+    let results = try await kit.search(query: .text(text))
     #expect(results.count == 1, "The search should return one result after adding one document.")
     #expect(results.first?.text == text, "The text of the returned document should match the added text.")
   }
@@ -109,7 +109,7 @@ struct VecturaMLXKitTests {
 
     try await kit.deleteDocuments(ids: ids)
 
-    let results = try await kit.search(query: text)
+    let results = try await kit.search(query: .text(text))
     #expect(results.isEmpty, "After deletion, the document should not be returned in search results.")
   }
 
@@ -129,7 +129,7 @@ struct VecturaMLXKitTests {
     let documentID = try #require(ids.first)
     try await kit.updateDocument(id: documentID, newText: updatedText)
 
-    let results = try await kit.search(query: updatedText)
+    let results = try await kit.search(query: .text(updatedText))
     #expect(results.count == 1, "One document should be returned after update.")
     #expect(results.first?.text == updatedText, "The document text should be updated in the search results.")
   }
