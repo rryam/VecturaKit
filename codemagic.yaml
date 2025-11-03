@@ -4,6 +4,33 @@ definitions:
       events:
         - push
         - pull_request
+  scripts:
+    - &swiftlint
+      name: SwiftLint
+      script: |
+        #!/bin/zsh
+
+        swiftlint --strict
+    - &build_framework
+      name: Build Framework
+      script: |
+        #!/bin/zsh
+
+        xcodebuild clean build \
+          -scheme "$XCODE_SCHEME" \
+          -destination "platform=macOS" \
+          -skipPackagePluginValidation
+    - &run_tests
+      name: Run Tests
+      script: |
+        #!/bin/zsh
+
+        # Set environment variables for model downloads
+        export HF_HUB_OFFLINE=0
+
+        # Run core tests (excluding 30-min PerformanceTests suite)
+        # Using --no-parallel to avoid concurrent model download issues
+        swift test --no-parallel --skip PerformanceTests
 workflows:
   vecturakit:
     name: VecturaKit Workflow
@@ -20,19 +47,9 @@ workflows:
     triggering:
       <<: *events
     scripts:
-      - name: SwiftLint
-        script: |
-          #!/bin/zsh
-
-          swiftlint --strict
-      - name: Build Framework
-        script: |
-          #!/bin/zsh
-
-          xcodebuild clean build \
-            -scheme "$XCODE_SCHEME" \
-            -destination "platform=macOS" \
-            -skipPackagePluginValidation
+      - *swiftlint
+      - *build_framework
+      - *run_tests
   vecturamlxkit:
     name: VecturaMLXKit Workflow
     environment:
@@ -48,21 +65,11 @@ workflows:
     triggering:
       <<: *events
     scripts:
-      - name: SwiftLint
-        script: |
-          #!/bin/zsh
-
-          swiftlint --strict
+      - *swiftlint
       - name: Install Metal Toolchain
         script: |
           #!/bin/zsh
 
           xcodebuild -downloadComponent MetalToolchain
-      - name: Build Framework
-        script: |
-          #!/bin/zsh
-
-          xcodebuild clean build \
-            -scheme "$XCODE_SCHEME" \
-            -destination "platform=macOS" \
-            -skipPackagePluginValidation
+      - *build_framework
+      - *run_tests
