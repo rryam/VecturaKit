@@ -298,12 +298,12 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     let batchSize: Int
     let maxConcurrentBatches: Int
     switch strategy {
-    case .indexed(_, let bs, let mc):
-      batchSize = bs
-      maxConcurrentBatches = mc
-    case .automatic(_, _, let bs, let mc):
-      batchSize = bs
-      maxConcurrentBatches = mc
+    case .indexed(_, let extractedBatchSize, let extractedMaxConcurrent):
+      batchSize = extractedBatchSize
+      maxConcurrentBatches = extractedMaxConcurrent
+    case .automatic(_, _, let extractedBatchSize, let extractedMaxConcurrent):
+      batchSize = extractedBatchSize
+      maxConcurrentBatches = extractedMaxConcurrent
     case .fullMemory:
       batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
       maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
