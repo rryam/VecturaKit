@@ -165,8 +165,11 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       return []
     }
 
-    // Load candidate documents
-    let candidates = try await indexedStorage.loadDocuments(ids: candidateIds)
+    // Load candidate documents with batching for memory efficiency
+    let candidates = try await loadCandidatesWithBatching(
+      candidateIds: candidateIds,
+      storage: indexedStorage
+    )
 
     guard !candidates.isEmpty else {
       return []
@@ -273,5 +276,85 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     var sumSquares: Float = 0
     vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
     return sqrt(sumSquares)
+  }
+
+  // MARK: - Batch Loading
+
+  /// Loads candidate documents using batched loading for memory efficiency.
+  ///
+  /// This method implements controlled batching to prevent memory spikes when loading
+  /// large numbers of candidate documents in indexed mode.
+  ///
+  /// - Parameters:
+  ///   - candidateIds: Array of document IDs to load
+  ///   - storage: The indexed storage provider
+  /// - Returns: Dictionary mapping document IDs to their documents
+  /// - Throws: VecturaError if all batches fail
+  private func loadCandidatesWithBatching(
+    candidateIds: [UUID],
+    storage: IndexedVecturaStorage
+  ) async throws -> [UUID: VecturaDocument] {
+    // Extract batch parameters from strategy
+    let batchSize: Int
+    let maxConcurrentBatches: Int
+    switch strategy {
+    case .indexed(_, let bs, let mc):
+      batchSize = bs
+      maxConcurrentBatches = mc
+    case .automatic(_, _, let bs, let mc):
+      batchSize = bs
+      maxConcurrentBatches = mc
+    case .fullMemory:
+      batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
+      maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches
+    }
+
+    // For small candidate sets, load directly without batching overhead
+    guard candidateIds.count > batchSize else {
+      return try await storage.loadDocuments(ids: candidateIds)
+    }
+
+    // Split IDs into batches
+    let batches = stride(from: 0, to: candidateIds.count, by: batchSize).map { startIndex in
+      let endIndex = min(startIndex + batchSize, candidateIds.count)
+      return Array(candidateIds[startIndex..<endIndex])
+    }
+
+    // Load batches with controlled concurrency
+    var allDocuments: [UUID: VecturaDocument] = [:]
+    var failureCount = 0
+
+    // Process batches in groups to limit concurrency
+    for batchGroup in batches.chunked(into: maxConcurrentBatches) {
+      await withTaskGroup(of: (success: Bool, docs: [UUID: VecturaDocument]).self) { group in
+        for batch in batchGroup {
+          group.addTask {
+            do {
+              let docs = try await storage.loadDocuments(ids: batch)
+              return (success: true, docs: docs)
+            } catch {
+              return (success: false, docs: [:])
+            }
+          }
+        }
+
+        for await result in group {
+          if result.success {
+            allDocuments.merge(result.docs) { _, new in new }
+          } else {
+            failureCount += 1
+          }
+        }
+      }
+    }
+
+    // Only throw if we got NO results at all
+    if allDocuments.isEmpty && failureCount > 0 {
+      throw VecturaError.loadFailed(
+        "Failed to load any candidate documents (\(failureCount) batch(es) failed)"
+      )
+    }
+
+    return allDocuments
   }
 }
