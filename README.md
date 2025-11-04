@@ -48,6 +48,7 @@ Explore the following books to understand more about AI and iOS development:
   - [Document Management](#document-management)
   - [Database Information](#database-information)
   - [Custom Storage Provider](#custom-storage-provider)
+  - [Custom Search Engine](#custom-search-engine)
 - [MLX Integration](#mlx-integration)
   - [Import MLX Support](#import-mlx-support)
   - [Initialize Database with MLX](#initialize-database-with-mlx)
@@ -67,6 +68,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **Auto-Dimension Detection:** Automatically detects embedding dimensions from models.
 -   **On-Device Storage:** Stores and manages vector embeddings locally.
 -   **Hybrid Search:** Combines vector similarity with BM25 text search for relevant search results (`VecturaKit`).
+-   **Pluggable Search Engines:** Implement custom search algorithms by conforming to the `VecturaSearchEngine` protocol.
 -   **Batch Processing:** Indexes documents in parallel for faster data ingestion.
 -   **Persistent Storage:** Automatically saves and loads document data, preserving the database state across app sessions.
 -   **Configurable Search:** Customizes search behavior with adjustable thresholds, result limits, and hybrid search weights.
@@ -155,7 +157,8 @@ let config = VecturaConfig(
         minThreshold: 0.7,
         hybridWeight: 0.5,  // Balance between vector and text search
         k1: 1.2,           // BM25 parameters
-        b: 0.75
+        b: 0.75,
+        bm25NormalizationFactor: 10.0
     )
 )
 
@@ -228,10 +231,19 @@ for result in results {
 Search by vector embedding:
 
 ```swift
+// Using array literal
 let results = try await vectorDB.search(
-    query: embeddingArray,  // [Float] matching config.dimension
+    query: [0.1, 0.2, 0.3, ...],  // Array literal matching config.dimension
     numResults: 5,  // Optional
     threshold: 0.8  // Optional
+)
+
+// Or explicitly use SearchQuery enum
+let embedding: [Float] = getEmbedding()
+let results = try await vectorDB.search(
+    query: .vector(embedding),
+    numResults: 5,
+    threshold: 0.8
 )
 ```
 
@@ -303,6 +315,11 @@ final class MyCustomStorageProvider: VecturaStorage {
         // Update document in your storage
         documents[document.id] = document
     }
+
+    func getTotalDocumentCount() async throws -> Int {
+        // Return total count (optional - protocol provides default implementation)
+        return documents.count
+    }
 }
 ```
 
@@ -318,6 +335,73 @@ let vectorDB = try await VecturaKit(
 
 // Use vectorDB normally - all storage operations will use your custom provider
 let documentId = try await vectorDB.addDocument(text: "Sample text")
+```
+
+### Custom Search Engine
+
+VecturaKit supports custom search engine implementations by conforming to the `VecturaSearchEngine` protocol. This allows you to implement specialized search algorithms (pure vector, pure text, custom hybrid, or other ranking methods).
+
+Define a custom search engine:
+
+```swift
+import Foundation
+import VecturaKit
+
+struct MyCustomSearchEngine: VecturaSearchEngine {
+
+    func search(
+        query: SearchQuery,
+        storage: VecturaStorage,
+        options: SearchOptions
+    ) async throws -> [VecturaSearchResult] {
+        // Load documents from storage
+        let documents = try await storage.loadDocuments()
+
+        // Implement your custom search logic
+        // This example does a simple exact text match
+        guard case .text(let queryText) = query else {
+            return []
+        }
+
+        let results = documents.filter { doc in
+            doc.text.lowercased().contains(queryText.lowercased())
+        }.map { doc in
+            VecturaSearchResult(
+                id: doc.id,
+                text: doc.text,
+                score: 1.0,
+                createdAt: doc.createdAt
+            )
+        }
+
+        return Array(results.prefix(options.numResults))
+    }
+
+    func indexDocument(_ document: VecturaDocument) async throws {
+        // Optional: Update your search engine's internal index
+    }
+
+    func removeDocument(id: UUID) async throws {
+        // Optional: Remove from your search engine's internal index
+    }
+}
+```
+
+Use the custom search engine:
+
+```swift
+let config = VecturaConfig(name: "my-db")
+let embedder = SwiftEmbedder(modelSource: .default)
+let customEngine = MyCustomSearchEngine()
+
+let vectorDB = try await VecturaKit(
+    config: config,
+    embedder: embedder,
+    searchEngine: customEngine
+)
+
+// All searches will use your custom search engine
+let results = try await vectorDB.search(query: "search query")
 ```
 
 ## MLX Integration

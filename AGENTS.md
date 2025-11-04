@@ -10,7 +10,7 @@ VecturaKit ships as a Swift package with libraries `VecturaKit` (core storage + 
 - `swift package update` refreshes dependency pins before release branches or large upgrades.
 
 ## Coding Style & Naming Conventions
-Follow Swift 6 defaults: four-space indentation, trailing commas in multi-line literals, and a 120-character soft wrap. Keep types UpperCamelCase, members lowerCamelCase, and CLI command enums verb-based (`case add`, `case search`). Use the existing async/await APIs, isolate file IO in helpers, and document public entry points with concise `///` comments.
+Follow Swift 6 defaults: two-space indentation, trailing commas in multi-line literals, and a 120-character soft wrap. Keep types UpperCamelCase, members lowerCamelCase, and CLI command enums verb-based (`case add`, `case search`). Use the existing async/await APIs, isolate file IO in helpers, and document public entry points with concise `///` comments.
 
 ## Testing Guidelines
 Declare new Swift Testing suites with `@Suite` and `@Test` annotations, keeping test functions `async throws` and cleaning up resources explicitly within each test. Prefer per-test temporary directories over `~/Documents/VecturaKit`, and short-circuit MLX flows when Metal or device libraries are unavailable. Do not introduce new `XCTestCase` subclasses—Swift Testing is the required framework going forward. When touching MLX flows, cover them in `VecturaMLXKitTests` and include at least one CLI invocation; update `codemagic.yaml` whenever the CI matrix or steps change.

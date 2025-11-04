@@ -7,6 +7,9 @@ excluded:
   - DerivedData
   - Packages
 
+# Code style
+indentation: 2
+
 line_length:
   warning: 120
   error: 200

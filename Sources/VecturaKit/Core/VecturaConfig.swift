@@ -3,27 +3,9 @@ import Foundation
 /// Configuration options for Vectura vector database.
 public struct VecturaConfig: Sendable {
 
-  /// The name of the database instance.
-  public let name: String
-
-  /// A custom directory where the database should be stored.
-  /// Will be created if it doesn't exist, database contents are stored in a subdirectory named after ``name``.
-  public let directoryURL: URL?
-
-  /// The dimension of vectors to be stored. If nil, will be auto-detected from the model.
-  public let dimension: Int?
-
-  /// Memory management strategy for handling large-scale datasets.
-  ///
-  /// This setting controls how VecturaKit loads and manages documents in memory.
-  /// Choose a strategy based on your dataset size and performance requirements.
-  ///
-  /// - Note: The strategy is fixed at initialization time and cannot be changed after
-  ///   the VecturaKit instance is created.
-  public let memoryStrategy: MemoryStrategy
-
   /// Options for similarity search.
   public struct SearchOptions: Sendable {
+
     /// The default number of results to return.
     public var defaultNumResults: Int = 10
 
@@ -68,25 +50,6 @@ public struct VecturaConfig: Sendable {
       self.bm25NormalizationFactor = bm25NormalizationFactor
     }
   }
-
-  /// Search configuration options.
-  public var searchOptions: SearchOptions
-
-  public init(
-    name: String,
-    directoryURL: URL? = nil,
-    dimension: Int? = nil,
-    searchOptions: SearchOptions = SearchOptions(),
-    memoryStrategy: MemoryStrategy = .automatic()
-  ) {
-    self.name = name
-    self.directoryURL = directoryURL
-    self.dimension = dimension
-    self.searchOptions = searchOptions
-    self.memoryStrategy = memoryStrategy
-  }
-
-  // MARK: - Memory Strategy
 
   /// Memory management strategy for handling documents in VecturaKit.
   ///
@@ -173,4 +136,39 @@ public struct VecturaConfig: Sendable {
     )
   }
 
+  /// The name of the database instance.
+  public let name: String
+
+  /// A custom directory where the database should be stored.
+  /// Will be created if it doesn't exist, database contents are stored in a subdirectory named after ``name``.
+  public let directoryURL: URL?
+
+  /// The dimension of vectors to be stored. If nil, will be auto-detected from the model.
+  public let dimension: Int?
+
+  /// Memory management strategy for handling large-scale datasets.
+  ///
+  /// This setting controls how VecturaKit loads and manages documents in memory.
+  /// Choose a strategy based on your dataset size and performance requirements.
+  ///
+  /// - Note: The strategy is fixed at initialization time and cannot be changed after
+  ///   the VecturaKit instance is created.
+  public let memoryStrategy: MemoryStrategy
+
+  /// Search configuration options.
+  public var searchOptions: SearchOptions
+
+  public init(
+    name: String,
+    directoryURL: URL? = nil,
+    dimension: Int? = nil,
+    searchOptions: SearchOptions = .init(),
+    memoryStrategy: MemoryStrategy = .automatic()
+  ) {
+    self.name = name
+    self.directoryURL = directoryURL
+    self.dimension = dimension
+    self.searchOptions = searchOptions
+    self.memoryStrategy = memoryStrategy
+  }
 }
