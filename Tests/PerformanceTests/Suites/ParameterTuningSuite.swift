@@ -77,7 +77,7 @@ struct ParameterTuningSuite {
 
     // Initialize with specific parameters
     await monitor.startTimer()
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "param-db",
       directoryURL: directory,
       memoryStrategy: .indexed(

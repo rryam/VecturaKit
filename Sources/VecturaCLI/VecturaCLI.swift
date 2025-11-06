@@ -24,9 +24,17 @@ struct VecturaCLI: AsyncParsableCommand {
     subcommands: [Add.self, Search.self, Update.self, Delete.self, Reset.self, Mock.self]
   )
 
+  /// Writes an error message to stderr
+  static func writeError(_ message: String) {
+    let errorMessage = message + "\n"
+    if let data = errorMessage.data(using: .utf8) {
+      FileHandle.standardError.write(data)
+    }
+  }
+
   static func setupDB(dbName: String, dimension: Int, numResults: Int, threshold: Float, modelId: String) async throws
   -> VecturaKit {
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: dbName,
       dimension: dimension,
       searchOptions: VecturaConfig.SearchOptions(
@@ -187,6 +195,11 @@ extension VecturaCLI {
     var query: String
 
     mutating func run() async throws {
+      guard !query.isEmpty else {
+        VecturaCLI.writeError("Error: Query cannot be empty.")
+        throw ExitCode.failure
+      }
+
       let db = try await VecturaCLI.setupDB(
         dbName: dbName,
         dimension: dimension,

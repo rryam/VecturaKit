@@ -12,7 +12,7 @@ struct TestMLXExamples {
     // 2. Initialize Database
     debugPrint("2. Initialize Database")
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-mlx-vector-db"
       // Dimension will be auto-detected from the model
     )
@@ -56,8 +56,11 @@ struct TestMLXExamples {
     debugPrint("5. Document Management")
 
     // Update document:
+    guard let documentToUpdate = documentIds.first else {
+      debugPrint("No documents to update")
+      return
+    }
     debugPrint("Updating document...")
-    let documentToUpdate = documentIds.first!
     try await vectorDB.updateDocument(
       id: documentToUpdate,
       newText: "Updated text"
@@ -70,7 +73,10 @@ struct TestMLXExamples {
 
     // Delete documents:
     debugPrint("Deleting documents...")
-    try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
+    let idsToDelete = documentIds.count >= 2
+      ? [documentToUpdate, documentIds[1]]
+      : [documentToUpdate]
+    try await vectorDB.deleteDocuments(ids: idsToDelete)
     debugPrint("Documents deleted")
     debugPrint("Document count after deletion: \(try await vectorDB.documentCount)")
 

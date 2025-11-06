@@ -156,7 +156,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       let prefilterResults = try await searchInMemory(
         queryVector: queryVector,
         storage: indexedStorage,
-        options: SearchOptions(numResults: prefilterSize)
+        options: try SearchOptions(numResults: prefilterSize)
       )
       candidateIds = prefilterResults.map { $0.id }
     }

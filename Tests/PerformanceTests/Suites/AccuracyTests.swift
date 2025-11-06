@@ -87,7 +87,7 @@ struct AccuracyTests {
     let (dir1, cleanup1) = try makeTestDirectory()
     defer { cleanup1() }
 
-    let config1 = VecturaConfig(
+    let config1 = try VecturaConfig(
       name: "baseline-db",
       directoryURL: dir1,
       memoryStrategy: .fullMemory
@@ -102,7 +102,7 @@ struct AccuracyTests {
     let (dir2, cleanup2) = try makeTestDirectory()
     defer { cleanup2() }
 
-    let config2 = VecturaConfig(
+    let config2 = try VecturaConfig(
       name: "indexed-db",
       directoryURL: dir2,
       memoryStrategy: .indexed(candidateMultiplier: 10)
@@ -155,7 +155,7 @@ struct AccuracyTests {
     let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
     defer { cleanupBaseline() }
 
-    let configBaseline = VecturaConfig(
+    let configBaseline = try VecturaConfig(
       name: "baseline-db",
       directoryURL: dirBaseline,
       memoryStrategy: .fullMemory
@@ -181,7 +181,7 @@ struct AccuracyTests {
       let (dir, cleanup) = try makeTestDirectory()
       defer { cleanup() }
 
-      let config = VecturaConfig(
+      let config = try VecturaConfig(
         name: "indexed-db",
         directoryURL: dir,
         memoryStrategy: .indexed(candidateMultiplier: mult)
@@ -239,7 +239,7 @@ struct AccuracyTests {
     let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
     defer { cleanupBaseline() }
 
-    let configBaseline = VecturaConfig(
+    let configBaseline = try VecturaConfig(
       name: "baseline-db",
       directoryURL: dirBaseline,
       memoryStrategy: .fullMemory
@@ -273,7 +273,7 @@ struct AccuracyTests {
       let (dir, cleanup) = try makeTestDirectory()
       defer { cleanup() }
 
-      let config = VecturaConfig(
+      let config = try VecturaConfig(
         name: "indexed-db",
         directoryURL: dir,
         memoryStrategy: .indexed(candidateMultiplier: mult)
@@ -351,7 +351,7 @@ struct AccuracyTests {
     let (dir1, cleanup1) = try makeTestDirectory()
     defer { cleanup1() }
 
-    let config1 = VecturaConfig(
+    let config1 = try VecturaConfig(
       name: "baseline-db",
       directoryURL: dir1,
       memoryStrategy: .fullMemory
@@ -366,7 +366,7 @@ struct AccuracyTests {
     let (dir2, cleanup2) = try makeTestDirectory()
     defer { cleanup2() }
 
-    let config2 = VecturaConfig(
+    let config2 = try VecturaConfig(
       name: "indexed-db",
       directoryURL: dir2,
       memoryStrategy: .indexed(candidateMultiplier: 15)

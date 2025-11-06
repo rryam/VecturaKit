@@ -96,6 +96,18 @@ public actor VecturaKit {
   ///   - ids: Optional unique identifiers for the documents.
   /// - Returns: The IDs of the added documents.
   public func addDocuments(texts: [String], ids: [UUID]? = nil) async throws -> [UUID] {
+    // Validate input
+    guard !texts.isEmpty else {
+      throw VecturaError.invalidInput("Cannot add empty array of documents")
+    }
+
+    // Validate that no text is empty
+    for (index, text) in texts.enumerated() {
+      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        throw VecturaError.invalidInput("Document at index \(index) cannot be empty or whitespace-only")
+      }
+    }
+
     if let ids = ids, ids.count != texts.count {
       throw VecturaError.invalidInput("Number of IDs must match number of texts")
     }
@@ -175,7 +187,7 @@ public actor VecturaKit {
       break  // Text queries don't need validation - embedder generates correct dimension
     }
 
-    let options = SearchOptions(
+    let options = try SearchOptions(
       numResults: numResults ?? config.searchOptions.defaultNumResults,
       threshold: threshold ?? config.searchOptions.minThreshold
     )

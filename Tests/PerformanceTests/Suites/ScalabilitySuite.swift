@@ -59,7 +59,7 @@ struct ScalabilitySuite {
 
     // Measure initialization
     await monitor.startTimer()
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "scale-db",
       directoryURL: directory,
       memoryStrategy: strategy

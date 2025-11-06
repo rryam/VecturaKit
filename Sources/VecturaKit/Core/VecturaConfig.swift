@@ -39,9 +39,8 @@ public struct VecturaConfig: Sendable {
       b: Float = 0.75,
       bm25NormalizationFactor: Float = 10.0
     ) {
-      guard bm25NormalizationFactor > 0 else {
-        preconditionFailure("bm25NormalizationFactor must be positive, got \(bm25NormalizationFactor)")
-      }
+      // Note: Validation is performed in VecturaConfig.init to allow throwing errors
+      // Struct initializers cannot throw, so we validate at the VecturaConfig level
       self.defaultNumResults = defaultNumResults
       self.minThreshold = minThreshold
       self.hybridWeight = hybridWeight
@@ -164,7 +163,14 @@ public struct VecturaConfig: Sendable {
     dimension: Int? = nil,
     searchOptions: SearchOptions = .init(),
     memoryStrategy: MemoryStrategy = .automatic()
-  ) {
+  ) throws {
+    // Validate search options
+    guard searchOptions.bm25NormalizationFactor > 0 else {
+      throw VecturaError.invalidInput(
+        "bm25NormalizationFactor must be positive, got \(searchOptions.bm25NormalizationFactor)"
+      )
+    }
+
     self.name = name
     self.directoryURL = directoryURL
     self.dimension = dimension

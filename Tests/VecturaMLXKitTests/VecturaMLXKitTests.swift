@@ -52,8 +52,8 @@ struct VecturaMLXKitTests {
     return directory
   }
 
-  private func makeConfig(name: String = UUID().uuidString, directoryURL: URL) -> VecturaConfig {
-    VecturaConfig(
+  private func makeConfig(name: String = UUID().uuidString, directoryURL: URL) throws -> VecturaConfig {
+    try VecturaConfig(
       name: name,
       directoryURL: directoryURL,
       dimension: testDimension,
@@ -83,7 +83,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(directoryURL: directory)
+    let config = try makeConfig(directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let text = "Hello world"
@@ -100,7 +100,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(directoryURL: directory)
+    let config = try makeConfig(directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let text = "Delete me"
@@ -118,7 +118,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(directoryURL: directory)
+    let config = try makeConfig(directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let originalText = "Original text"
@@ -139,7 +139,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(directoryURL: directory)
+    let config = try makeConfig(directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     _ = try await kit.addDocuments(texts: ["Doc1", "Doc2"])
@@ -154,7 +154,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
+    let config = try makeConfig(name: "TestMLXDB", directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let texts = [
@@ -182,7 +182,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
+    let config = try makeConfig(name: "TestMLXDB", directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let texts = [
@@ -203,7 +203,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
+    let config = try makeConfig(name: "TestMLXDB", directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     let texts = [
@@ -229,7 +229,7 @@ struct VecturaMLXKitTests {
     let directory = try makeTestDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let config = makeConfig(name: "TestMLXDB", directoryURL: directory)
+    let config = try makeConfig(name: "TestMLXDB", directoryURL: directory)
     guard let kit = try await createVecturaKit(config: config) else { return }
 
     _ = try await kit.addDocuments(texts: ["Some random content"])

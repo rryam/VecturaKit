@@ -11,7 +11,7 @@ struct TestExamples {
 
     // Example 2: Create Configuration and Initialize Database
     debugPrint("2. Create Configuration and Initialize Database")
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-vector-db",
       directoryURL: nil,  // Optional custom storage location
       // Dimension will be auto-detected from the model
@@ -101,8 +101,11 @@ struct TestExamples {
     debugPrint("5. Document Management")
 
     // Update document:
+    guard let documentToUpdate = documentIds.first else {
+      debugPrint("No documents to update")
+      return
+    }
     debugPrint("Updating document...")
-    let documentToUpdate = documentIds.first!
     try await vectorDB.updateDocument(
       id: documentToUpdate,
       newText: "Updated text"
@@ -115,7 +118,10 @@ struct TestExamples {
 
     // Delete documents:
     debugPrint("Deleting documents...")
-    try await vectorDB.deleteDocuments(ids: [documentToUpdate, documentIds[1]])
+    let idsToDelete = documentIds.count >= 2
+      ? [documentToUpdate, documentIds[1]]
+      : [documentToUpdate]
+    try await vectorDB.deleteDocuments(ids: idsToDelete)
     debugPrint("Documents deleted")
     debugPrint("Document count after deletion: \(try await vectorDB.documentCount)")
 

@@ -25,6 +25,14 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     subcommands: [Add.self, Search.self, Update.self, Delete.self, Reset.self, Mock.self]
   )
 
+  /// Writes an error message to stderr
+  static func writeError(_ message: String) {
+    let errorMessage = message + "\n"
+    if let data = errorMessage.data(using: .utf8) {
+      FileHandle.standardError.write(data)
+    }
+  }
+
   static func setupDB(
     dbName: String,
     dimension: Int? = nil,
@@ -32,7 +40,7 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     threshold: Float = 0.7,
     modelConfiguration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5
   ) async throws -> VecturaKit {
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: dbName,
       dimension: dimension,
       searchOptions: VecturaConfig.SearchOptions(
@@ -182,7 +190,7 @@ extension VecturaMLXCLI {
 
     mutating func run() async throws {
       guard !query.isEmpty else {
-        print("Error: Query cannot be empty.")
+        VecturaMLXCLI.writeError("Error: Query cannot be empty.")
         throw ExitCode.failure
       }
 

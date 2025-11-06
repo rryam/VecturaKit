@@ -25,7 +25,7 @@ struct VecturaKitTests {
     searchOptions: VecturaConfig.SearchOptions = .init()
   ) throws -> (VecturaConfig, () -> Void) {
     let (directory, cleanup) = try makeTestDirectory()
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: name,
       directoryURL: directory,
       dimension: dimension,
@@ -331,7 +331,7 @@ struct VecturaKitTests {
 
     let databaseName = "test-\(UUID().uuidString)"
     let instance = try await VecturaKit(
-      config: .init(name: databaseName, directoryURL: customDirectoryURL),
+      config: try .init(name: databaseName, directoryURL: customDirectoryURL),
       embedder: makeEmbedder()
     )
     let text = "Test document"

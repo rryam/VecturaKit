@@ -78,7 +78,7 @@ struct MemoryProfilerSuite {
     memorySnapshots.append(("Baseline", getCurrentMemoryMB()))
 
     // After initialization
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "mem-test-db",
       directoryURL: directory,
       memoryStrategy: .fullMemory
@@ -135,7 +135,7 @@ struct MemoryProfilerSuite {
     memorySnapshots.append(("Baseline", getCurrentMemoryMB()))
 
     // After initialization
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "mem-test-db",
       directoryURL: directory,
       memoryStrategy: .indexed()
@@ -195,7 +195,7 @@ struct MemoryProfilerSuite {
 
       let baselineMemory = getCurrentMemoryMB()
 
-      let config = VecturaConfig(
+      let config = try VecturaConfig(
         name: "mem-full-db",
         directoryURL: directory,
         memoryStrategy: .fullMemory
@@ -217,7 +217,7 @@ struct MemoryProfilerSuite {
 
       let baselineMemory = getCurrentMemoryMB()
 
-      let config = VecturaConfig(
+      let config = try VecturaConfig(
         name: "mem-idx-db",
         directoryURL: directory,
         memoryStrategy: .indexed()
@@ -263,7 +263,7 @@ struct MemoryProfilerSuite {
 
     let generator = TestDataGenerator()
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "search-mem-db",
       directoryURL: directory,
       memoryStrategy: .fullMemory
@@ -321,7 +321,7 @@ struct MemoryProfilerSuite {
 
       let baselineMemory = getCurrentMemoryMB()
 
-      let config = VecturaConfig(
+      let config = try VecturaConfig(
         name: "batch-mem-db",
         directoryURL: directory,
         memoryStrategy: .indexed(batchSize: batchSize)

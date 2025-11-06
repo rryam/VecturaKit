@@ -88,7 +88,7 @@ public struct HybridSearchEngine: VecturaSearchEngine {
     }
 
     // Execute vector and text search concurrently
-    let extendedOptions = SearchOptions(
+    let extendedOptions = try SearchOptions(
       numResults: options.numResults * 2,  // Get more candidates
       threshold: nil  // Don't apply threshold in individual searches
     )

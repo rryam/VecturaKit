@@ -21,6 +21,13 @@ public actor FileStorageProvider {
   /// Whether caching is enabled
   private let cacheEnabled: Bool
 
+  /// Ensures the storage directory exists, creating it if needed.
+  nonisolated private func ensureStorageDirectoryExists() throws {
+    if !FileManager.default.fileExists(atPath: storageDirectory.path) {
+      try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+    }
+  }
+
   /// Initializes the provider with the target storage directory.
   ///
   /// - Parameters:
@@ -31,9 +38,7 @@ public actor FileStorageProvider {
     self.cacheEnabled = cacheEnabled
 
     // Ensure the storage directory exists
-    if !FileManager.default.fileExists(atPath: storageDirectory.path) {
-      try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-    }
+    try ensureStorageDirectoryExists()
   }
 }
 
@@ -44,9 +49,8 @@ extension FileStorageProvider: VecturaStorage {
 
   /// Ensures that the storage directory exists.
   public func createStorageDirectoryIfNeeded() async throws {
-    if !FileManager.default.fileExists(atPath: storageDirectory.path) {
-      try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-    }
+    // Use nonisolated helper since FileManager operations are thread-safe
+    try ensureStorageDirectoryExists()
   }
 
   /// Loads all documents, using cache if available

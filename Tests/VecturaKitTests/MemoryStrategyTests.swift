@@ -26,7 +26,7 @@ struct MemoryStrategyTests {
 
   @Test("Default strategy is automatic")
   func defaultStrategy() throws {
-    let config = VecturaConfig(name: "test-db")
+    let config = try VecturaConfig(name: "test-db")
     if case .automatic = config.memoryStrategy {
       // Expected
     } else {
@@ -36,13 +36,13 @@ struct MemoryStrategyTests {
 
   @Test("Full memory strategy can be set")
   func fullMemoryStrategy() throws {
-    let config = VecturaConfig(name: "test-db", memoryStrategy: .fullMemory)
+    let config = try VecturaConfig(name: "test-db", memoryStrategy: .fullMemory)
     #expect(config.memoryStrategy == .fullMemory)
   }
 
   @Test("Indexed strategy can be set with defaults")
   func indexedStrategyDefaults() throws {
-    let config = VecturaConfig(name: "test-db", memoryStrategy: .indexed())
+    let config = try VecturaConfig(name: "test-db", memoryStrategy: .indexed())
 
     if case .indexed(let multiplier, let batch, let maxConcurrent) = config.memoryStrategy {
       #expect(multiplier == VecturaConfig.MemoryStrategy.defaultCandidateMultiplier)
@@ -55,7 +55,7 @@ struct MemoryStrategyTests {
 
   @Test("Indexed strategy can be customized")
   func indexedStrategyCustom() throws {
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       memoryStrategy: .indexed(
         candidateMultiplier: 5,
@@ -80,7 +80,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory
     )
@@ -96,7 +96,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .fullMemory
@@ -113,7 +113,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .indexed()
@@ -130,7 +130,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory
     )
@@ -151,7 +151,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .fullMemory
@@ -173,7 +173,7 @@ struct MemoryStrategyTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .indexed()
@@ -198,7 +198,7 @@ struct MemoryStrategyTests {
     defer { cleanup() }
 
     // Old code without specifying memory strategy
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory
     )
@@ -298,7 +298,7 @@ struct MockIndexedStorageTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .indexed()
@@ -351,7 +351,7 @@ struct MockIndexedStorageTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .indexed(
@@ -470,7 +470,7 @@ struct PartialFailureTests {
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
-    let config = VecturaConfig(
+    let config = try VecturaConfig(
       name: "test-db",
       directoryURL: directory,
       memoryStrategy: .indexed(
