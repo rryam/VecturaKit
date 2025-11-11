@@ -21,6 +21,10 @@ let package = Package(
       name: "VecturaMLXKit",
       targets: ["VecturaMLXKit"]
     ),
+    .library(
+      name: "VecturaNLKit",
+      targets: ["VecturaNLKit"]
+    ),
     .executable(
       name: "vectura-cli",
       targets: ["VecturaCLI"]
@@ -53,6 +57,12 @@ let package = Package(
         .product(name: "MLXEmbedders", package: "mlx-swift-examples"),
       ]
     ),
+    .target(
+      name: "VecturaNLKit",
+      dependencies: [
+        "VecturaKit"
+      ]
+    ),
     .executableTarget(
       name: "VecturaCLI",
       dependencies: [
@@ -76,6 +86,10 @@ let package = Package(
       name: "TestMLXExamples",
       dependencies: ["VecturaMLXKit"]
     ),
+    .executableTarget(
+      name: "TestNLExamples",
+      dependencies: ["VecturaNLKit"]
+    ),
     .testTarget(
       name: "VecturaKitTests",
       dependencies: ["VecturaKit"]
@@ -83,6 +97,10 @@ let package = Package(
     .testTarget(
       name: "VecturaMLXKitTests",
       dependencies: ["VecturaMLXKit"]
+    ),
+    .testTarget(
+      name: "VecturaNLKitTests",
+      dependencies: ["VecturaNLKit"]
     ),
     .testTarget(
       name: "PerformanceTests",

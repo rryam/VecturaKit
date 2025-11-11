@@ -1,10 +1,10 @@
 # VecturaKit
 
-VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval. 
+VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval.
 
 Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
 
-The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration or `MLXEmbedder` for Apple's MLX framework acceleration.
+The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `MLXEmbedder` for Apple's MLX framework acceleration, or `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies.
 
 It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
@@ -55,6 +55,12 @@ Explore the following books to understand more about AI and iOS development:
   - [Add Documents](#add-documents-1)
   - [Search Documents](#search-documents-1)
   - [Document Management](#document-management-1)
+- [NaturalLanguage Integration](#naturallanguage-integration)
+  - [Import NaturalLanguage Support](#import-naturallanguage-support)
+  - [Initialize Database with NLContextualEmbedding](#initialize-database-with-nlcontextualembedding)
+  - [Add Documents](#add-documents-2)
+  - [Search Documents](#search-documents-2)
+  - [Document Management](#document-management-2)
 - [Command Line Interface](#command-line-interface)
   - [Swift CLI Tool (`vectura-cli`)](#swift-cli-tool-vectura-cli)
   - [MLX CLI Tool (`vectura-mlx-cli`)](#mlx-cli-tool-vectura-mlx-cli)
@@ -76,6 +82,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
 -   **Memory Management Strategies:** Choose between automatic, full-memory, or indexed modes to optimize performance for datasets ranging from thousands to millions of documents. [Learn more](Docs/INDEXED_STORAGE_GUIDE.md)
 -   **MLX Support:** Uses Apple's MLX framework for accelerated embedding generation through `MLXEmbedder`.
+-   **NaturalLanguage Support:** Uses Apple's NaturalLanguage framework for contextual embeddings with zero external dependencies through `NLContextualEmbedder`.
 -   **CLI Tools:** Includes `vectura-cli` (Swift embeddings) and `vectura-mlx-cli` (MLX embeddings) for database management and testing.
 
 ## Supported Platforms
@@ -105,6 +112,8 @@ VecturaKit uses the following Swift packages:
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 -   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
+
+**Note:** `VecturaNLKit` has no external dependencies beyond Apple's native NaturalLanguage framework.
 
 ## Quick Start
 
@@ -479,6 +488,120 @@ Reset database:
 ```swift
 try await vectorDB.reset()
 ```
+
+## NaturalLanguage Integration
+
+VecturaKit supports Apple's NaturalLanguage framework through the `NLContextualEmbedder` for contextual embeddings with zero external dependencies.
+
+### Import NaturalLanguage Support
+
+```swift
+import VecturaKit
+import VecturaNLKit
+```
+
+### Initialize Database with NLContextualEmbedding
+
+```swift
+// Available on iOS 17.4+, macOS 14.4+, tvOS 17.4+, visionOS 1.1+, watchOS 10.4+
+if #available(iOS 17.4, macOS 14.4, *) {
+  let config = VecturaConfig(
+    name: "my-nl-vector-db",
+    dimension: nil  // Auto-detect dimension from NL embedder
+  )
+
+  // Create NLContextualEmbedder
+  let embedder = try await NLContextualEmbedder(
+    language: .english
+  )
+  let vectorDB = try await VecturaKit(config: config, embedder: embedder)
+}
+```
+
+**Available Options:**
+
+```swift
+// Initialize with specific language
+let embedder = try await NLContextualEmbedder(
+  language: .spanish
+)
+
+// Get model information
+let modelInfo = await embedder.modelInfo
+print("Language: \(modelInfo.language)")
+print("Dimension: \(modelInfo.dimension ?? 0)")
+```
+
+### Add Documents
+
+```swift
+let texts = [
+  "Natural language understanding is fascinating",
+  "Swift makes iOS development enjoyable",
+  "Machine learning on device preserves privacy"
+]
+let documentIds = try await vectorDB.addDocuments(texts: texts)
+```
+
+### Search Documents
+
+```swift
+let results = try await vectorDB.search(
+    query: "iOS programming",
+    numResults: 5,      // Optional
+    threshold: 0.7     // Optional
+)
+
+for result in results {
+    print("Document ID: \(result.id)")
+    print("Text: \(result.text)")
+    print("Similarity Score: \(result.score)")
+    print("Created At: \(result.createdAt)")
+}
+```
+
+### Document Management
+
+Update document:
+
+```swift
+try await vectorDB.updateDocument(
+     id: documentId,
+     newText: "Updated text"
+ )
+```
+
+Delete documents:
+
+```swift
+try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
+```
+
+Reset database:
+
+```swift
+try await vectorDB.reset()
+```
+
+**Key Features:**
+
+- **Zero External Dependencies:** Uses only Apple's native NaturalLanguage framework
+- **Contextual Embeddings:** Considers surrounding context for more accurate semantic understanding
+- **Privacy-First:** All processing happens on-device
+- **Language Support:** Supports multiple languages (English, Spanish, French, German, Italian, Portuguese, and more)
+- **Auto-Detection:** Automatically detects embedding dimensions
+
+**Performance Characteristics:**
+
+- **Speed:** Moderate (slower than Model2Vec, comparable to MLX)
+- **Accuracy:** High contextual understanding for supported languages
+- **Memory:** Efficient on-device processing
+- **Use Cases:** Ideal for apps requiring semantic search without external dependencies
+
+**Platform Requirements:**
+
+- iOS 17.4+ / macOS 14.4+ / tvOS 17.4+ / visionOS 1.1+ / watchOS 10.4+
+- NaturalLanguage framework (included with OS)
 
 ## Command Line Interface
 
