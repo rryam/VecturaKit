@@ -3,25 +3,49 @@ import Foundation
 import VecturaKit
 import VecturaNLKit
 
+enum ExampleError: Error, CustomStringConvertible {
+  case noDocumentsToUpdate
+
+  var description: String {
+    switch self {
+    case .noDocumentsToUpdate:
+      return "No documents available to update"
+    }
+  }
+}
+
 @main
 struct TestNLExamples {
-  // swiftlint:disable:next function_body_length
   static func main() async throws {
+    try await initializeEmbedder()
+    let embedder = try await NLContextualEmbedder(language: .english)
+    let vectorDB = try await initializeDatabase(embedder: embedder)
+    let documentIds = try await addDocuments(to: vectorDB)
+    try await searchDocuments(in: vectorDB)
+    try await testContextualUnderstanding(in: vectorDB)
+    try await manageDocuments(in: vectorDB, documentIds: documentIds)
+    try await testEmbeddings(embedder: embedder)
+    try await resetDatabase(vectorDB)
+
+    debugPrint("\n✅ All VecturaNLKit examples completed successfully!")
+  }
+
+  private static func initializeEmbedder() async throws {
     debugPrint("1. Initialize NLContextualEmbedder")
 
-    let embedder = try await NLContextualEmbedder(
-      language: .english
-    )
+    let embedder = try await NLContextualEmbedder(language: .english)
     let dimension = try await embedder.dimension
     debugPrint("NLContextualEmbedder initialized successfully")
     debugPrint("Embedding dimension: \(dimension)")
 
     let modelInfo = await embedder.modelInfo
     debugPrint("Model language: \(modelInfo.language.rawValue)")
-    if let revision = modelInfo.revision {
-      debugPrint("Model revision: \(revision)")
+    if let dimension = modelInfo.dimension {
+      debugPrint("Model dimension: \(dimension)")
     }
+  }
 
+  private static func initializeDatabase(embedder: NLContextualEmbedder) async throws -> VecturaKit {
     debugPrint("\n2. Initialize Database")
 
     let config = try VecturaConfig(name: "test-nl-vector-db")
@@ -32,6 +56,10 @@ struct TestNLExamples {
     debugPrint("NL Database initialized successfully")
     debugPrint("Document count: \(try await vectorDB.documentCount)")
 
+    return vectorDB
+  }
+
+  private static func addDocuments(to vectorDB: VecturaKit) async throws -> [UUID] {
     debugPrint("\n3. Add Documents")
 
     let texts = [
@@ -44,6 +72,10 @@ struct TestNLExamples {
     debugPrint("Documents added with IDs: \(documentIds)")
     debugPrint("Total document count: \(try await vectorDB.documentCount)")
 
+    return documentIds
+  }
+
+  private static func searchDocuments(in vectorDB: VecturaKit) async throws {
     debugPrint("\n4. Search Documents")
 
     let results = try await vectorDB.search(
@@ -60,7 +92,9 @@ struct TestNLExamples {
       debugPrint("Created At: \(result.createdAt)")
       debugPrint("---")
     }
+  }
 
+  private static func testContextualUnderstanding(in vectorDB: VecturaKit) async throws {
     debugPrint("\n5. Test Contextual Understanding")
 
     let semanticResults = try await vectorDB.search(
@@ -75,13 +109,15 @@ struct TestNLExamples {
       debugPrint("Score: \(result.score)")
       debugPrint("---")
     }
+  }
 
+  private static func manageDocuments(in vectorDB: VecturaKit, documentIds: [UUID]) async throws {
     debugPrint("\n6. Document Management")
 
     guard let documentToUpdate = documentIds.first else {
-      debugPrint("No documents to update")
-      return
+      throw ExampleError.noDocumentsToUpdate
     }
+
     debugPrint("Updating document...")
     try await vectorDB.updateDocument(
       id: documentToUpdate,
@@ -106,7 +142,9 @@ struct TestNLExamples {
     try await vectorDB.deleteDocuments(ids: idsToDelete)
     debugPrint("Documents deleted")
     debugPrint("Document count after deletion: \(try await vectorDB.documentCount)")
+  }
 
+  private static func testEmbeddings(embedder: NLContextualEmbedder) async throws {
     debugPrint("\n7. Test Single Embedding")
 
     let singleText = "Testing NLContextualEmbedding"
@@ -127,12 +165,12 @@ struct TestNLExamples {
     for (index, embedding) in batchEmbeddings.enumerated() {
       debugPrint("Embedding \(index + 1): length = \(embedding.count)")
     }
+  }
 
+  private static func resetDatabase(_ vectorDB: VecturaKit) async throws {
     debugPrint("\nResetting database...")
     try await vectorDB.reset()
     debugPrint("Database reset")
     debugPrint("Document count after reset: \(try await vectorDB.documentCount)")
-
-    debugPrint("\n✅ All VecturaNLKit examples completed successfully!")
   }
 }

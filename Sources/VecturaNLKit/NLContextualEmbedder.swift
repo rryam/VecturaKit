@@ -24,7 +24,6 @@ public actor NLContextualEmbedder {
 
   private let embedding: NLEmbedding
   private let language: NLLanguage
-  private let revision: Int?
   private var cachedDimension: Int?
 
   /// Initializes an NLContextualEmbedder with the specified language.
@@ -33,11 +32,19 @@ public actor NLContextualEmbedder {
   ///   - language: The natural language for which to generate embeddings. Defaults to English.
   /// - Throws: `NLContextualEmbedderError.embeddingNotAvailable` if the embedding model
   ///           is not available for the specified language.
+  ///
+  /// ## Commonly Supported Languages
+  /// The NaturalLanguage framework typically supports the following languages:
+  /// - English, Spanish, French, German, Italian, Portuguese
+  /// - Dutch, Swedish, Danish, Norwegian, Finnish
+  /// - Russian, Polish, Turkish, Arabic, Hindi, Chinese, Japanese, Korean
+  ///
+  /// Language availability may vary by platform version and device.
+  /// For the most up-to-date list, refer to Apple's NaturalLanguage framework documentation.
   public init(
     language: NLLanguage = .english
   ) async throws {
     self.language = language
-    self.revision = nil
 
     // Use sentenceEmbedding for holistic semantic understanding of full sentences
     guard let embedding = NLEmbedding.sentenceEmbedding(for: language) else {
@@ -141,7 +148,6 @@ extension NLContextualEmbedder {
   public var modelInfo: ModelInfo {
     ModelInfo(
       language: language,
-      revision: revision,
       dimension: cachedDimension
     )
   }
@@ -150,9 +156,6 @@ extension NLContextualEmbedder {
   public struct ModelInfo: Sendable {
     /// The language of the embedding model.
     public let language: NLLanguage
-
-    /// The model revision, if specified.
-    public let revision: Int?
 
     /// The embedding dimension, if already determined.
     public let dimension: Int?

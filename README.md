@@ -58,9 +58,9 @@ Explore the following books to understand more about AI and iOS development:
 - [NaturalLanguage Integration](#naturallanguage-integration)
   - [Import NaturalLanguage Support](#import-naturallanguage-support)
   - [Initialize Database with NLContextualEmbedding](#initialize-database-with-nlcontextualembedding)
-  - [Add Documents](#add-documents-2)
-  - [Search Documents](#search-documents-2)
-  - [Document Management](#document-management-2)
+  - [Add Documents](#nl-add-documents)
+  - [Search Documents](#nl-search-documents)
+  - [Document Management](#nl-document-management)
 - [Command Line Interface](#command-line-interface)
   - [Swift CLI Tool (`vectura-cli`)](#swift-cli-tool-vectura-cli)
   - [MLX CLI Tool (`vectura-mlx-cli`)](#mlx-cli-tool-vectura-mlx-cli)
@@ -526,10 +526,14 @@ let embedder = try await NLContextualEmbedder(
 // Get model information
 let modelInfo = await embedder.modelInfo
 print("Language: \(modelInfo.language)")
-print("Dimension: \(modelInfo.dimension ?? 0)")
+if let dimension = modelInfo.dimension {
+  print("Dimension: \(dimension)")
+} else {
+  print("Dimension: Not yet determined")
+}
 ```
 
-### Add Documents
+### <a name="nl-add-documents"></a>Add Documents
 
 ```swift
 let texts = [
@@ -540,7 +544,7 @@ let texts = [
 let documentIds = try await vectorDB.addDocuments(texts: texts)
 ```
 
-### Search Documents
+### <a name="nl-search-documents"></a>Search Documents
 
 ```swift
 let results = try await vectorDB.search(
@@ -557,7 +561,7 @@ for result in results {
 }
 ```
 
-### Document Management
+### <a name="nl-document-management"></a>Document Management
 
 Update document:
 
