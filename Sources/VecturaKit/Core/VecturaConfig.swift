@@ -61,8 +61,10 @@ public struct VecturaConfig: Sendable {
     /// Default candidate multiplier for indexed mode.
     /// This value balances between search accuracy and performance.
     /// - Higher values (15-20): Better recall at the cost of slower searches
-    /// - Lower values (5-10): Faster searches but may miss some relevant results
-    public static let defaultCandidateMultiplier = 10
+    /// - Lower values (3-5): Faster searches but may miss some relevant results
+    /// - For low-dimensional vectors (< 32D), lower multipliers (3-4) are sufficient
+    /// - For high-dimensional vectors (> 256D), higher multipliers (8-10) are recommended
+    public static let defaultCandidateMultiplier = 4
 
     /// Default batch size for concurrent document loading in indexed mode.
     /// Documents are loaded in batches to balance concurrency and memory usage.
@@ -81,7 +83,7 @@ public struct VecturaConfig: Sendable {
     ///
     /// - Parameters:
     ///   - threshold: Document count threshold for switching strategies (default: 10,000)
-    ///   - candidateMultiplier: Candidate pool size for indexed mode (default: 10)
+    ///   - candidateMultiplier: Candidate pool size for indexed mode (default: 4)
     ///   - batchSize: Batch size for concurrent loading in indexed mode (default: 100)
     ///   - maxConcurrentBatches: Max concurrent batches in indexed mode (default: 4)
     ///
@@ -115,7 +117,7 @@ public struct VecturaConfig: Sendable {
     /// - Parameters:
     ///   - candidateMultiplier: Candidate pool size = topK × multiplier.
     ///     Higher values improve accuracy but increase search time.
-    ///     Recommended: 5-20 (default: 10)
+    ///     Recommended: 3-8 for low-dimensional vectors, 8-15 for high-dimensional (default: 4)
     ///   - batchSize: Number of documents to load per batch during concurrent loading.
     ///     Smaller batches increase concurrency but may have overhead.
     ///     Recommended: 50-200 (default: 100)

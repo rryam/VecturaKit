@@ -125,10 +125,14 @@ public actor VecturaKit {
 
     for i in 0..<texts.count {
       let docId = ids?[i] ?? UUID()
+
+      // Pre-normalize embedding at storage time to avoid per-search normalization
+      let normalizedEmbedding = try normalizeEmbedding(embeddings[i])
+
       let doc = VecturaDocument(
         id: docId,
         text: texts[i],
-        embedding: embeddings[i]
+        embedding: normalizedEmbedding
       )
       documentsToSave.append(doc)
       documentIds.append(docId)
@@ -249,11 +253,14 @@ public actor VecturaKit {
     // Validate dimension
     try validateDimension(newEmbedding)
 
+    // Pre-normalize embedding at storage time to avoid per-search normalization
+    let normalizedEmbedding = try normalizeEmbedding(newEmbedding)
+
     // Create updated document, preserving original creation date
     let updatedDoc = VecturaDocument(
       id: id,
       text: newText,
-      embedding: newEmbedding,
+      embedding: normalizedEmbedding,
       createdAt: oldDocument.createdAt
     )
 
@@ -343,5 +350,26 @@ public actor VecturaKit {
         got: embedding.count
       )
     }
+  }
+
+  /// Normalizes an embedding vector to unit length (L2 normalization)
+  private func normalizeEmbedding(_ embedding: [Float]) throws -> [Float] {
+    let norm = l2Norm(embedding)
+
+    guard norm > 1e-10 else {
+      throw VecturaError.invalidInput("Cannot normalize zero-norm embedding vector")
+    }
+
+    var divisor = norm
+    var normalized = [Float](repeating: 0, count: embedding.count)
+    vDSP_vsdiv(embedding, 1, &divisor, &normalized, 1, vDSP_Length(embedding.count))
+    return normalized
+  }
+
+  /// Computes the L2 norm of a vector
+  private func l2Norm(_ v: [Float]) -> Float {
+    var sumSquares: Float = 0
+    vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
+    return sqrt(sumSquares)
   }
 }

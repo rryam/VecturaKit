@@ -25,6 +25,7 @@ public final class BM25Index: @unchecked Sendable {
   private var documents: [UUID: VecturaDocument]
   private var documentFrequencies: [String: Int]
   private var documentLengths: [UUID: Int]
+  private var documentTokens: [UUID: [String]]
   private var averageDocumentLength: Float
 
   /// Creates a new BM25 index for the given documents
@@ -42,10 +43,19 @@ public final class BM25Index: @unchecked Sendable {
     }
     self.documentFrequencies = [:]
 
-    // Build documentLengths from deduplicated documents to avoid redundant tokenization
-    self.documentLengths = self.documents.reduce(into: [:]) { dict, pair in
-      dict[pair.key] = tokenize(pair.value.text).count
+    // Initialize empty dictionaries first
+    var tempTokens: [UUID: [String]] = [:]
+    var tempLengths: [UUID: Int] = [:]
+
+    // Tokenize once per document and cache for later reuse
+    for (id, document) in self.documents {
+      let tokens = tokenize(document.text)
+      tempTokens[id] = tokens
+      tempLengths[id] = tokens.count
     }
+
+    self.documentTokens = tempTokens
+    self.documentLengths = tempLengths
 
     // Guard against division by zero when documents array is empty
     if self.documents.isEmpty {
@@ -54,8 +64,9 @@ public final class BM25Index: @unchecked Sendable {
       self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
     }
 
+    // Build document frequencies using cached tokens
     for document in self.documents.values {
-      let terms = Set(tokenize(document.text))
+      let terms = Set(self.documentTokens[document.id] ?? [])
       for term in terms {
         documentFrequencies[term, default: 0] += 1
       }
@@ -76,8 +87,8 @@ public final class BM25Index: @unchecked Sendable {
       let docLength = Float(documentLengths[document.id] ?? 0)
       var score: Float = 0.0
 
-      // Tokenize document once and reuse for all query terms
-      let docTokens = tokenize(document.text)
+      // Use cached tokens instead of re-tokenizing
+      let docTokens = documentTokens[document.id] ?? []
       let docTokenCounts = Dictionary(grouping: docTokens, by: { $0 }).mapValues { Float($0.count) }
 
       for term in queryTerms {
@@ -124,6 +135,7 @@ public final class BM25Index: @unchecked Sendable {
     decrementTermFrequencies(for: document)
 
     documentLengths.removeValue(forKey: documentID)
+    documentTokens.removeValue(forKey: documentID)
     updateAverageDocumentLength()
   }
 
@@ -144,8 +156,9 @@ public final class BM25Index: @unchecked Sendable {
 
     documents[document.id] = document
 
-    // Tokenize once and reuse for both length and term frequencies
+    // Tokenize once and cache for later reuse
     let tokens = tokenize(document.text)
+    documentTokens[document.id] = tokens
     let length = tokens.count
     documentLengths[document.id] = length
 
@@ -183,7 +196,8 @@ public final class BM25Index: @unchecked Sendable {
   /// Decrements term frequencies for a document
   /// - Parameter document: The document whose terms should be decremented
   private func decrementTermFrequencies(for document: VecturaDocument) {
-    let terms = Set(tokenize(document.text))
+    // Use cached tokens if available, otherwise tokenize
+    let terms = Set(documentTokens[document.id] ?? tokenize(document.text))
     decrementTermFrequencies(terms: terms)
   }
 

@@ -143,11 +143,11 @@ public struct HybridSearchEngine: VecturaSearchEngine {
       uniquingKeysWith: { first, _ in first }
     )
 
-    // Calculate hybrid scores
-    var combinedResults: [VecturaSearchResult] = []
-    var seenIds: Set<UUID> = []
+    // Use Dictionary for both deduplication AND storage
+    var combinedResults: [UUID: VecturaSearchResult] = [:]
+    combinedResults.reserveCapacity(vectorResults.count + textResults.count)
 
-    // Start from vector results
+    // Process vector results
     for result in vectorResults {
       let textScore = textScores[result.id] ?? 0
       let hybridScore = vectorWeight * result.score + (1 - vectorWeight) * textScore
@@ -157,17 +157,16 @@ public struct HybridSearchEngine: VecturaSearchEngine {
         continue
       }
 
-      combinedResults.append(VecturaSearchResult(
+      combinedResults[result.id] = VecturaSearchResult(
         id: result.id,
         text: result.text,
         score: hybridScore,
         createdAt: result.createdAt
-      ))
-      seenIds.insert(result.id)
+      )
     }
 
     // Add results only in text search
-    for result in textResults where !seenIds.contains(result.id) {
+    for result in textResults where combinedResults[result.id] == nil {
       let hybridScore = (1 - vectorWeight) * result.score
 
       // Apply threshold
@@ -175,16 +174,18 @@ public struct HybridSearchEngine: VecturaSearchEngine {
         continue
       }
 
-      combinedResults.append(VecturaSearchResult(
+      combinedResults[result.id] = VecturaSearchResult(
         id: result.id,
         text: result.text,
         score: hybridScore,
         createdAt: result.createdAt
-      ))
+      )
     }
 
     // Sort and return top K
-    combinedResults.sort { $0.score > $1.score }
-    return Array(combinedResults.prefix(topK))
+    return combinedResults.values
+      .sorted(by: { $0.score > $1.score })
+      .prefix(topK)
+      .map { $0 }
   }
 }

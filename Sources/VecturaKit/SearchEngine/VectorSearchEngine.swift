@@ -79,15 +79,14 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     // Normalize query vector
     let normalizedQuery = try normalizeEmbedding(queryVector)
 
-    // Build matrix of normalized document embeddings
+    // Build matrix of document embeddings (already normalized at storage time)
     var docIds = [UUID]()
     var matrix = [Float]()
     matrix.reserveCapacity(documents.count * dimension)
 
     for doc in documents {
-      let normalized = try normalizeEmbedding(doc.embedding)
       docIds.append(doc.id)
-      matrix.append(contentsOf: normalized)
+      matrix.append(contentsOf: doc.embedding)
     }
 
     let docsCount = docIds.count
@@ -131,7 +130,10 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
 
     results.sort { $0.score > $1.score }
-    return Array(results.prefix(options.numResults))
+    if results.count > options.numResults {
+      results.removeSubrange(options.numResults..<results.count)
+    }
+    return results
   }
 
   private func searchWithIndexedStorage(
@@ -184,11 +186,11 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     var matrix = [Float]()
     matrix.reserveCapacity(candidates.count * dimension)
 
+    // Document embeddings are already normalized at storage time
     for (id, doc) in candidates {
-      let normalized = try normalizeEmbedding(doc.embedding)
       candidateDocIds.append(id)
       candidateDocs.append(doc)
-      matrix.append(contentsOf: normalized)
+      matrix.append(contentsOf: doc.embedding)
     }
 
     let candidatesCount = candidateDocIds.count
@@ -230,7 +232,10 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
 
     results.sort { $0.score > $1.score }
-    return Array(results.prefix(options.numResults))
+    if results.count > options.numResults {
+      results.removeSubrange(options.numResults..<results.count)
+    }
+    return results
   }
 
   // MARK: - Helper Methods
