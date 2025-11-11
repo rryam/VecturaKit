@@ -135,7 +135,8 @@ extension NLContextualEmbedder: VecturaEmbedder {
     guard let doubleVector = embedding.vector(for: text) else {
       throw NLContextualEmbedderError.embeddingGenerationFailed(
         text: text,
-        reason: "NLEmbedding failed to generate vector. This may occur if the model is not downloaded or the text is incompatible with the language model (language: \(language.rawValue))"
+        reason: "NLEmbedding failed to generate vector. This may occur if the model is not downloaded "
+          + "or the text is incompatible with the language model (language: \(language.rawValue))"
       )
     }
 
@@ -146,7 +147,8 @@ extension NLContextualEmbedder: VecturaEmbedder {
     guard !floatVector.isEmpty else {
       throw NLContextualEmbedderError.embeddingGenerationFailed(
         text: text,
-        reason: "Unexpected error: Double-to-Float conversion resulted in empty vector (original length: \(doubleVector.count))"
+        reason: "Unexpected error: Double-to-Float conversion resulted in empty vector "
+          + "(original length: \(doubleVector.count))"
       )
     }
 
