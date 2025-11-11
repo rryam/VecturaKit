@@ -85,8 +85,12 @@ extension NLContextualEmbedder: VecturaEmbedder {
   /// Generates embeddings for multiple texts in batch.
   ///
   /// Note: NLEmbedding does not provide a native batch API, so this method
-  /// processes texts sequentially. For better performance with large batches,
-  /// consider using other embedders like SwiftEmbedder or MLXEmbedder.
+  /// processes texts sequentially. While NLEmbedding is documented as thread-safe,
+  /// it is not marked as Sendable by Apple, preventing safe concurrent access
+  /// in Swift 6+ strict concurrency mode.
+  ///
+  /// For better performance with large batches, consider using other embedders
+  /// like SwiftEmbedder or MLXEmbedder which support concurrent processing.
   ///
   /// - Parameter texts: The text strings to embed.
   /// - Returns: An array of embedding vectors, one for each input text.
@@ -95,7 +99,14 @@ extension NLContextualEmbedder: VecturaEmbedder {
     var results: [[Float]] = []
     results.reserveCapacity(texts.count)
 
-    for text in texts {
+    for (index, text) in texts.enumerated() {
+      guard !text.isEmpty else {
+        throw NLContextualEmbedderError.embeddingGenerationFailed(
+          text: text,
+          reason: "Text cannot be empty at index \(index)"
+        )
+      }
+
       let vector = try await embed(text: text)
       results.append(vector)
     }
@@ -120,19 +131,22 @@ extension NLContextualEmbedder: VecturaEmbedder {
     }
 
     // NLEmbedding.vector(for:) returns [Double], VecturaEmbedder requires [Float]
+    // Returns nil if the embedding model is not available for the language or text
     guard let doubleVector = embedding.vector(for: text) else {
       throw NLContextualEmbedderError.embeddingGenerationFailed(
         text: text,
-        reason: "Failed to generate embedding vector"
+        reason: "NLEmbedding failed to generate vector. This may occur if the model is not downloaded or the text is incompatible with the language model (language: \(language.rawValue))"
       )
     }
 
     let floatVector = doubleVector.map { Float($0) }
 
+    // Sanity check: This should never happen if doubleVector was non-empty,
+    // but we verify to ensure data integrity
     guard !floatVector.isEmpty else {
       throw NLContextualEmbedderError.embeddingGenerationFailed(
         text: text,
-        reason: "Generated embedding is empty"
+        reason: "Unexpected error: Double-to-Float conversion resulted in empty vector (original length: \(doubleVector.count))"
       )
     }
 

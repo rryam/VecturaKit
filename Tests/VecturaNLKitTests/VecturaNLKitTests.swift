@@ -56,65 +56,49 @@ struct VecturaNLKitTests {
     )
   }
 
-  private func createVecturaKit(config: VecturaConfig) async throws -> VecturaKit? {
+  private func createVecturaKit(config: VecturaConfig) async throws -> VecturaKit {
     guard shouldRunNLTests else {
-      return nil
+      throw TestError.testsDisabled
     }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
-      return try await VecturaKit(config: config, embedder: embedder)
-    } catch {
-      return nil
-    }
+    let embedder = try await NLContextualEmbedder(language: .english)
+    return try await VecturaKit(config: config, embedder: embedder)
   }
 
   @Test("Initialize NLContextualEmbedder")
   func initializeEmbedder() async throws {
     guard shouldRunNLTests else { return }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
-      let dimension = try await embedder.dimension
-      #expect(dimension > 0, "Embedding dimension should be greater than 0")
-    } catch {
-      return
-    }
+    let embedder = try await NLContextualEmbedder(language: .english)
+    let dimension = try await embedder.dimension
+    #expect(dimension > 0, "Embedding dimension should be greater than 0")
   }
 
   @Test("Embed single text")
   func embedSingleText() async throws {
     guard shouldRunNLTests else { return }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
-      let text = "Hello world"
-      let embedding = try await embedder.embed(text: text)
-      #expect(!embedding.isEmpty, "Embedding should not be empty")
+    let embedder = try await NLContextualEmbedder(language: .english)
+    let text = "Hello world"
+    let embedding = try await embedder.embed(text: text)
+    #expect(!embedding.isEmpty, "Embedding should not be empty")
 
-      let dimension = try await embedder.dimension
-      #expect(embedding.count == dimension, "Embedding count should match dimension")
-    } catch {
-      return
-    }
+    let dimension = try await embedder.dimension
+    #expect(embedding.count == dimension, "Embedding count should match dimension")
   }
 
   @Test("Embed multiple texts")
   func embedMultipleTexts() async throws {
     guard shouldRunNLTests else { return }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
-      let texts = ["Hello", "World", "Swift"]
-      let embeddings = try await embedder.embed(texts: texts)
-      #expect(embeddings.count == 3, "Should return 3 embeddings")
+    let embedder = try await NLContextualEmbedder(language: .english)
+    let texts = ["Hello", "World", "Swift"]
+    let embeddings = try await embedder.embed(texts: texts)
+    #expect(embeddings.count == 3, "Should return 3 embeddings")
 
-      let dimension = try await embedder.dimension
-      for embedding in embeddings {
-        #expect(embedding.count == dimension, "Each embedding should match dimension")
-      }
-    } catch {
-      return
+    let dimension = try await embedder.dimension
+    for embedding in embeddings {
+      #expect(embedding.count == dimension, "Each embedding should match dimension")
     }
   }
 
@@ -126,7 +110,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let text = "Hello world"
     let ids = try await kit.addDocuments(texts: [text])
@@ -145,7 +129,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let text = "Delete me"
     let ids = try await kit.addDocuments(texts: [text])
@@ -165,7 +149,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let originalText = "Original text"
     let updatedText = "Updated text"
@@ -188,7 +172,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     _ = try await kit.addDocuments(texts: ["Doc1", "Doc2"])
     try await kit.reset()
@@ -205,7 +189,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(name: "TestNLDB", directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let texts = [
       "The quick brown fox jumps over the lazy dog",
@@ -235,7 +219,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(name: "TestNLDB", directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let texts = [
       "Document one about testing",
@@ -258,7 +242,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(name: "TestNLDB", directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     let texts = [
       "Apple pie recipe",
@@ -286,7 +270,7 @@ struct VecturaNLKitTests {
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let config = try makeConfig(name: "TestNLDB", directoryURL: directory)
-    guard let kit = try await createVecturaKit(config: config) else { return }
+    let kit = try await createVecturaKit(config: config)
 
     _ = try await kit.addDocuments(texts: ["Some random content"])
 
@@ -298,12 +282,10 @@ struct VecturaNLKitTests {
   func emptyTextError() async throws {
     guard shouldRunNLTests else { return }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
+    let embedder = try await NLContextualEmbedder(language: .english)
+
+    await #expect(throws: NLContextualEmbedderError.self) {
       _ = try await embedder.embed(text: "")
-      Issue.record("Should throw error for empty text")
-    } catch {
-      #expect(error is NLContextualEmbedderError, "Should throw NLContextualEmbedderError")
     }
   }
 
@@ -311,16 +293,18 @@ struct VecturaNLKitTests {
   func modelInfo() async throws {
     guard shouldRunNLTests else { return }
 
-    do {
-      let embedder = try await NLContextualEmbedder(language: .english)
-      let info = await embedder.modelInfo
-      #expect(info.language == .english, "Language should match initialization parameter")
+    let embedder = try await NLContextualEmbedder(language: .english)
+    let info = await embedder.modelInfo
+    #expect(info.language == .english, "Language should match initialization parameter")
 
-      _ = try await embedder.dimension
-      let infoWithDimension = await embedder.modelInfo
-      #expect(infoWithDimension.dimension != nil, "Dimension should be cached after first access")
-    } catch {
-      return
-    }
+    _ = try await embedder.dimension
+    let infoWithDimension = await embedder.modelInfo
+    #expect(infoWithDimension.dimension != nil, "Dimension should be cached after first access")
   }
+}
+
+// MARK: - Test Errors
+
+enum TestError: Error {
+  case testsDisabled
 }
