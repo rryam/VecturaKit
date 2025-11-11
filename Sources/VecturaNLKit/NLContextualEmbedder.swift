@@ -20,11 +20,6 @@ import VecturaKit
 /// let embedding = try await embedder.embed(text: "Swift is a powerful language")
 /// ```
 ///
-/// ## Availability
-/// This embedder requires iOS 17.0+, macOS 14.0+, or equivalent platform versions
-/// where NLEmbedding is available.
-///
-@available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 public actor NLContextualEmbedder {
 
   private let embedding: NLEmbedding
@@ -57,7 +52,6 @@ public actor NLContextualEmbedder {
 
 // MARK: - VecturaEmbedder
 
-@available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 extension NLContextualEmbedder: VecturaEmbedder {
 
   /// The dimensionality of the embedding vectors produced by this embedder.
@@ -141,7 +135,6 @@ extension NLContextualEmbedder: VecturaEmbedder {
 
 // MARK: - Additional Information
 
-@available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
 extension NLContextualEmbedder {
 
   /// Returns information about the embedding model being used.

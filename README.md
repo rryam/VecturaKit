@@ -503,19 +503,16 @@ import VecturaNLKit
 ### Initialize Database with NLContextualEmbedding
 
 ```swift
-// Available on iOS 17.0+, macOS 14.0+, tvOS 17.0+, visionOS 1.0+, watchOS 10.0+
-if #available(iOS 17.0, macOS 14.0, *) {
-  let config = VecturaConfig(
-    name: "my-nl-vector-db",
-    dimension: nil  // Auto-detect dimension from NL embedder
-  )
+let config = VecturaConfig(
+  name: "my-nl-vector-db",
+  dimension: nil  // Auto-detect dimension from NL embedder
+)
 
-  // Create NLContextualEmbedder
-  let embedder = try await NLContextualEmbedder(
-    language: .english
-  )
-  let vectorDB = try await VecturaKit(config: config, embedder: embedder)
-}
+// Create NLContextualEmbedder
+let embedder = try await NLContextualEmbedder(
+  language: .english
+)
+let vectorDB = try await VecturaKit(config: config, embedder: embedder)
 ```
 
 **Available Options:**

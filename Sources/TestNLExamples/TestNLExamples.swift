@@ -5,20 +5,8 @@ import VecturaNLKit
 
 @main
 struct TestNLExamples {
-  static func main() async throws {
-    debugPrint("Testing VecturaNLKit Examples")
-
-    if #available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) {
-      try await runExamples()
-    } else {
-      debugPrint("NLContextualEmbedding requires iOS 17.0+, macOS 14.0+, or equivalent.")
-      debugPrint("Current platform does not meet requirements.")
-    }
-  }
-
-  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   // swiftlint:disable:next function_body_length
-  static func runExamples() async throws {
+  static func main() async throws {
     debugPrint("1. Initialize NLContextualEmbedder")
 
     let embedder = try await NLContextualEmbedder(
