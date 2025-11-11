@@ -2,13 +2,14 @@ import CoreML
 import Embeddings
 import Foundation
 
-/// An embedder implementation using swift-embeddings library (Bert and Model2Vec models).
+/// An embedder implementation using swift-embeddings library (Bert, Model2Vec, and StaticEmbeddings models).
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 public actor SwiftEmbedder {
 
   private let modelSource: VecturaModelSource
   private var bertModel: Bert.ModelBundle?
   private var model2vecModel: Model2Vec.ModelBundle?
+  private var staticEmbeddingsModel: StaticEmbeddings.ModelBundle?
   private var cachedDimension: Int?
 
   /// Initializes a SwiftEmbedder with the specified model source.
@@ -42,6 +43,8 @@ extension SwiftEmbedder: VecturaEmbedder {
         // Note: 'dimienstion' is a typo in the upstream swift-embeddings library
         // See: swift-embeddings/Sources/Embeddings/Model2Vec/Model2VecModel.swift
         dim = model2vec.model.dimienstion
+      } else if let staticEmbeddings = staticEmbeddingsModel {
+        dim = staticEmbeddings.model.dimension
       } else if let bert = bertModel {
         // For BERT, we need to get dimension from a test encoding
         let testEmbedding = try bert.encode("test")
@@ -71,6 +74,8 @@ extension SwiftEmbedder: VecturaEmbedder {
     let embeddingsTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingsTensor = try model2vec.batchEncode(texts)
+    } else if let staticEmbeddings = staticEmbeddingsModel {
+      embeddingsTensor = try staticEmbeddings.batchEncode(texts, normalize: true)
     } else if let bert = bertModel {
       embeddingsTensor = try bert.batchEncode(texts)
     } else {
@@ -102,6 +107,8 @@ extension SwiftEmbedder: VecturaEmbedder {
     let embeddingTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingTensor = try model2vec.encode(text)
+    } else if let staticEmbeddings = staticEmbeddingsModel {
+      embeddingTensor = try staticEmbeddings.encode(text, normalize: true)
     } else if let bert = bertModel {
       embeddingTensor = try bert.encode(text)
     } else {
@@ -113,12 +120,14 @@ extension SwiftEmbedder: VecturaEmbedder {
   }
 
   private func ensureModelLoaded() async throws {
-    guard bertModel == nil && model2vecModel == nil else {
+    guard bertModel == nil && model2vecModel == nil && staticEmbeddingsModel == nil else {
       return
     }
 
     if isModel2VecModel(modelSource) {
       model2vecModel = try await Model2Vec.loadModelBundle(from: modelSource)
+    } else if isStaticEmbeddingsModel(modelSource) {
+      staticEmbeddingsModel = try await StaticEmbeddings.loadModelBundle(from: modelSource)
     } else {
       bertModel = try await Bert.loadModelBundle(from: modelSource)
     }
@@ -139,6 +148,21 @@ extension SwiftEmbedder: VecturaEmbedder {
          modelId.contains("potion") ||
          modelId.contains("model2vec") ||
          modelId.contains("M2V")
+  }
+
+  /// Determines if a model source refers to a StaticEmbeddings model based on string matching.
+  ///
+  /// This uses string-based heuristics to identify StaticEmbeddings models from sentence-transformers.
+  /// The check covers known StaticEmbeddings model families including static-retrieval and static-similarity.
+  ///
+  /// - Note: This approach may need updates if new StaticEmbeddings naming schemes are introduced.
+  /// - Parameter source: The model source to check.
+  /// - Returns: `true` if the source appears to be a StaticEmbeddings model, `false` otherwise.
+  private func isStaticEmbeddingsModel(_ source: VecturaModelSource) -> Bool {
+    let modelId = source.description
+    return modelId.contains("static-retrieval") ||
+         modelId.contains("static-similarity") ||
+         modelId.contains("static-embed")
   }
 }
 
@@ -166,6 +190,19 @@ extension Model2Vec {
       try await loadModelBundle(from: modelId)
     case .folder(let url):
       try await loadModelBundle(from: url)
+    }
+  }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension StaticEmbeddings {
+
+  static func loadModelBundle(from source: VecturaModelSource) async throws -> StaticEmbeddings.ModelBundle {
+    switch source {
+    case .id(let modelId):
+      try await loadModelBundle(from: modelId, loadConfig: .staticEmbeddings)
+    case .folder(let url):
+      try await loadModelBundle(from: url, loadConfig: .staticEmbeddings)
     }
   }
 }

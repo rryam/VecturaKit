@@ -37,7 +37,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.21"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
-    .package(url: "https://github.com/ml-explore/mlx-swift-examples/", branch: "main"),
+    .package(url: "https://github.com/ml-explore/mlx-swift-lm/", from: "2.29.2"),
   ],
   targets: [
     .target(
@@ -54,7 +54,7 @@ let package = Package(
       name: "VecturaMLXKit",
       dependencies: [
         "VecturaKit",
-        .product(name: "MLXEmbedders", package: "mlx-swift-examples"),
+        .product(name: "MLXEmbedders", package: "mlx-swift-lm"),
       ]
     ),
     .target(
