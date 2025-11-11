@@ -13,7 +13,7 @@ import Testing
 struct VecturaNLKitTests {
 
   private var shouldRunNLTests: Bool {
-    if #available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *) {
+    if #available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *) {
       return true
     } else {
       return false
@@ -63,7 +63,7 @@ struct VecturaNLKitTests {
     )
   }
 
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   private func createVecturaKit(config: VecturaConfig) async throws -> VecturaKit? {
     guard shouldRunNLTests else {
       return nil
@@ -78,7 +78,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Initialize NLContextualEmbedder")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func initializeEmbedder() async throws {
     guard shouldRunNLTests else { return }
 
@@ -92,7 +92,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Embed single text")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func embedSingleText() async throws {
     guard shouldRunNLTests else { return }
 
@@ -110,7 +110,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Embed multiple texts")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func embedMultipleTexts() async throws {
     guard shouldRunNLTests else { return }
 
@@ -130,7 +130,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Add and search documents")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func addAndSearch() async throws {
     guard shouldRunNLTests else { return }
 
@@ -150,7 +150,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Delete documents")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func deleteDocuments() async throws {
     guard shouldRunNLTests else { return }
 
@@ -171,7 +171,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Update document")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func updateDocument() async throws {
     guard shouldRunNLTests else { return }
 
@@ -195,7 +195,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Reset removes documents")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func reset() async throws {
     guard shouldRunNLTests else { return }
 
@@ -213,7 +213,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Search multiple documents")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func searchMultipleDocuments() async throws {
     guard shouldRunNLTests else { return }
 
@@ -244,7 +244,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Search result limiting")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func searchNumResultsLimiting() async throws {
     guard shouldRunNLTests else { return }
 
@@ -268,7 +268,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Search high threshold")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func searchWithHighThreshold() async throws {
     guard shouldRunNLTests else { return }
 
@@ -297,7 +297,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Search no matches")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func searchNoMatches() async throws {
     guard shouldRunNLTests else { return }
 
@@ -314,7 +314,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Empty text error handling")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func emptyTextError() async throws {
     guard shouldRunNLTests else { return }
 
@@ -328,7 +328,7 @@ struct VecturaNLKitTests {
   }
 
   @Test("Model info property")
-  @available(iOS 17.4, macOS 14.4, tvOS 17.4, visionOS 1.1, watchOS 10.4, *)
+  @available(iOS 17.0, macOS 14.0, tvOS 17.0, visionOS 1.0, watchOS 10.0, *)
   func modelInfo() async throws {
     guard shouldRunNLTests else { return }
 

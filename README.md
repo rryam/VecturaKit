@@ -503,8 +503,8 @@ import VecturaNLKit
 ### Initialize Database with NLContextualEmbedding
 
 ```swift
-// Available on iOS 17.4+, macOS 14.4+, tvOS 17.4+, visionOS 1.1+, watchOS 10.4+
-if #available(iOS 17.4, macOS 14.4, *) {
+// Available on iOS 17.0+, macOS 14.0+, tvOS 17.0+, visionOS 1.0+, watchOS 10.0+
+if #available(iOS 17.0, macOS 14.0, *) {
   let config = VecturaConfig(
     name: "my-nl-vector-db",
     dimension: nil  // Auto-detect dimension from NL embedder
@@ -600,7 +600,7 @@ try await vectorDB.reset()
 
 **Platform Requirements:**
 
-- iOS 17.4+ / macOS 14.4+ / tvOS 17.4+ / visionOS 1.1+ / watchOS 10.4+
+- iOS 17.0+ / macOS 14.0+ / tvOS 17.0+ / visionOS 1.0+ / watchOS 10.0+
 - NaturalLanguage framework (included with OS)
 
 ## Command Line Interface
