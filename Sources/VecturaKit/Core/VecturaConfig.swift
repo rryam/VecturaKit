@@ -173,6 +173,23 @@ public struct VecturaConfig: Sendable {
       )
     }
 
+    // Validate memory strategy parameters
+    switch memoryStrategy {
+    case .indexed(let multiplier, let batch, let maxConcurrent),
+         .automatic(_, let multiplier, let batch, let maxConcurrent):
+      guard multiplier > 0 else {
+        throw VecturaError.invalidInput("candidateMultiplier must be positive, got \(multiplier)")
+      }
+      guard batch > 0 else {
+        throw VecturaError.invalidInput("batchSize must be positive, got \(batch)")
+      }
+      guard maxConcurrent > 0 else {
+        throw VecturaError.invalidInput("maxConcurrentBatches must be positive, got \(maxConcurrent)")
+      }
+    case .fullMemory:
+      break
+    }
+
     self.name = name
     self.directoryURL = directoryURL
     self.dimension = dimension

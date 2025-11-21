@@ -137,7 +137,10 @@ extension VecturaCLI {
       let indexDuration = ContinuousClock.now - startTime
       let docsPerSecond = Double(ids.count) / indexDuration.timeInterval
 
-      print("Indexed \(ids.count) documents in \(String(format: "%.2f", indexDuration.timeInterval))s (\(String(format: "%.1f", docsPerSecond)) docs/sec)")
+      print(
+        "Indexed \(ids.count) documents in \(String(format: "%.2f", indexDuration.timeInterval))s " +
+        "(\(String(format: "%.1f", docsPerSecond)) docs/sec)"
+      )
 
       // Verify document count
       let docCount = try await db.documentCount
@@ -183,12 +186,18 @@ extension VecturaCLI {
           let avgScore = results.map { $0.score }.reduce(0, +) / Float(results.count)
           let maxScore = results.map { $0.score }.max() ?? 0
           let minScore = results.map { $0.score }.min() ?? 0
-          print(" (scores: \(String(format: "%.3f", minScore))-\(String(format: "%.3f", maxScore)), avg: \(String(format: "%.3f", avgScore)))")
+          print(
+            " (scores: \(String(format: "%.3f", minScore))-\(String(format: "%.3f", maxScore)), " +
+            "avg: \(String(format: "%.3f", avgScore)))"
+          )
 
           print("\nTop Results:")
           for (i, result) in results.prefix(3).enumerated() {
             let preview = result.text.prefix(80)
-            print("   \(i + 1). [\(String(format: "%.3f", result.score))] \(preview)\(result.text.count > 80 ? "..." : "")")
+            print(
+              "   \(i + 1). [\(String(format: "%.3f", result.score))] \(preview)" +
+              "\(result.text.count > 80 ? "..." : "")"
+            )
           }
         } else {
           print(" (below threshold)")
