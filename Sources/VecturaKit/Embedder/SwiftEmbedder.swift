@@ -83,11 +83,9 @@ extension SwiftEmbedder: VecturaEmbedder {
     }
 
     let shape = embeddingsTensor.shape
-    guard shape.count == 2 else {
+    guard shape.count == 2, let dimension = shape.last else {
       throw VecturaError.invalidInput("Expected shape [N, D], got \(shape)")
     }
-
-    let dimension = shape[1]
     let embeddingShapedArray = await embeddingsTensor.cast(to: Float.self).shapedArray(of: Float.self)
     let allScalars = embeddingShapedArray.scalars
 

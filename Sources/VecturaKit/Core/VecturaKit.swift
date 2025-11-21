@@ -86,7 +86,10 @@ public actor VecturaKit {
   /// - Returns: The ID of the added document.
   public func addDocument(text: String, id: UUID? = nil) async throws -> UUID {
     let ids = try await addDocuments(texts: [text], ids: id.map { [$0] })
-    return ids[0]
+    guard let firstId = ids.first else {
+      throw VecturaError.invalidInput("Failed to add document: no ID returned")
+    }
+    return firstId
   }
 
   /// Adds multiple documents to the vector store in batch.
