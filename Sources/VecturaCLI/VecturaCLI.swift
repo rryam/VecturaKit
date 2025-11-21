@@ -256,19 +256,12 @@ extension VecturaCLI {
     }
 
     private func loadMockDataset() throws -> MockDataset {
-      // Try multiple possible resource paths
-      var resourceURL: URL?
-
-      // First try without the Resources prefix (since Package.swift copies from Resources/)
-      resourceURL = Bundle.module.url(forResource: "mock_documents", withExtension: "json")
-
-      // If not found, try with Resources prefix
-      if resourceURL == nil {
-        resourceURL = Bundle.module.url(forResource: "Resources/mock_documents", withExtension: "json")
-      }
-
-      guard let url = resourceURL else {
-        throw VecturaError.loadFailed("Could not find mock_documents.json in resources")
+      guard let url = Bundle.module.url(
+        forResource: "mock_documents",
+        withExtension: "json",
+        subdirectory: "Resources"
+      ) else {
+        throw VecturaError.loadFailed("Could not find mock_documents.json in the 'Resources' directory of the bundle.")
       }
 
       let data = try Data(contentsOf: url)
