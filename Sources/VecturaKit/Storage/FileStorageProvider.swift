@@ -155,6 +155,16 @@ extension FileStorageProvider: CachableVecturaStorage {
       [.posixPermissions: 0o600],
       ofItemAtPath: documentURL.path(percentEncoded: false)
     )
+
+    // Verify permissions were set correctly on macOS (iOS/tvOS have different security model)
+    #if !os(iOS) && !os(tvOS) && !os(watchOS) && !os(visionOS)
+    let attributes = try FileManager.default.attributesOfItem(atPath: documentURL.path(percentEncoded: false))
+    if let permissions = attributes[.posixPermissions] as? NSNumber {
+      if permissions.uint16Value != 0o600 {
+        Self.logger.warning("File permissions verification failed for \(documentURL.path(percentEncoded: false))")
+      }
+    }
+    #endif
   }
 
   /// Deletes a document by removing its file from disk (bypasses cache).

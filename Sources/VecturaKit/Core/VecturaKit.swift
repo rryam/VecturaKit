@@ -309,11 +309,12 @@ public actor VecturaKit {
         .appendingPathComponent(config.name)
     }
 
-    // Create directory if it doesn't exist
+    // Create directory if it doesn't exist with secure permissions
     if !FileManager.default.fileExists(atPath: storageDirectory.path(percentEncoded: false)) {
       try FileManager.default.createDirectory(
         at: storageDirectory,
-        withIntermediateDirectories: true
+        withIntermediateDirectories: true,
+        attributes: [.posixPermissions: 0o700]  // Owner read/write/execute only
       )
     }
 
