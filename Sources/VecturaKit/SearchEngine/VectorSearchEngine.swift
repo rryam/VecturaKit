@@ -77,7 +77,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     let dimension = queryVector.count
 
     // Normalize query vector
-    let normalizedQuery = try normalizeEmbedding(queryVector)
+    let normalizedQuery = try VectorMath.normalizeEmbedding(queryVector)
 
     // Build matrix of document embeddings (already normalized at storage time)
     var docIds = [UUID]()
@@ -178,7 +178,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
 
     // Compute exact similarities
-    let normalizedQuery = try normalizeEmbedding(queryVector)
+    let normalizedQuery = try VectorMath.normalizeEmbedding(queryVector)
     let dimension = queryVector.count
 
     var candidateDocIds = [UUID]()
@@ -264,24 +264,6 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
   }
 
-  private func normalizeEmbedding(_ embedding: [Float]) throws -> [Float] {
-    let norm = l2Norm(embedding)
-
-    guard norm > 1e-10 else {
-      throw VecturaError.invalidInput("Cannot normalize zero-norm embedding vector")
-    }
-
-    var divisor = norm
-    var normalized = [Float](repeating: 0, count: embedding.count)
-    vDSP_vsdiv(embedding, 1, &divisor, &normalized, 1, vDSP_Length(embedding.count))
-    return normalized
-  }
-
-  private func l2Norm(_ v: [Float]) -> Float {
-    var sumSquares: Float = 0
-    vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
-    return sqrt(sumSquares)
-  }
 
   // MARK: - Batch Loading
 
