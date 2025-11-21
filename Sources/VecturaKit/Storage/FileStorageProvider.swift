@@ -62,7 +62,12 @@ extension FileStorageProvider: VecturaStorage {
     let documents = try await loadDocumentsFromStorage()
 
     if cacheEnabled {
-      cache = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
+      cache = documents.reduce(into: [:]) { dict, doc in
+        if dict[doc.id] != nil {
+          Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
+        }
+        dict[doc.id] = doc
+      }
     }
 
     return documents
