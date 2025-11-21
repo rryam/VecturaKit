@@ -68,6 +68,9 @@ let package = Package(
       dependencies: [
         "VecturaKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ],
+      resources: [
+        .copy("Resources/mock_documents.json")
       ]
     ),
     .executableTarget(

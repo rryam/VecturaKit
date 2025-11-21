@@ -2,6 +2,39 @@ import ArgumentParser
 import Foundation
 import VecturaKit
 
+// MARK: - Data Models for Mock Dataset
+
+struct MockDataset: Decodable {
+  struct Category: Decodable {
+    let name: String
+    let documents: [String]
+  }
+  let categories: [Category]
+
+  var totalDocuments: Int {
+    categories.reduce(0) { $0 + $1.documents.count }
+  }
+
+  var allDocuments: [String] {
+    categories.flatMap { $0.documents }
+  }
+}
+
+// MARK: - Helper Extensions
+
+extension String {
+  static func * (left: String, right: Int) -> String {
+    return String(repeating: left, count: right)
+  }
+}
+
+extension Duration {
+  var timeInterval: TimeInterval {
+    let (seconds, attoseconds) = self.components
+    return TimeInterval(seconds) + (TimeInterval(attoseconds) / 1e18)
+  }
+}
+
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
 struct VecturaCLI: AsyncParsableCommand {
@@ -51,25 +84,38 @@ struct VecturaCLI: AsyncParsableCommand {
 extension VecturaCLI {
   struct Mock: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-      abstract: "Run a mock demonstration with sample data"
+      abstract: "Run a demonstration with 1000+ sample documents showcasing semantic search"
     )
 
     @Option(name: [.long, .customShort("d")], help: "Database name")
-    var dbName: String = "vectura-cli-db"
+    var dbName: String = "vectura-cli-demo-db"
 
     @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    var dimension: Int = 512
 
-    @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold")
-    var threshold: Float = 0.7
+    @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold for searches")
+    var threshold: Float = 0.5
 
-    @Option(name: [.long, .customShort("n")], help: "Number of results to return")
-    var numResults: Int = 10
+    @Option(name: [.long, .customShort("n")], help: "Number of results to return per search")
+    var numResults: Int = 5
 
     @Option(name: [.long, .customShort("m")], help: "Model ID for embeddings")
-    var modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
+    var modelId: String = "minishlab/potion-retrieval-32M"
 
     mutating func run() async throws {
+      print("VecturaKit Mock Demonstration")
+      print("=" * 60)
+
+      // Load dataset from resources
+      print("\nLoading dataset from resources...")
+      let dataset = try loadMockDataset()
+      print("Dataset loaded: \(dataset.totalDocuments) documents across \(dataset.categories.count) categories")
+      for category in dataset.categories {
+        print("   \(category.name): \(category.documents.count) docs")
+      }
+
+      // Setup database
+      print("\nSetting up database...")
       let db = try await VecturaCLI.setupDB(
         dbName: dbName,
         dimension: dimension,
@@ -78,61 +124,146 @@ extension VecturaCLI {
         modelId: modelId
       )
 
-      // First, reset the database
-      print("\n🧹 Resetting database...")
+      // Reset database
+      print("\nResetting database...")
       try await db.reset()
+      print("Database reset complete")
 
-      // Add sample documents
-      print("\n📝 Adding sample documents...")
-      let sampleTexts = [
-        "The quick brown fox jumps over the lazy dog",
-        "To be or not to be, that is the question",
-        "All that glitters is not gold",
-        "A journey of a thousand miles begins with a single step",
-        "Where there's smoke, there's fire"
-      ]
+      // Add documents with timing
+      print("\nIndexing documents...")
+      let startTime = ContinuousClock.now
+      let allTexts = dataset.allDocuments
+      let ids = try await db.addDocuments(texts: allTexts)
+      let indexDuration = ContinuousClock.now - startTime
+      let docsPerSecond = Double(ids.count) / indexDuration.timeInterval
 
-      let ids = try await db.addDocuments(texts: sampleTexts)
-      print("Added \(ids.count) documents:")
-      for (id, text) in zip(ids, sampleTexts) {
-        print("ID: \(id)")
-        print("Text: \(text)")
-        print("---")
-      }
-
-      // Search for documents
-      print("\n🔍 Searching for 'journey'...")
-      let results = try await db.search(
-        query: "journey",
-        numResults: numResults,
-        threshold: threshold
+      print(
+        "Indexed \(ids.count) documents in \(String(format: "%.2f", indexDuration.timeInterval))s " +
+        "(\(String(format: "%.1f", docsPerSecond)) docs/sec)"
       )
 
-      print("Found \(results.count) results:")
-      for result in results {
-        print("ID: \(result.id)")
-        print("Text: \(result.text)")
-        print("Score: \(result.score)")
-        print("Created: \(result.createdAt)")
-        print("---")
+      // Verify document count
+      let docCount = try await db.documentCount
+      print("Database contains \(docCount) documents")
+
+      // Perform semantic search demonstrations
+      try await performSearchDemonstrations(
+        db: db,
+        docCount: docCount,
+        docsPerSecond: docsPerSecond
+      )
+
+      // Demonstrate update and delete operations
+      print("\n" + "=" * 60)
+      print("CRUD OPERATIONS DEMO")
+      print("=" * 60)
+
+      // Update a few documents
+      print("\nUpdating 3 sample documents...")
+      let updateIds = Array(ids.prefix(3))
+      for (i, id) in updateIds.enumerated() {
+        let newText = "Updated document \(i + 1): This content has been modified to test update functionality."
+        try await db.updateDocument(id: id, newText: newText)
+      }
+      print("Updated \(updateIds.count) documents")
+
+      // Delete some documents
+      print("\nDeleting 5 sample documents...")
+      let deleteIds = Array(ids.suffix(5))
+      try await db.deleteDocuments(ids: deleteIds)
+      print("Deleted \(deleteIds.count) documents")
+
+      let finalCount = try await db.documentCount
+      print("\nFinal document count: \(finalCount) (started with \(docCount))")
+
+      print("\n" + "=" * 60)
+      print("Mock Demonstration Complete!")
+      print("=" * 60)
+    }
+
+    private func performSearchDemonstrations(
+      db: VecturaKit,
+      docCount: Int,
+      docsPerSecond: Double
+    ) async throws {
+      print("\n" + "=" * 60)
+      print("SEMANTIC SEARCH DEMONSTRATIONS")
+      print("=" * 60)
+
+      let searchQueries = [
+        ("artificial intelligence", "Technology & ML concepts"),
+        ("space exploration", "Astronomy & space-related topics"),
+        ("leadership principles", "Management & business leadership"),
+        ("wellness and fitness", "Health & wellbeing"),
+        ("environmental conservation", "Climate & nature topics"),
+        ("creative writing", "Literature & storytelling"),
+        ("ancient civilizations", "Historical societies"),
+        ("molecular biology", "Science & biology")
+      ]
+
+      var totalSearchTime: TimeInterval = 0
+
+      for (index, (query, description)) in searchQueries.enumerated() {
+        print("\n" + "-" * 60)
+        print("Query \(index + 1): \"\(query)\"")
+        print("Description: \(description)")
+        print("-" * 60)
+
+        let searchStart = ContinuousClock.now
+        let results = try await db.search(
+          query: .text(query),
+          numResults: numResults,
+          threshold: threshold
+        )
+        let searchDuration = ContinuousClock.now - searchStart
+        totalSearchTime += searchDuration.timeInterval
+
+        print("Search time: \(String(format: "%.1f", searchDuration.timeInterval * 1000))ms")
+        print("Found \(results.count) results", terminator: "")
+
+        if !results.isEmpty {
+          let avgScore = results.map { $0.score }.reduce(0, +) / Float(results.count)
+          let maxScore = results.map { $0.score }.max() ?? 0
+          let minScore = results.map { $0.score }.min() ?? 0
+          print(
+            " (scores: \(String(format: "%.3f", minScore))-\(String(format: "%.3f", maxScore)), " +
+            "avg: \(String(format: "%.3f", avgScore)))"
+          )
+
+          print("\nTop Results:")
+          for (i, result) in results.prefix(3).enumerated() {
+            let preview = result.text.prefix(80)
+            print(
+              "   \(i + 1). [\(String(format: "%.3f", result.score))] \(preview)" +
+              "\(result.text.count > 80 ? "..." : "")"
+            )
+          }
+        } else {
+          print(" (below threshold)")
+        }
       }
 
-      // Update a document
-      if let firstId = ids.first {
-        print("\n✏️ Updating first document...")
-        let newText = "The quick red fox jumps over the sleeping dog"
-        try await db.updateDocument(id: firstId, newText: newText)
-        print("Updated document \(firstId) with new text: \(newText)")
+      print("\n" + "=" * 60)
+      print("PERFORMANCE SUMMARY")
+      print("=" * 60)
+      let avgSearchTime = totalSearchTime / Double(searchQueries.count)
+      print("Total documents indexed: \(docCount)")
+      print("Indexing performance: \(String(format: "%.1f", docsPerSecond)) docs/sec")
+      print("Total search queries: \(searchQueries.count)")
+      print("Average search time: \(String(format: "%.1f", avgSearchTime * 1000))ms")
+      print("Model: \(modelId)")
+      print("Vector dimension: \(dimension)")
+    }
+
+    private func loadMockDataset() throws -> MockDataset {
+      // .copy() in Package.swift flattens the directory structure
+      guard let url = Bundle.module.url(forResource: "mock_documents", withExtension: "json") else {
+        throw VecturaError.loadFailed("Could not find mock_documents.json in resources")
       }
 
-      // Delete last document
-      if let lastId = ids.last {
-        print("\n🗑️ Deleting last document...")
-        try await db.deleteDocuments(ids: [lastId])
-        print("Deleted document \(lastId)")
-      }
-
-      print("\n✨ Mock demonstration completed!")
+      let data = try Data(contentsOf: url)
+      let decoder = JSONDecoder()
+      return try decoder.decode(MockDataset.self, from: data)
     }
   }
 

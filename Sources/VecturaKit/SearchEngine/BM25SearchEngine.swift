@@ -72,7 +72,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
       return []
     }
 
-    let results = index.search(query: queryText, topK: options.numResults)
+    let results = await index.search(query: queryText, topK: options.numResults)
 
     // Filter by threshold
     var filteredResults = results
@@ -93,7 +93,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   public func indexDocument(_ document: VecturaDocument) async throws {
     if let index = index {
       // Index exists: update incrementally (zero-copy, direct modification)
-      index.addDocument(document)
+      await index.addDocument(document)
     } else {
       // Index not yet built: mark as needing rebuild on next search
       needsRebuild = true
@@ -103,7 +103,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   public func removeDocument(id: UUID) async throws {
     if let index = index {
       // Index exists: remove incrementally (zero-copy, direct modification)
-      index.removeDocument(id)
+      await index.removeDocument(id)
     } else {
       // Index not yet built: mark as needing rebuild on next search
       needsRebuild = true

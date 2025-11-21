@@ -83,11 +83,9 @@ extension SwiftEmbedder: VecturaEmbedder {
     }
 
     let shape = embeddingsTensor.shape
-    guard shape.count == 2 else {
+    guard shape.count == 2, let dimension = shape.last else {
       throw VecturaError.invalidInput("Expected shape [N, D], got \(shape)")
     }
-
-    let dimension = shape[1]
     let embeddingShapedArray = await embeddingsTensor.cast(to: Float.self).shapedArray(of: Float.self)
     let allScalars = embeddingShapedArray.scalars
 
@@ -133,16 +131,24 @@ extension SwiftEmbedder: VecturaEmbedder {
     }
   }
 
-  /// Determines if a model source refers to a Model2Vec model based on string matching.
+  /// Determines if a model source refers to a Model2Vec model.
   ///
-  /// This uses string-based heuristics to identify Model2Vec models since the swift-embeddings
-  /// library doesn't provide a type property to differentiate model types. The check covers
-  /// known Model2Vec model families including minishlab, potion, and M2V variants.
+  /// First checks for an explicit model type, then falls back to string-based heuristics.
+  /// The string matching covers known Model2Vec model families including minishlab, potion, and M2V variants.
   ///
-  /// - Note: This approach may need updates if new Model2Vec naming schemes are introduced.
+  /// - Note: For best reliability, explicitly specify the model type when creating VecturaModelSource.
   /// - Parameter source: The model source to check.
   /// - Returns: `true` if the source appears to be a Model2Vec model, `false` otherwise.
   private func isModel2VecModel(_ source: VecturaModelSource) -> Bool {
+    // Check explicit type first
+    switch source {
+    case .id(_, let type), .folder(_, let type):
+      if let type = type {
+        return type == .model2vec
+      }
+    }
+
+    // Fall back to string matching
     let modelId = source.description
     return modelId.contains("minishlab") ||
          modelId.contains("potion") ||
@@ -173,9 +179,9 @@ extension Bert {
 
   static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
     switch source {
-    case .id(let modelId):
+    case .id(let modelId, _):
       try await loadModelBundle(from: modelId)
-    case .folder(let url):
+    case .folder(let url, _):
       try await loadModelBundle(from: url)
     }
   }
@@ -186,9 +192,9 @@ extension Model2Vec {
 
   static func loadModelBundle(from source: VecturaModelSource) async throws -> Model2Vec.ModelBundle {
     switch source {
-    case .id(let modelId):
+    case .id(let modelId, _):
       try await loadModelBundle(from: modelId)
-    case .folder(let url):
+    case .folder(let url, _):
       try await loadModelBundle(from: url)
     }
   }
@@ -199,9 +205,9 @@ extension StaticEmbeddings {
 
   static func loadModelBundle(from source: VecturaModelSource) async throws -> StaticEmbeddings.ModelBundle {
     switch source {
-    case .id(let modelId):
+    case .id(let modelId, _):
       try await loadModelBundle(from: modelId, loadConfig: .staticEmbeddings)
-    case .folder(let url):
+    case .folder(let url, _):
       try await loadModelBundle(from: url, loadConfig: .staticEmbeddings)
     }
   }

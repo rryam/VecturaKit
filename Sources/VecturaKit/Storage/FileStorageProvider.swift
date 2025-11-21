@@ -62,7 +62,12 @@ extension FileStorageProvider: VecturaStorage {
     let documents = try await loadDocumentsFromStorage()
 
     if cacheEnabled {
-      cache = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
+      cache = documents.reduce(into: [:]) { dict, doc in
+        if dict[doc.id] != nil {
+          Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
+        }
+        dict[doc.id] = doc
+      }
     }
 
     return documents
@@ -155,6 +160,16 @@ extension FileStorageProvider: CachableVecturaStorage {
       [.posixPermissions: 0o600],
       ofItemAtPath: documentURL.path(percentEncoded: false)
     )
+
+    // Verify permissions were set correctly on macOS (iOS/tvOS have different security model)
+    #if !os(iOS) && !os(tvOS) && !os(watchOS) && !os(visionOS)
+    let attributes = try FileManager.default.attributesOfItem(atPath: documentURL.path(percentEncoded: false))
+    if let permissions = attributes[.posixPermissions] as? NSNumber {
+      if permissions.uint16Value != 0o600 {
+        Self.logger.warning("File permissions verification failed for \(documentURL.path(percentEncoded: false))")
+      }
+    }
+    #endif
   }
 
   /// Deletes a document by removing its file from disk (bypasses cache).

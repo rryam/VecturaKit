@@ -16,9 +16,9 @@ private func tokenize(_ text: String) -> [String] {
 
 /// An index for BM25-based text search over VecturaDocuments
 ///
-/// This is a reference type (class) to avoid expensive copies when modifying the index.
-/// Thread safety is provided by the containing BM25SearchEngine actor.
-public final class BM25Index: @unchecked Sendable {
+/// This actor provides thread-safe access to the BM25 index, ensuring proper
+/// isolation of mutable state across concurrent operations.
+public actor BM25Index {
 
   private let k1: Float
   private let b: Float
@@ -29,7 +29,7 @@ public final class BM25Index: @unchecked Sendable {
   private var averageDocumentLength: Float
 
   /// Creates a new BM25 index for the given documents
-  /// 
+  ///
   /// - Parameters:
   ///   - documents: The documents to index
   ///   - k1: BM25 k1 parameter (default: 1.2)

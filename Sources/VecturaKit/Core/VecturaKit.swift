@@ -86,7 +86,10 @@ public actor VecturaKit {
   /// - Returns: The ID of the added document.
   public func addDocument(text: String, id: UUID? = nil) async throws -> UUID {
     let ids = try await addDocuments(texts: [text], ids: id.map { [$0] })
-    return ids[0]
+    guard let firstId = ids.first else {
+      throw VecturaError.invalidInput("Failed to add document: no ID returned")
+    }
+    return firstId
   }
 
   /// Adds multiple documents to the vector store in batch.
@@ -127,7 +130,7 @@ public actor VecturaKit {
       let docId = ids?[i] ?? UUID()
 
       // Pre-normalize embedding at storage time to avoid per-search normalization
-      let normalizedEmbedding = try normalizeEmbedding(embeddings[i])
+      let normalizedEmbedding = try VectorMath.normalizeEmbedding(embeddings[i])
 
       let doc = VecturaDocument(
         id: docId,
@@ -254,7 +257,7 @@ public actor VecturaKit {
     try validateDimension(newEmbedding)
 
     // Pre-normalize embedding at storage time to avoid per-search normalization
-    let normalizedEmbedding = try normalizeEmbedding(newEmbedding)
+    let normalizedEmbedding = try VectorMath.normalizeEmbedding(newEmbedding)
 
     // Create updated document, preserving original creation date
     let updatedDoc = VecturaDocument(
@@ -306,11 +309,12 @@ public actor VecturaKit {
         .appendingPathComponent(config.name)
     }
 
-    // Create directory if it doesn't exist
+    // Create directory if it doesn't exist with secure permissions
     if !FileManager.default.fileExists(atPath: storageDirectory.path(percentEncoded: false)) {
       try FileManager.default.createDirectory(
         at: storageDirectory,
-        withIntermediateDirectories: true
+        withIntermediateDirectories: true,
+        attributes: [.posixPermissions: 0o700]  // Owner read/write/execute only
       )
     }
 
@@ -350,26 +354,5 @@ public actor VecturaKit {
         got: embedding.count
       )
     }
-  }
-
-  /// Normalizes an embedding vector to unit length (L2 normalization)
-  private func normalizeEmbedding(_ embedding: [Float]) throws -> [Float] {
-    let norm = l2Norm(embedding)
-
-    guard norm > 1e-10 else {
-      throw VecturaError.invalidInput("Cannot normalize zero-norm embedding vector")
-    }
-
-    var divisor = norm
-    var normalized = [Float](repeating: 0, count: embedding.count)
-    vDSP_vsdiv(embedding, 1, &divisor, &normalized, 1, vDSP_Length(embedding.count))
-    return normalized
-  }
-
-  /// Computes the L2 norm of a vector
-  private func l2Norm(_ v: [Float]) -> Float {
-    var sumSquares: Float = 0
-    vDSP_svesq(v, 1, &sumSquares, vDSP_Length(v.count))
-    return sqrt(sumSquares)
   }
 }

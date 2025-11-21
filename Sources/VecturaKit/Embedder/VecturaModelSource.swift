@@ -3,14 +3,27 @@ import Foundation
 /// Specifies where to obtain the resources for an embedding model.
 public enum VecturaModelSource: Sendable {
 
+  /// The type of embedding model architecture.
+  public enum ModelType: Sendable {
+    /// Standard BERT-based embedding models
+    case bert
+    /// Model2Vec distilled models (e.g., potion, minishlab models)
+    case model2vec
+  }
+
   /// Automatically fetch the model from a remote repository based on its id.
   ///
-  /// - Parameter id: The identifier of the model to fetch from the remote repository.
-  case id(_ id: String)
+  /// - Parameters:
+  ///   - id: The identifier of the model to fetch from the remote repository.
+  ///   - type: Optional explicit model type. If nil, type will be inferred from model ID.
+  case id(_ id: String, type: ModelType? = nil)
+
   /// Load a local model from the specified directory URL.
   ///
-  /// - Parameter url: The local directory URL containing the model files.
-  case folder(_ url: URL)
+  /// - Parameters:
+  ///   - url: The local directory URL containing the model files.
+  ///   - type: Optional explicit model type. If nil, type will be inferred from directory name.
+  case folder(_ url: URL, type: ModelType? = nil)
 }
 
 public extension VecturaModelSource {
@@ -32,8 +45,8 @@ extension VecturaModelSource: CustomStringConvertible {
   /// For `.folder` cases, returns the file path.
   public var description: String {
     switch self {
-    case .id(let id): id
-    case .folder(let url): url.path(percentEncoded: false)
+    case .id(let id, _): id
+    case .folder(let url, _): url.path(percentEncoded: false)
     }
   }
 }
