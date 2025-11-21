@@ -264,7 +264,6 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
   }
 
-
   // MARK: - Batch Loading
 
   /// Loads candidate documents using batched loading for memory efficiency.

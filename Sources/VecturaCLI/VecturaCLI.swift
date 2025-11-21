@@ -147,6 +147,45 @@ extension VecturaCLI {
       print("Database contains \(docCount) documents")
 
       // Perform semantic search demonstrations
+      try await performSearchDemonstrations(
+        db: db,
+        docCount: docCount,
+        docsPerSecond: docsPerSecond
+      )
+
+      // Demonstrate update and delete operations
+      print("\n" + "=" * 60)
+      print("CRUD OPERATIONS DEMO")
+      print("=" * 60)
+
+      // Update a few documents
+      print("\nUpdating 3 sample documents...")
+      let updateIds = Array(ids.prefix(3))
+      for (i, id) in updateIds.enumerated() {
+        let newText = "Updated document \(i + 1): This content has been modified to test update functionality."
+        try await db.updateDocument(id: id, newText: newText)
+      }
+      print("Updated \(updateIds.count) documents")
+
+      // Delete some documents
+      print("\nDeleting 5 sample documents...")
+      let deleteIds = Array(ids.suffix(5))
+      try await db.deleteDocuments(ids: deleteIds)
+      print("Deleted \(deleteIds.count) documents")
+
+      let finalCount = try await db.documentCount
+      print("\nFinal document count: \(finalCount) (started with \(docCount))")
+
+      print("\n" + "=" * 60)
+      print("Mock Demonstration Complete!")
+      print("=" * 60)
+    }
+
+    private func performSearchDemonstrations(
+      db: VecturaKit,
+      docCount: Int,
+      docsPerSecond: Double
+    ) async throws {
       print("\n" + "=" * 60)
       print("SEMANTIC SEARCH DEMONSTRATIONS")
       print("=" * 60)
@@ -204,7 +243,6 @@ extension VecturaCLI {
         }
       }
 
-      // Performance summary
       print("\n" + "=" * 60)
       print("PERFORMANCE SUMMARY")
       print("=" * 60)
@@ -215,33 +253,6 @@ extension VecturaCLI {
       print("Average search time: \(String(format: "%.1f", avgSearchTime * 1000))ms")
       print("Model: \(modelId)")
       print("Vector dimension: \(dimension)")
-
-      // Demonstrate update and delete operations
-      print("\n" + "=" * 60)
-      print("CRUD OPERATIONS DEMO")
-      print("=" * 60)
-
-      // Update a few documents
-      print("\nUpdating 3 sample documents...")
-      let updateIds = Array(ids.prefix(3))
-      for (i, id) in updateIds.enumerated() {
-        let newText = "Updated document \(i + 1): This content has been modified to test update functionality."
-        try await db.updateDocument(id: id, newText: newText)
-      }
-      print("Updated \(updateIds.count) documents")
-
-      // Delete some documents
-      print("\nDeleting 5 sample documents...")
-      let deleteIds = Array(ids.suffix(5))
-      try await db.deleteDocuments(ids: deleteIds)
-      print("Deleted \(deleteIds.count) documents")
-
-      let finalCount = try await db.documentCount
-      print("\nFinal document count: \(finalCount) (started with \(docCount))")
-
-      print("\n" + "=" * 60)
-      print("Mock Demonstration Complete!")
-      print("=" * 60)
     }
 
     private func loadMockDataset() throws -> MockDataset {
