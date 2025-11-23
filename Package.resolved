@@ -1,5 +1,5 @@
 {
-  "originHash" : "b41b7da123d5db370da52f135679b0322ff3a94af21e49f76d5b41051be49421",
+  "originHash" : "4477fe0f90d2cd5328a3420c2ee2460a494adc9ee0badc087ef3f202627050cc",
   "pins" : [
     {
       "identity" : "mlx-swift",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "bacfe9579302d8d7f4bd581da73b08f8df58486e",
-        "version" : "0.0.21"
+        "revision" : "63b5f211c8b9f3e9fb9781e88195b41ac16cf3b5",
+        "version" : "0.0.25"
       }
     },
     {
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-numerics",
       "state" : {
-        "revision" : "bbadd4b853a33fd78c4ae977d17bb2af15eb3f2a",
-        "version" : "1.1.0"
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
       }
     },
     {
