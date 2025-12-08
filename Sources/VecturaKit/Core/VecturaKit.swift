@@ -141,17 +141,8 @@ public actor VecturaKit {
       documentIds.append(docId)
     }
 
-    // Save documents to storage (storage handles caching internally)
-    let storage = self.storageProvider
-    try await withThrowingTaskGroup(of: Void.self) { group in
-      for doc in documentsToSave {
-        group.addTask {
-          try await storage.saveDocument(doc)
-        }
-      }
-
-      try await group.waitForAll()
-    }
+    // Save documents to storage (storage provider handles batch concurrency)
+    try await storageProvider.saveDocuments(documentsToSave)
 
     // Notify search engine to index documents
     for doc in documentsToSave {
