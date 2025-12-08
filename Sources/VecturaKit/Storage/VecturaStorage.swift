@@ -33,6 +33,14 @@ public protocol VecturaStorage: Sendable {
   ///
   /// - Returns: The total document count.
   func getTotalDocumentCount() async throws -> Int
+
+  /// Saves multiple documents in batch.
+  ///
+  /// Storage providers can override this for optimized batch operations.
+  /// The default implementation calls saveDocument sequentially.
+  ///
+  /// - Parameter documents: The documents to save.
+  func saveDocuments(_ documents: [VecturaDocument]) async throws
 }
 
 // MARK: - Default Implementation
@@ -44,5 +52,14 @@ extension VecturaStorage {
   /// (e.g., SQL COUNT(*) query instead of loading all documents).
   public func getTotalDocumentCount() async throws -> Int {
     return try await loadDocuments().count
+  }
+
+  /// Default implementation that saves documents sequentially.
+  ///
+  /// Storage implementations can override this for concurrent I/O.
+  public func saveDocuments(_ documents: [VecturaDocument]) async throws {
+    for document in documents {
+      try await saveDocument(document)
+    }
   }
 }

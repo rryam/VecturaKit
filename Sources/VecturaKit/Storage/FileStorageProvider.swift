@@ -99,12 +99,63 @@ extension FileStorageProvider: VecturaStorage {
       cache[document.id] = document
     }
   }
+
+  /// Saves multiple documents with throttled concurrent file writes.
+  ///
+  /// Uses nonisolated file I/O to achieve true parallelism, then updates
+  /// the cache after all writes complete.
+  public func saveDocuments(_ documents: [VecturaDocument]) async throws {
+    let directory = storageDirectory
+
+    // Perform concurrent file writes outside actor isolation
+    try await documents.concurrentForEach(maxConcurrency: Self.maxConcurrentFileOperations) { document in
+      try Self.writeDocumentToFile(document, in: directory)
+    }
+
+    // Update cache after all writes succeed
+    if cacheEnabled {
+      for document in documents {
+        cache[document.id] = document
+      }
+    }
+  }
+
+  /// Writes a document to disk without actor isolation.
+  ///
+  /// This allows concurrent file I/O when called from multiple tasks.
+  nonisolated private static func writeDocumentToFile(
+    _ document: VecturaDocument,
+    in directory: URL
+  ) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = .prettyPrinted
+    let data = try encoder.encode(document)
+    let documentURL = directory.appendingPathComponent("\(document.id).json")
+
+    #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+    try data.write(to: documentURL, options: [.atomic, .completeFileProtection])
+    #else
+    try data.write(to: documentURL, options: .atomic)
+    #endif
+
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o600],
+      ofItemAtPath: documentURL.path(percentEncoded: false)
+    )
+  }
 }
 
 // MARK: - CachableVecturaStorage
 
 extension FileStorageProvider: CachableVecturaStorage {
+
+  /// Maximum number of concurrent file operations to prevent resource exhaustion.
+  private static let maxConcurrentFileOperations = 50
+
   /// Loads all documents from disk by reading JSON files (bypasses cache).
+  ///
+  /// Uses throttled concurrency to prevent file descriptor exhaustion
+  /// when loading large numbers of documents.
   public func loadDocumentsFromStorage() async throws -> [VecturaDocument] {
     let fileURLs = try FileManager.default.contentsOfDirectory(
       at: storageDirectory,
@@ -113,31 +164,17 @@ extension FileStorageProvider: CachableVecturaStorage {
 
     let jsonFileURLs = fileURLs.filter { $0.pathExtension.lowercased() == "json" }
 
-    return await withTaskGroup(of: VecturaDocument?.self, returning: [VecturaDocument].self) { group in
-      for fileURL in jsonFileURLs {
-        group.addTask {
-          do {
-            let data = try Data(contentsOf: fileURL)
-            let decoder = JSONDecoder()
-            return try decoder.decode(VecturaDocument.self, from: data)
-          } catch {
-            let path = fileURL.path(percentEncoded: false)
-            Self.logger.warning(
-              "Failed to load document at \(path): \(error.localizedDescription)"
-            )
-            return nil
-          }
-        }
+    return await jsonFileURLs.concurrentMap(maxConcurrency: Self.maxConcurrentFileOperations) { fileURL in
+      do {
+        let data = try Data(contentsOf: fileURL)
+        return try JSONDecoder().decode(VecturaDocument.self, from: data)
+      } catch {
+        let path = fileURL.path(percentEncoded: false)
+        Self.logger.warning(
+          "Failed to load document at \(path): \(error.localizedDescription)"
+        )
+        return nil
       }
-
-      var documents: [VecturaDocument] = []
-      documents.reserveCapacity(jsonFileURLs.count)
-      for await document in group {
-        if let document {
-          documents.append(document)
-        }
-      }
-      return documents
     }
   }
 
