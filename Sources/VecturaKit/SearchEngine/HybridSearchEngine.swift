@@ -48,20 +48,24 @@ public struct HybridSearchEngine: VecturaSearchEngine {
   private let vectorEngine: VectorSearchEngine
   private let textEngine: any VecturaSearchEngine
   private let vectorWeight: Float
+  private let bm25NormalizationFactor: Float
 
   /// Initialize hybrid search engine
   /// - Parameters:
   ///   - vectorEngine: Vector search engine for semantic similarity
   ///   - textEngine: Text search engine (e.g., BM25 or SQLite FTS)
   ///   - vectorWeight: Weight for vector score (0.0-1.0), text weight will be (1 - vectorWeight)
+  ///   - bm25NormalizationFactor: Factor to normalize BM25 scores into 0-1 range for hybrid ranking
   public init(
     vectorEngine: VectorSearchEngine,
     textEngine: any VecturaSearchEngine,
-    vectorWeight: Float = 0.5
+    vectorWeight: Float = 0.5,
+    bm25NormalizationFactor: Float = 10.0
   ) {
     self.vectorEngine = vectorEngine
     self.textEngine = textEngine
     self.vectorWeight = max(0, min(1, vectorWeight))
+    self.bm25NormalizationFactor = max(bm25NormalizationFactor, 1e-9)
   }
 
   // MARK: - VecturaSearchEngine Protocol
@@ -150,7 +154,12 @@ public struct HybridSearchEngine: VecturaSearchEngine {
     // Process vector results
     for result in vectorResults {
       let textScore = textScores[result.id] ?? 0
-      let hybridScore = vectorWeight * result.score + (1 - vectorWeight) * textScore
+      let hybridScore = VecturaDocument.calculateHybridScore(
+        vectorScore: result.score,
+        bm25Score: textScore,
+        weight: vectorWeight,
+        normalizationFactor: bm25NormalizationFactor
+      )
 
       // Apply threshold
       if let threshold = threshold, hybridScore < threshold {
@@ -167,7 +176,12 @@ public struct HybridSearchEngine: VecturaSearchEngine {
 
     // Add results only in text search
     for result in textResults where combinedResults[result.id] == nil {
-      let hybridScore = (1 - vectorWeight) * result.score
+      let hybridScore = VecturaDocument.calculateHybridScore(
+        vectorScore: 0,
+        bm25Score: result.score,
+        weight: vectorWeight,
+        normalizationFactor: bm25NormalizationFactor
+      )
 
       // Apply threshold
       if let threshold = threshold, hybridScore < threshold {

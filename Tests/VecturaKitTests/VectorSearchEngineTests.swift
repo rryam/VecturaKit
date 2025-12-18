@@ -49,7 +49,7 @@ struct VectorSearchEngineTests {
           id: UUID(),
           text: "malformed",
           embedding: [0.4, 0.5]
-        ),
+        )
       ]
     )
 
@@ -78,4 +78,3 @@ struct VectorSearchEngineTests {
     }
   }
 }
-
