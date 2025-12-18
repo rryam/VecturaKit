@@ -339,7 +339,8 @@ public actor VecturaKit {
     return HybridSearchEngine(
       vectorEngine: vectorEngine,
       textEngine: bm25Engine,
-      vectorWeight: config.searchOptions.hybridWeight
+      vectorWeight: config.searchOptions.hybridWeight,
+      bm25NormalizationFactor: config.searchOptions.bm25NormalizationFactor
     )
   }
 
