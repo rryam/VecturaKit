@@ -39,6 +39,26 @@ struct VecturaKitTests {
     SwiftEmbedder(modelSource: modelSource)
   }
 
+  private struct MismatchEmbedder: VecturaEmbedder {
+    let dimensionValue: Int
+
+    init(dimension: Int = 3) {
+      self.dimensionValue = dimension
+    }
+
+    var dimension: Int {
+      get async throws { dimensionValue }
+    }
+
+    func embed(texts: [String]) async throws -> [[Float]] {
+      let embedding = [Float](repeating: 0.1, count: dimensionValue)
+      if texts.count <= 1 {
+        return [embedding]
+      }
+      return Array(repeating: embedding, count: texts.count - 1)
+    }
+  }
+
   @Test("Add and search document")
   func addAndSearchDocument() async throws {
     guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
@@ -138,6 +158,27 @@ struct VecturaKitTests {
     let results = try await vectura.search(query: .text(text))
     #expect(results.count == 1)
     #expect(results[0].id == customId)
+  }
+
+  @Test("Embedder count mismatch throws")
+  func embedderCountMismatch() async throws {
+    let (config, cleanup) = try makeVecturaConfig(dimension: 3)
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: MismatchEmbedder(dimension: 3))
+
+    do {
+      _ = try await vectura.addDocuments(texts: ["First", "Second"])
+      Issue.record("Expected invalidInput error for mismatched embedding count")
+    } catch let error as VecturaError {
+      switch error {
+      case .invalidInput(let reason):
+        #expect(reason.contains("Embedder returned"))
+      default:
+        Issue.record("Unexpected error: \(error)")
+      }
+    } catch {
+      Issue.record("Unexpected error type: \(error)")
+    }
   }
 
   @Test("Model reuse remains performant")

@@ -85,6 +85,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     matrix.reserveCapacity(documents.count * dimension)
 
     for doc in documents {
+      try validateEmbeddingDimension(doc.embedding, expected: dimension)
       docIds.append(doc.id)
       matrix.append(contentsOf: doc.embedding)
     }
@@ -93,6 +94,11 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     var similarities = [Float](repeating: 0, count: docsCount)
 
     // Compute similarities using matrix-vector multiplication
+    if matrix.count != docsCount * dimension {
+      throw VecturaError.invalidInput(
+        "Vector search matrix size mismatch (expected \(docsCount * dimension), got \(matrix.count))"
+      )
+    }
     cblas_sgemv(
       CblasRowMajor,
       CblasNoTrans,
@@ -188,6 +194,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
 
     // Document embeddings are already normalized at storage time
     for (id, doc) in candidates {
+      try validateEmbeddingDimension(doc.embedding, expected: dimension)
       candidateDocIds.append(id)
       candidateDocs.append(doc)
       matrix.append(contentsOf: doc.embedding)
@@ -196,6 +203,11 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     let candidatesCount = candidateDocIds.count
     var similarities = [Float](repeating: 0, count: candidatesCount)
 
+    if matrix.count != candidatesCount * dimension {
+      throw VecturaError.invalidInput(
+        "Vector search matrix size mismatch (expected \(candidatesCount * dimension), got \(matrix.count))"
+      )
+    }
     cblas_sgemv(
       CblasRowMajor,
       CblasNoTrans,
@@ -342,5 +354,11 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     }
 
     return allDocuments
+  }
+
+  private func validateEmbeddingDimension(_ embedding: [Float], expected: Int) throws {
+    if embedding.count != expected {
+      throw VecturaError.dimensionMismatch(expected: expected, got: embedding.count)
+    }
   }
 }
