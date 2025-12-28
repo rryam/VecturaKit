@@ -341,10 +341,7 @@ public actor VecturaKit {
     switch config.memoryStrategy {
     case .indexed:
       shouldUnloadTextIndex = true
-    case .automatic:
-      // For automatic mode, unload only if we're using indexed mode
-      shouldUnloadTextIndex = false  // Will be determined dynamically
-    case .fullMemory:
+    case .automatic, .fullMemory:
       shouldUnloadTextIndex = false
     }
 

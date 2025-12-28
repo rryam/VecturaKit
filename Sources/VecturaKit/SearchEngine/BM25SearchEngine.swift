@@ -74,9 +74,8 @@ public actor BM25SearchEngine: VecturaSearchEngine {
     // Rebuild index if needed (first search or after documents changed)
     if index == nil || needsRebuild {
       let documents = try await storage.loadDocuments()
-      // Convert to lightweight BM25Document for memory efficiency
-      let lightweightDocs = documents.map { BM25Document(from: $0) }
-      index = BM25Index(documents: lightweightDocs, k1: k1, b: b)
+      // BM25Index handles conversion to lightweight BM25Document internally
+      index = BM25Index(documents: documents, k1: k1, b: b)
       needsRebuild = false
     }
 
@@ -104,8 +103,8 @@ public actor BM25SearchEngine: VecturaSearchEngine {
 
   public func indexDocument(_ document: VecturaDocument) async throws {
     if let index = index {
-      // Index exists: update incrementally with lightweight document
-      await index.addDocument(BM25Document(from: document))
+      // Index handles conversion to lightweight BM25Document
+      await index.addDocument(document)
     } else {
       // Index not yet built: mark as needing rebuild on next search
       needsRebuild = true

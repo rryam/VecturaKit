@@ -78,40 +78,8 @@ public actor BM25Index {
     self.b = b
     // Convert to lightweight BM25Document to reduce memory usage
     let lightweightDocs = documents.map { BM25Document(from: $0) }
-    // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
-    self.documents = lightweightDocs.reduce(into: [:]) { dict, doc in
-      dict[doc.id] = doc
-    }
-    self.documentFrequencies = [:]
-
-    // Initialize empty dictionaries first
-    var tempTokens: [UUID: [String]] = [:]
-    var tempLengths: [UUID: Int] = [:]
-
-    // Tokenize once per document and cache for later reuse
-    for (id, document) in self.documents {
-      let tokens = tokenize(document.text)
-      tempTokens[id] = tokens
-      tempLengths[id] = tokens.count
-    }
-
-    self.documentTokens = tempTokens
-    self.documentLengths = tempLengths
-
-    // Guard against division by zero when documents array is empty
-    if self.documents.isEmpty {
-      self.averageDocumentLength = 0
-    } else {
-      self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
-    }
-
-    // Build document frequencies using cached tokens
-    for document in self.documents.values {
-      let terms = Set(self.documentTokens[document.id] ?? [])
-      for term in terms {
-        documentFrequencies[term, default: 0] += 1
-      }
-    }
+    (self.documents, self.documentFrequencies, self.documentLengths, self.documentTokens, self.averageDocumentLength) =
+      Self.buildIndex(from: lightweightDocs)
   }
 
   /// Creates a new BM25 index with lightweight documents
@@ -123,35 +91,50 @@ public actor BM25Index {
   public init(documents: [BM25Document], k1: Float = 1.2, b: Float = 0.75) {
     self.k1 = k1
     self.b = b
-    self.documents = documents.reduce(into: [:]) { dict, doc in
+    (self.documents, self.documentFrequencies, self.documentLengths, self.documentTokens, self.averageDocumentLength) =
+      Self.buildIndex(from: documents)
+  }
+
+  /// Builds the index data structures from documents (non-isolated helper)
+  private static func buildIndex(from documents: [BM25Document]) -> (
+    [UUID: BM25Document],
+    [String: Int],
+    [UUID: Int],
+    [UUID: [String]],
+    Float
+  ) {
+    // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
+    let docsMap = documents.reduce(into: [:]) { dict, doc in
       dict[doc.id] = doc
     }
-    self.documentFrequencies = [:]
+    var documentFrequencies: [String: Int] = [:]
+    var documentLengths: [UUID: Int] = [:]
+    var documentTokens: [UUID: [String]] = [:]
 
-    var tempTokens: [UUID: [String]] = [:]
-    var tempLengths: [UUID: Int] = [:]
-
-    for (id, document) in self.documents {
+    // Tokenize once per document and cache for later reuse
+    for (id, document) in docsMap {
       let tokens = tokenize(document.text)
-      tempTokens[id] = tokens
-      tempLengths[id] = tokens.count
+      documentTokens[id] = tokens
+      documentLengths[id] = tokens.count
     }
 
-    self.documentTokens = tempTokens
-    self.documentLengths = tempLengths
-
-    if self.documents.isEmpty {
-      self.averageDocumentLength = 0
+    // Calculate average document length
+    let averageDocumentLength: Float
+    if docsMap.isEmpty {
+      averageDocumentLength = 0
     } else {
-      self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+      averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(docsMap.count)
     }
 
-    for document in self.documents.values {
-      let terms = Set(self.documentTokens[document.id] ?? [])
+    // Build document frequencies using cached tokens
+    for document in docsMap.values {
+      let terms = Set(documentTokens[document.id] ?? [])
       for term in terms {
         documentFrequencies[term, default: 0] += 1
       }
     }
+
+    return (docsMap, documentFrequencies, documentLengths, documentTokens, averageDocumentLength)
   }
 
   /// Searches the index using BM25 scoring
