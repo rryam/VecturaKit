@@ -335,12 +335,26 @@ public actor VecturaKit {
       b: config.searchOptions.b
     )
 
+    // Determine if we should unload text index after search
+    // This is enabled for indexed memory strategy to minimize memory footprint
+    let shouldUnloadTextIndex: Bool
+    switch config.memoryStrategy {
+    case .indexed:
+      shouldUnloadTextIndex = true
+    case .automatic:
+      // For automatic mode, unload only if we're using indexed mode
+      shouldUnloadTextIndex = false  // Will be determined dynamically
+    case .fullMemory:
+      shouldUnloadTextIndex = false
+    }
+
     // Combine into hybrid search engine
     return HybridSearchEngine(
       vectorEngine: vectorEngine,
       textEngine: bm25Engine,
       vectorWeight: config.searchOptions.hybridWeight,
-      bm25NormalizationFactor: config.searchOptions.bm25NormalizationFactor
+      bm25NormalizationFactor: config.searchOptions.bm25NormalizationFactor,
+      shouldUnloadTextIndex: shouldUnloadTextIndex
     )
   }
 

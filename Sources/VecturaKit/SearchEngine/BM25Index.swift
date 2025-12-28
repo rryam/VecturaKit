@@ -14,15 +14,54 @@ private func tokenize(_ text: String) -> [String] {
     .filter { !$0.isEmpty }
 }
 
-/// An index for BM25-based text search over VecturaDocuments
+/// A lightweight document structure for BM25 indexing that doesn't store embeddings.
+///
+/// This reduces memory usage by storing only what's needed for text search:
+/// - Document ID
+/// - Text content (for tokenization and results)
+/// - Creation timestamp
+///
+/// Using this instead of full VecturaDocument can reduce memory footprint by
+/// ~1.5KB per document (384-dimension embedding) when using indexed memory strategy.
+public struct BM25Document: Sendable, Equatable {
+  public let id: UUID
+  public let text: String
+  public let createdAt: Date
+
+  public init(id: UUID, text: String, createdAt: Date) {
+    self.id = id
+    self.text = text
+    self.createdAt = createdAt
+  }
+
+  /// Creates a BM25Document from a full VecturaDocument
+  public init(from document: VecturaDocument) {
+    self.id = document.id
+    self.text = document.text
+    self.createdAt = document.createdAt
+  }
+}
+
+/// An index for BM25-based text search using lightweight BM25Document.
 ///
 /// This actor provides thread-safe access to the BM25 index, ensuring proper
 /// isolation of mutable state across concurrent operations.
+///
+/// ## Memory Efficiency
+///
+/// This implementation uses BM25Document instead of full VecturaDocument to reduce
+/// memory usage. Each document only stores:
+/// - ID (16 bytes)
+/// - Text (variable, typically few hundred bytes)
+/// - Timestamp (8 bytes)
+///
+/// This is significantly smaller than storing full VecturaDocument with embeddings
+/// (~1.5KB per document for 384-dimensional embeddings).
 public actor BM25Index {
 
   private let k1: Float
   private let b: Float
-  private var documents: [UUID: VecturaDocument]
+  private var documents: [UUID: BM25Document]
   private var documentFrequencies: [String: Int]
   private var documentLengths: [UUID: Int]
   private var documentTokens: [UUID: [String]]
@@ -31,14 +70,16 @@ public actor BM25Index {
   /// Creates a new BM25 index for the given documents
   ///
   /// - Parameters:
-  ///   - documents: The documents to index
+  ///   - documents: The documents to index (converted to BM25Document internally)
   ///   - k1: BM25 k1 parameter (default: 1.2)
   ///   - b: BM25 b parameter (default: 0.75)
   public init(documents: [VecturaDocument], k1: Float = 1.2, b: Float = 0.75) {
     self.k1 = k1
     self.b = b
+    // Convert to lightweight BM25Document to reduce memory usage
+    let lightweightDocs = documents.map { BM25Document(from: $0) }
     // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
-    self.documents = documents.reduce(into: [:]) { dict, doc in
+    self.documents = lightweightDocs.reduce(into: [:]) { dict, doc in
       dict[doc.id] = doc
     }
     self.documentFrequencies = [:]
@@ -73,15 +114,55 @@ public actor BM25Index {
     }
   }
 
+  /// Creates a new BM25 index with lightweight documents
+  ///
+  /// - Parameters:
+  ///   - documents: The lightweight documents to index
+  ///   - k1: BM25 k1 parameter (default: 1.2)
+  ///   - b: BM25 b parameter (default: 0.75)
+  public init(documents: [BM25Document], k1: Float = 1.2, b: Float = 0.75) {
+    self.k1 = k1
+    self.b = b
+    self.documents = documents.reduce(into: [:]) { dict, doc in
+      dict[doc.id] = doc
+    }
+    self.documentFrequencies = [:]
+
+    var tempTokens: [UUID: [String]] = [:]
+    var tempLengths: [UUID: Int] = [:]
+
+    for (id, document) in self.documents {
+      let tokens = tokenize(document.text)
+      tempTokens[id] = tokens
+      tempLengths[id] = tokens.count
+    }
+
+    self.documentTokens = tempTokens
+    self.documentLengths = tempLengths
+
+    if self.documents.isEmpty {
+      self.averageDocumentLength = 0
+    } else {
+      self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+    }
+
+    for document in self.documents.values {
+      let terms = Set(self.documentTokens[document.id] ?? [])
+      for term in terms {
+        documentFrequencies[term, default: 0] += 1
+      }
+    }
+  }
+
   /// Searches the index using BM25 scoring
   ///
   /// - Parameters:
   ///   - query: The search query
   ///   - topK: Maximum number of results to return
-  /// - Returns: Array of tuples containing documents and their BM25 scores
-  public func search(query: String, topK: Int = 10) -> [(document: VecturaDocument, score: Float)] {
+  /// - Returns: Array of tuples containing lightweight documents and their BM25 scores
+  public func search(query: String, topK: Int = 10) -> [(document: BM25Document, score: Float)] {
     let queryTerms = tokenize(query)
-    var scores: [(VecturaDocument, Float)] = []
+    var scores: [(BM25Document, Float)] = []
 
     for document in documents.values {
       let docLength = Float(documentLengths[document.id] ?? 0)
@@ -119,6 +200,13 @@ public actor BM25Index {
   ///
   /// - Parameter document: The document to add
   public func addDocument(_ document: VecturaDocument) {
+    addDocument(BM25Document(from: document))
+  }
+
+  /// Add a lightweight document to the index incrementally
+  ///
+  /// - Parameter document: The lightweight document to add
+  public func addDocument(_ document: BM25Document) {
     upsertDocument(document)
   }
 
@@ -143,12 +231,19 @@ public actor BM25Index {
   ///
   /// - Parameter document: The updated document
   public func updateDocument(_ document: VecturaDocument) {
+    updateDocument(BM25Document(from: document))
+  }
+
+  /// Update an existing lightweight document in the index incrementally
+  ///
+  /// - Parameter document: The updated lightweight document
+  public func updateDocument(_ document: BM25Document) {
     upsertDocument(document)
   }
 
   /// Internal helper that handles both adding new documents and updating existing ones
   /// - Parameter document: The document to add or update
-  private func upsertDocument(_ document: VecturaDocument) {
+  private func upsertDocument(_ document: BM25Document) {
     // If document already exists, decrement its old term frequencies first
     if let oldDocument = documents[document.id] {
       decrementTermFrequencies(for: oldDocument)
@@ -175,6 +270,25 @@ public actor BM25Index {
     documents[documentID] != nil
   }
 
+  /// Clears the entire index, releasing all memory used by document storage.
+  ///
+  /// This is useful when using indexed memory strategy and wanting to free memory
+  /// after search operations. After calling this, the index will need to be rebuilt
+  /// before the next search.
+  public func unload() {
+    documents.removeAll()
+    documentFrequencies.removeAll()
+    documentLengths.removeAll()
+    documentTokens.removeAll()
+    averageDocumentLength = 0
+  }
+
+  /// Returns the current number of documents in the index
+  /// - Returns: The count of indexed documents
+  public var documentCount: Int {
+    documents.count
+  }
+
   /// Updates the average document length after changes
   private func updateAverageDocumentLength() {
     guard !documents.isEmpty else {
@@ -195,7 +309,7 @@ public actor BM25Index {
 
   /// Decrements term frequencies for a document
   /// - Parameter document: The document whose terms should be decremented
-  private func decrementTermFrequencies(for document: VecturaDocument) {
+  private func decrementTermFrequencies(for document: BM25Document) {
     // Use cached tokens if available, otherwise tokenize
     let terms = Set(documentTokens[document.id] ?? tokenize(document.text))
     decrementTermFrequencies(terms: terms)
