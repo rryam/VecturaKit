@@ -91,10 +91,43 @@ public actor BM25Index {
   public init(documents: [BM25Document], k1: Float = 1.2, b: Float = 0.75) {
     self.k1 = k1
     self.b = b
-    (self.documents, self.documentFrequencies, self.documentLengths, self.documentTokens, self.averageDocumentLength) =
-      Self.buildIndex(from: documents)
+    // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
+    self.documents = documents.reduce(into: [:]) { dict, doc in
+      dict[doc.id] = doc
+    }
+    self.documentFrequencies = [:]
+
+    // Initialize empty dictionaries first
+    var tempTokens: [UUID: [String]] = [:]
+    var tempLengths: [UUID: Int] = [:]
+
+    // Tokenize once per document and cache for later reuse
+    for (id, document) in self.documents {
+      let tokens = tokenize(document.text)
+      tempTokens[id] = tokens
+      tempLengths[id] = tokens.count
+    }
+
+    self.documentTokens = tempTokens
+    self.documentLengths = tempLengths
+
+    // Guard against division by zero when documents array is empty
+    if self.documents.isEmpty {
+      self.averageDocumentLength = 0
+    } else {
+      self.averageDocumentLength = Float(documentLengths.values.reduce(0, +)) / Float(self.documents.count)
+    }
+
+    // Build document frequencies using cached tokens
+    for document in self.documents.values {
+      let terms = Set(self.documentTokens[document.id] ?? [])
+      for term in terms {
+        documentFrequencies[term, default: 0] += 1
+      }
+    }
   }
 
+  // swiftlint:disable large_tuple
   /// Builds the index data structures from documents (non-isolated helper)
   private static func buildIndex(from documents: [BM25Document]) -> (
     [UUID: BM25Document],
@@ -136,6 +169,7 @@ public actor BM25Index {
 
     return (docsMap, documentFrequencies, documentLengths, documentTokens, averageDocumentLength)
   }
+  // swiftlint:enable large_tuple
 
   /// Searches the index using BM25 scoring
   ///
