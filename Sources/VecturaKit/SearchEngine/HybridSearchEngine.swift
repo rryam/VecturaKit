@@ -20,25 +20,25 @@ import Foundation
 ///   hybrid ranking
 /// - Uses concurrent execution (`async let`) for minimal latency
 ///
+/// ## Memory Management
+///
+/// When using indexed memory strategy, the hybrid engine can optionally unload
+/// the BM25 text search index after each search to minimize memory footprint.
+/// This is controlled by the `shouldUnloadTextIndex` parameter.
+///
 /// ## Example
 ///
 /// ```swift
 /// let hybrid = HybridSearchEngine(
 ///   vectorEngine: vectorEngine,
 ///   textEngine: bm25Engine,
-///   vectorWeight: 0.7  // 70% vector, 30% text
+///   vectorWeight: 0.7,  // 70% vector, 30% text
+///   shouldUnloadTextIndex: true  // Unload BM25 index after search
 /// )
 ///
 /// // Hybrid search (uses both engines)
 /// let results = try await hybrid.search(
 ///   query: .text("machine learning"),
-///   storage: storage,
-///   options: options
-/// )
-///
-/// // Pure vector search (only uses vector engine)
-/// let vectorResults = try await hybrid.search(
-///   query: .vector(embedding),
 ///   storage: storage,
 ///   options: options
 /// )
@@ -49,6 +49,7 @@ public struct HybridSearchEngine: VecturaSearchEngine {
   private let textEngine: any VecturaSearchEngine
   private let vectorWeight: Float
   private let bm25NormalizationFactor: Float
+  private let shouldUnloadTextIndex: Bool
 
   /// Initialize hybrid search engine
   /// - Parameters:
@@ -56,16 +57,19 @@ public struct HybridSearchEngine: VecturaSearchEngine {
   ///   - textEngine: Text search engine (e.g., BM25 or SQLite FTS)
   ///   - vectorWeight: Weight for vector score (0.0-1.0), text weight will be (1 - vectorWeight)
   ///   - bm25NormalizationFactor: Factor to normalize BM25 scores into 0-1 range for hybrid ranking
+  ///   - shouldUnloadTextIndex: Whether to unload the text search index after each search (default: false)
   public init(
     vectorEngine: VectorSearchEngine,
     textEngine: any VecturaSearchEngine,
     vectorWeight: Float = 0.5,
-    bm25NormalizationFactor: Float = 10.0
+    bm25NormalizationFactor: Float = 10.0,
+    shouldUnloadTextIndex: Bool = false
   ) {
     self.vectorEngine = vectorEngine
     self.textEngine = textEngine
     self.vectorWeight = max(0, min(1, vectorWeight))
     self.bm25NormalizationFactor = max(bm25NormalizationFactor, 1e-9)
+    self.shouldUnloadTextIndex = shouldUnloadTextIndex
   }
 
   // MARK: - VecturaSearchEngine Protocol
@@ -113,13 +117,20 @@ public struct HybridSearchEngine: VecturaSearchEngine {
     let vResults = try await vectorResults
     let tResults = try await textResults
 
-    return combineResults(
+    let results = combineResults(
       vectorResults: vResults,
       textResults: tResults,
       vectorWeight: vectorWeight,
       threshold: options.threshold,
       topK: options.numResults
     )
+
+    // Optionally unload text index to free memory
+    if shouldUnloadTextIndex {
+      await unloadTextIndex()
+    }
+
+    return results
   }
 
   public func indexDocument(_ document: VecturaDocument) async throws {
@@ -130,6 +141,19 @@ public struct HybridSearchEngine: VecturaSearchEngine {
   public func removeDocument(id: UUID) async throws {
     // Only need to notify text search engine
     try await textEngine.removeDocument(id: id)
+  }
+
+  // MARK: - Index Management
+
+  /// Unloads the text search index to free memory.
+  ///
+  /// This is useful after search operations when using indexed memory strategy
+  /// to minimize the application's memory footprint.
+  public func unloadTextIndex() async {
+    // Check if the text engine supports index unloading
+    if let bm25Engine = textEngine as? BM25SearchEngine {
+      await bm25Engine.unloadIndex()
+    }
   }
 
   // MARK: - Private Methods
