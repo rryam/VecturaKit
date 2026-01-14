@@ -64,12 +64,29 @@ public actor MLXEmbedder: VecturaEmbedder {
     let mask = (padded .!= tokenizer.eosTokenId ?? 0)
     let tokenTypes = MLXArray.zeros(like: padded)
 
+    // Call .eval() to force evaluation of the computation graph before converting to Float arrays.
+    // This is critical for memory management - without eval(), MLX keeps the entire computation
+    // graph in memory. The official mlx-swift-lm examples use this pattern.
+    // See: https://github.com/ml-explore/mlx-swift-lm/tree/main/Libraries/Embedders
     let result = pooling(
     model(padded, positionIds: nil, tokenTypeIds: tokenTypes, attentionMask: mask),
     normalize: true, applyLayerNorm: true
-    )
+    ).eval()
 
-    return result.map { $0.asArray(Float.self) }
+    // Convert MLXArrays to Float arrays with autoreleasepool to ensure proper memory cleanup
+    var output: [[Float]] = []
+    output.reserveCapacity(result.count)
+    for mlxArray in result {
+      autoreleasepool {
+        let array = mlxArray.asArray(Float.self)
+        output.append(array)
+      }
+    }
+
+    // Clear the MLX buffer cache to release memory that's no longer needed
+    Memory.clearCache()
+
+    return output
   }
   }
 }
