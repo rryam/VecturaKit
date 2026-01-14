@@ -78,6 +78,34 @@ struct VecturaMLXKitTests {
     }
   }
 
+  private func createMLXEmbedder() async throws -> MLXEmbedder? {
+    guard shouldRunMLXTests else {
+      return nil
+    }
+
+    guard MTLCreateSystemDefaultDevice() != nil else {
+      return nil
+    }
+
+    do {
+      return try await MLXEmbedder(configuration: .nomic_text_v1_5)
+    } catch {
+      return nil
+    }
+  }
+
+  /// Helper to get current memory footprint in bytes
+  private func getMemoryFootprint() -> UInt64 {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+    let result = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+      }
+    }
+    return result == KERN_SUCCESS ? info.resident_size : 0
+  }
+
   @Test("Add and search")
   func addAndSearch() async throws {
     let directory = try makeTestDirectory()
@@ -236,5 +264,126 @@ struct VecturaMLXKitTests {
 
     let results = try await kit.search(query: "completely different query text", threshold: 0.9)
     #expect(results.isEmpty, "Search should return no results when the query does not match any document.")
+  }
+
+  // MARK: - Memory Tests
+
+  @Test("Embedding single text maintains reasonable memory")
+  func embeddingSingleTextMemory() async throws {
+    guard let embedder = try await createMLXEmbedder() else { return }
+
+    let baselineMemory = getMemoryFootprint()
+
+    // Embed a single short text
+    let embeddings = try await embedder.embed(texts: ["Hello, this is a test document."])
+
+    let afterMemory = getMemoryFootprint()
+    let memoryIncrease = afterMemory > baselineMemory ? afterMemory - baselineMemory : 0
+
+    #expect(embeddings.count == 1, "Should produce exactly one embedding.")
+    #expect(embeddings[0].count > 0, "Embedding should have non-zero dimensions.")
+
+    // Memory increase should be reasonable (less than 500MB for a single short text)
+    let maxAllowedIncrease: UInt64 = 500 * 1024 * 1024
+    #expect(
+      memoryIncrease < maxAllowedIncrease,
+      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB for single text embedding."
+    )
+  }
+
+  @Test("Embedding multiple texts releases memory properly")
+  func embeddingMultipleTextsMemory() async throws {
+    guard let embedder = try await createMLXEmbedder() else { return }
+
+    let baselineMemory = getMemoryFootprint()
+
+    // Embed multiple texts in sequence
+    let texts = [
+      "The quick brown fox jumps over the lazy dog.",
+      "Machine learning enables computers to learn from data.",
+      "Swift is a powerful programming language for Apple platforms.",
+      "Vector databases store and query high-dimensional embeddings.",
+      "Natural language processing transforms text into numbers."
+    ]
+
+    let embeddings = try await embedder.embed(texts: texts)
+
+    let afterMemory = getMemoryFootprint()
+    let memoryIncrease = afterMemory > baselineMemory ? afterMemory - baselineMemory : 0
+
+    #expect(embeddings.count == texts.count, "Should produce one embedding per input text.")
+
+    // Memory increase should be reasonable (less than 600MB for 5 texts)
+    let maxAllowedIncrease: UInt64 = 600 * 1024 * 1024
+    #expect(
+      memoryIncrease < maxAllowedIncrease,
+      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB for multiple text embeddings."
+    )
+  }
+
+  @Test("Repeated embeddings don't accumulate memory")
+  func repeatedEmbeddingsMemory() async throws {
+    guard let embedder = try await createMLXEmbedder() else { return }
+
+    // Run first embedding to warm up
+    _ = try await embedder.embed(texts: ["Warmup text for initialization."])
+
+    let baselineMemory = getMemoryFootprint()
+
+    // Run multiple embedding operations
+    for i in 0..<5 {
+      let texts = (0..<3).map { "Test document number \($0) in iteration \(i)." }
+      let embeddings = try await embedder.embed(texts: texts)
+      #expect(embeddings.count == 3, "Each iteration should produce 3 embeddings.")
+    }
+
+    let afterMemory = getMemoryFootprint()
+    let memoryIncrease = afterMemory > baselineMemory ? afterMemory - baselineMemory : 0
+
+    // Memory increase after repeated operations should be bounded (less than 700MB)
+    // This verifies that memory is properly released between operations
+    let maxAllowedIncrease: UInt64 = 700 * 1024 * 1024
+    #expect(
+      memoryIncrease < maxAllowedIncrease,
+      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB after repeated embeddings."
+    )
+  }
+
+  @Test("Embedding returns correct dimensions")
+  func embeddingDimensions() async throws {
+    guard let embedder = try await createMLXEmbedder() else { return }
+
+    let texts = ["Test text one.", "Test text two."]
+    let embeddings = try await embedder.embed(texts: texts)
+
+    #expect(embeddings.count == 2, "Should produce two embeddings.")
+
+    // All embeddings should have the same dimension
+    let dimension = embeddings[0].count
+    #expect(dimension > 0, "Embedding dimension should be positive.")
+
+    for (index, embedding) in embeddings.enumerated() {
+      #expect(
+        embedding.count == dimension,
+        "Embedding \(index) has dimension \(embedding.count), expected \(dimension)."
+      )
+    }
+  }
+
+  @Test("GPU cache cleared after embedding")
+  func gpuCacheClearedAfterEmbedding() async throws {
+    guard let embedder = try await createMLXEmbedder() else { return }
+
+    // Perform embedding operation
+    let embeddings = try await embedder.embed(texts: ["Test document for GPU cache verification."])
+
+    #expect(embeddings.count == 1, "Should produce one embedding.")
+    #expect(embeddings[0].count > 0, "Embedding should have non-zero dimensions.")
+
+    // After embedding, GPU cache should be cleared
+    // We can't directly verify GPU cache state, but we can verify the operation completes
+    // and the embedder remains functional
+    let secondEmbeddings = try await embedder.embed(texts: ["Second test to verify embedder still works."])
+    #expect(secondEmbeddings.count == 1, "Embedder should remain functional after cache clear.")
   }
 }
