@@ -100,7 +100,12 @@ struct VecturaMLXKitTests {
     var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
     let result = withUnsafeMutablePointer(to: &info) {
       $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+        task_info(
+          mach_task_self_,
+          task_flavor_t(MACH_TASK_BASIC_INFO),
+          $0,
+          &count
+        )
       }
     }
     return result == KERN_SUCCESS ? info.resident_size : 0
@@ -285,9 +290,11 @@ struct VecturaMLXKitTests {
 
     // Memory increase should be reasonable (less than 500MB for a single short text)
     let maxAllowedIncrease: UInt64 = 500 * 1024 * 1024
+    let increaseMB = memoryIncrease / 1024 / 1024
+    let maxMB = maxAllowedIncrease / 1024 / 1024
     #expect(
       memoryIncrease < maxAllowedIncrease,
-      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB for single text embedding."
+      "Memory increase (\(increaseMB)MB) exceeds \(maxMB)MB limit for single text."
     )
   }
 
@@ -315,9 +322,11 @@ struct VecturaMLXKitTests {
 
     // Memory increase should be reasonable (less than 600MB for 5 texts)
     let maxAllowedIncrease: UInt64 = 600 * 1024 * 1024
+    let increaseMB = memoryIncrease / 1024 / 1024
+    let maxMB = maxAllowedIncrease / 1024 / 1024
     #expect(
       memoryIncrease < maxAllowedIncrease,
-      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB for multiple text embeddings."
+      "Memory increase (\(increaseMB)MB) exceeds \(maxMB)MB limit for multiple texts."
     )
   }
 
@@ -343,9 +352,11 @@ struct VecturaMLXKitTests {
     // Memory increase after repeated operations should be bounded (less than 700MB)
     // This verifies that memory is properly released between operations
     let maxAllowedIncrease: UInt64 = 700 * 1024 * 1024
+    let increaseMB = memoryIncrease / 1024 / 1024
+    let maxMB = maxAllowedIncrease / 1024 / 1024
     #expect(
       memoryIncrease < maxAllowedIncrease,
-      "Memory increase (\(memoryIncrease / 1024 / 1024)MB) should be less than \(maxAllowedIncrease / 1024 / 1024)MB after repeated embeddings."
+      "Memory increase (\(increaseMB)MB) exceeds \(maxMB)MB limit for repeated ops."
     )
   }
 
