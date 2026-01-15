@@ -42,48 +42,29 @@ public actor MLXEmbedder: VecturaEmbedder {
   /// - Returns: An array of embedding vectors, one for each input text.
   /// - Throws: An error if embedding generation fails.
   public func embed(texts: [String]) async throws -> [[Float]] {
-    await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+    try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }
 
-      // Pad to longest
-      let maxLength = inputs.reduce(into: 16) { acc, elem in
-        acc = max(acc, elem.count)
+      // Determine padding token
+      guard let padToken = tokenizer.padTokenId ?? tokenizer.eosTokenId else {
+        throw EmbeddingError.noPaddingToken
       }
 
-      // Use padTokenId if available, fallback to eosTokenId
-      // let padId = tokenizer.padTokenId ?? tokenizer.eosTokenId ?? 0
+      // Calculate actual max length from inputs
+      let maxLength = inputs.map { $0.count }.max() ?? 0
 
-  
-      // Determine padding token id: prefer padTokenId when available, else eosTokenId, else 0
-      let padId: Int = {
-        // Some tokenizer implementations may define padTokenId; access it via conditional casting
-        if let t = tokenizer as? (any AnyObject) {
-          // Use reflection to avoid hard dependency on protocol requirements
-          if let value = (t.value(forKey: "padTokenId") as? NSNumber)?.intValue {
-            return value
-          }
-        }
-        // Fall back to eosTokenId if available via protocol or KVC
-        if let eos = tokenizer.eosTokenId {
-          return eos
-        } else if let t = tokenizer as? (any AnyObject), let value = (t.value(forKey: "eosTokenId") as? NSNumber)?.intValue {
-          return value
-        }
-        return 0
-      }()
-                                  
       let padded = stacked(
         inputs.map { elem in
           MLXArray(
             elem
               + Array(
-                repeating: padId,
+                repeating: padToken,
                 count: maxLength - elem.count))
         })
 
-      let mask = (padded .!= padId)
+      let mask = (padded .!= padToken)
       let tokenTypes = MLXArray.zeros(like: padded)
 
       let result = pooling(
@@ -94,4 +75,8 @@ public actor MLXEmbedder: VecturaEmbedder {
       return result.map { $0.asArray(Float.self) }
     }
   }
+}
+
+enum EmbeddingError: Error {
+  case noPaddingToken
 }
