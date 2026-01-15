@@ -56,23 +56,31 @@ public actor MLXEmbedder: VecturaEmbedder {
       let maxLength = inputs.map { $0.count }.max() ?? 0
 
       let padded = stacked(
-        inputs.map { elem in
-          MLXArray(
-            elem
-              + Array(
-                repeating: padToken,
-                count: maxLength - elem.count))
+        inputs.map { tokens in
+          MLXArray(tokens + Array(repeating: padToken, count: maxLength - tokens.count))
         })
 
       let mask = (padded .!= padToken)
       let tokenTypes = MLXArray.zeros(like: padded)
 
-      let result = pooling(
-        model(padded, positionIds: nil, tokenTypeIds: tokenTypes, attentionMask: mask),
-        normalize: true, applyLayerNorm: true
+      // Call model to get outputs
+      let outputs = model(
+        padded,
+        positionIds: nil,
+        tokenTypeIds: tokenTypes,
+        attentionMask: mask
       )
 
-      return result.map { $0.asArray(Float.self) }
+      // Apply pooling with mask explicitly
+      let pooled = pooling(
+        outputs,
+        mask: mask,
+        normalize: true,
+        applyLayerNorm: true
+      )
+      pooled.eval()
+
+      return pooled.map { $0.asArray(Float.self) }
     }
   }
 }
