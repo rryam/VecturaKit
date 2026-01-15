@@ -80,11 +80,39 @@ public actor MLXEmbedder: VecturaEmbedder {
       )
       pooled.eval()
 
-      return pooled.map { $0.asArray(Float.self) }
+      // Handle both 2D [batch, dim] and 3D [batch, seq, dim] shapes
+      let finalEmbeddings: MLXArray
+      switch pooled.ndim {
+      case 2:
+        // Expected shape: [batch, dimension]
+        finalEmbeddings = pooled
+        
+      case 3:
+        // Fallback: pooling returned sequence embeddings [batch, seq, dim]
+        // Apply mean pooling over sequence dimension
+        finalEmbeddings = mean(pooled, axis: 1)
+        finalEmbeddings.eval()
+        
+      default:
+        throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
+      }
+
+      let vectors = finalEmbeddings.map { $0.asArray(Float.self) }
+      
+      guard vectors.count == texts.count else {
+        throw EmbeddingError.vectorCountMismatch(
+          expected: texts.count,
+          received: vectors.count
+        )
+      }
+
+      return vectors
     }
   }
 }
 
 enum EmbeddingError: Error {
   case noPaddingToken
+  case unsupportedPoolingShape([Int])
+  case vectorCountMismatch(expected: Int, received: Int)
 }
