@@ -55,6 +55,25 @@ public actor MLXEmbedder: VecturaEmbedder {
       // Use padTokenId if available, fallback to eosTokenId
       let padId = tokenizer.padTokenId ?? tokenizer.eosTokenId ?? 0
 
+  
+      // Determine padding token id: prefer padTokenId when available, else eosTokenId, else 0
+      let padId: Int = {
+        // Some tokenizer implementations may define padTokenId; access it via conditional casting
+        if let t = tokenizer as? (any AnyObject) {
+          // Use reflection to avoid hard dependency on protocol requirements
+          if let value = (t.value(forKey: "padTokenId") as? NSNumber)?.intValue {
+            return value
+          }
+        }
+        // Fall back to eosTokenId if available via protocol or KVC
+        if let eos = tokenizer.eosTokenId {
+          return eos
+        } else if let t = tokenizer as? (any AnyObject), let value = (t.value(forKey: "eosTokenId") as? NSNumber)?.intValue {
+          return value
+        }
+        return 0
+      }()
+                                  
       let padded = stacked(
         inputs.map { elem in
           MLXArray(
