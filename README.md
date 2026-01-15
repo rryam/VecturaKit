@@ -1,4 +1,6 @@
 # VecturaKit
+[![Star History Chart](https://api.star-history.com/svg?repos=rryam/VecturaKit&type=Date)](https://star-history.com/#rryam/VecturaKit&Date)
+
 
 VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval.
 
