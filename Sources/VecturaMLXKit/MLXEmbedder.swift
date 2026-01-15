@@ -48,7 +48,7 @@ public actor MLXEmbedder: VecturaEmbedder {
       }
 
       // Determine padding token
-      guard let padToken = tokenizer.padTokenId ?? tokenizer.eosTokenId else {
+      guard let padToken = tokenizer.eosTokenId else {
         throw EmbeddingError.noPaddingToken
       }
 
