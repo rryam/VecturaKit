@@ -53,7 +53,7 @@ public actor MLXEmbedder: VecturaEmbedder {
       }
 
       // Use padTokenId if available, fallback to eosTokenId
-      let padId = tokenizer.padTokenId ?? tokenizer.eosTokenId ?? 0
+      // let padId = tokenizer.padTokenId ?? tokenizer.eosTokenId ?? 0
 
   
       // Determine padding token id: prefer padTokenId when available, else eosTokenId, else 0
