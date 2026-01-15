@@ -3,8 +3,7 @@ import Foundation
 /// BM25 text search engine
 ///
 /// This engine implements the BM25 ranking function for text search. It maintains
-/// an in-memory index of documents and can optionally delegate to storage-layer
-/// text search implementations (like SQLite FTS) if available.
+/// an in-memory index of lightweight BM25Document objects.
 ///
 /// ## Index Management
 ///
@@ -12,9 +11,20 @@ import Foundation
 /// or after being marked dirty). This provides a balance between performance and
 /// memory efficiency.
 ///
-/// **Note**: BM25 search always operates in full-memory mode. The index is built
-/// from all documents in storage and kept in memory. This differs from vector search
-/// which supports both in-memory and indexed strategies.
+/// ## Memory Efficiency
+///
+/// BM25SearchEngine uses lightweight BM25Document objects that store only:
+/// - Document ID
+/// - Text content
+/// - Creation timestamp
+///
+/// This is significantly more memory-efficient than storing full VecturaDocument
+/// objects with embeddings (~1.5KB savings per document for 384-dimensional vectors).
+///
+/// ## Index Unloading
+///
+/// After search operations, the index can be unloaded to free memory when using
+/// indexed memory strategy. Call `unloadIndex()` to release memory.
 ///
 /// ## Performance Characteristics
 ///
@@ -64,6 +74,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
     // Rebuild index if needed (first search or after documents changed)
     if index == nil || needsRebuild {
       let documents = try await storage.loadDocuments()
+      // BM25Index handles conversion to lightweight BM25Document internally
       index = BM25Index(documents: documents, k1: k1, b: b)
       needsRebuild = false
     }
@@ -92,7 +103,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
 
   public func indexDocument(_ document: VecturaDocument) async throws {
     if let index = index {
-      // Index exists: update incrementally (zero-copy, direct modification)
+      // Index handles conversion to lightweight BM25Document
       await index.addDocument(document)
     } else {
       // Index not yet built: mark as needing rebuild on next search
@@ -102,11 +113,43 @@ public actor BM25SearchEngine: VecturaSearchEngine {
 
   public func removeDocument(id: UUID) async throws {
     if let index = index {
-      // Index exists: remove incrementally (zero-copy, direct modification)
+      // Index exists: remove incrementally
       await index.removeDocument(id)
     } else {
       // Index not yet built: mark as needing rebuild on next search
       needsRebuild = true
+    }
+  }
+
+  // MARK: - Index Management
+
+  /// Unloads the BM25 index to free memory.
+  ///
+  /// After calling this method, the index will be cleared and will need to be
+  /// rebuilt on the next search operation. This is useful when using indexed
+  /// memory strategy and wanting to minimize memory footprint.
+  ///
+  /// Example:
+  /// ```swift
+  /// await bm25Engine.unloadIndex()
+  /// ```
+  public func unloadIndex() async {
+    await index?.unload()
+    index = nil
+    needsRebuild = true
+  }
+
+  /// Returns whether the index is currently loaded in memory
+  /// - Returns: True if index is loaded, false otherwise
+  public var isIndexLoaded: Bool {
+    index != nil
+  }
+
+  /// Returns the current number of documents in the index
+  /// - Returns: The count of indexed documents, or 0 if not loaded
+  public var indexedDocumentCount: Int {
+    get async {
+      await index?.documentCount ?? 0
     }
   }
 }
