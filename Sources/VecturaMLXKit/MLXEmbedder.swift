@@ -86,19 +86,19 @@ public actor MLXEmbedder: VecturaEmbedder {
       case 2:
         // Expected shape: [batch, dimension]
         finalEmbeddings = pooled
-        
+
       case 3:
         // Fallback: pooling returned sequence embeddings [batch, seq, dim]
         // Apply mean pooling over sequence dimension
         finalEmbeddings = mean(pooled, axis: 1)
         finalEmbeddings.eval()
-        
+
       default:
         throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
       }
 
       let vectors = finalEmbeddings.map { $0.asArray(Float.self) }
-      
+
       guard vectors.count == texts.count else {
         throw EmbeddingError.vectorCountMismatch(
           expected: texts.count,
