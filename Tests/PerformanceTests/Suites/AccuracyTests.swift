@@ -54,8 +54,8 @@ struct AccuracyTests {
   }
 
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(dimension: Int = 384) -> DeterministicEmbedder {
-    DeterministicEmbedder(dimension: dimension)
+  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
+    SwiftEmbedder(modelSource: modelSource)
   }
 
   /// Calculate recall: percentage of baseline results found in candidate results.
