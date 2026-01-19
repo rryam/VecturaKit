@@ -106,13 +106,13 @@ struct MemoryProfilerSuite {
     // Print lifecycle report
     print("\n📊 Full Memory Strategy - Memory Lifecycle:")
     print("=" * 70)
-    print(String(format: "%-25s %-20s %-20s", "Phase", "Memory (MB)", "Delta (MB)"))
+    print(String(format: "%-25@ %-20@ %-20@", "Phase", "Memory (MB)", "Delta (MB)"))
     print("-" * 70)
 
     for index in 0..<memorySnapshots.count {
       let (phase, memory) = memorySnapshots[index]
       let delta = index > 0 ? memory - memorySnapshots[0].memoryMB : 0
-      print(String(format: "%-25s %-20.2f %-20.2f", phase, memory, delta))
+      print(String(format: "%-25@ %-20.2f %-20.2f", phase, memory, delta))
     }
     print("=" * 70 + "\n")
 
@@ -163,13 +163,13 @@ struct MemoryProfilerSuite {
     // Print lifecycle report
     print("\n📊 Indexed Strategy - Memory Lifecycle:")
     print("=" * 70)
-    print(String(format: "%-25s %-20s %-20s", "Phase", "Memory (MB)", "Delta (MB)"))
+    print(String(format: "%-25@ %-20@ %-20@", "Phase", "Memory (MB)", "Delta (MB)"))
     print("-" * 70)
 
     for index in 0..<memorySnapshots.count {
       let (phase, memory) = memorySnapshots[index]
       let delta = index > 0 ? memory - memorySnapshots[0].memoryMB : 0
-      print(String(format: "%-25s %-20.2f %-20.2f", phase, memory, delta))
+      print(String(format: "%-25@ %-20.2f %-20.2f", phase, memory, delta))
     }
     print("=" * 70 + "\n")
 
@@ -235,11 +235,11 @@ struct MemoryProfilerSuite {
     // Print comparison
     print("\n💾 Memory Efficiency Comparison (1K documents):")
     print("=" * 70)
-    print(String(format: "%-20s %-20s %-20s", "Strategy", "Peak Memory (MB)", "Per Document (KB)"))
+    print(String(format: "%-20@ %-20@ %-20@", "Strategy", "Peak Memory (MB)", "Per Document (KB)"))
     print("-" * 70)
 
     for result in results {
-      print(String(format: "%-20s %-20.2f %-20.2f", result.strategy, result.peakMB, result.perDocKB))
+      print(String(format: "%-20@ %-20.2f %-20.2f", result.strategy, result.peakMB, result.perDocKB))
     }
 
     if results.count == 2 {
@@ -336,7 +336,7 @@ struct MemoryProfilerSuite {
     // Print results
     print("\n📦 Batch Size Memory Impact:")
     print("=" * 70)
-    print(String(format: "%-20s %-20s", "Batch Size", "Peak Memory (MB)"))
+    print(String(format: "%-20@ %-20@", "Batch Size", "Peak Memory (MB)"))
     print("-" * 70)
 
     for (batchSize, peak) in results {
