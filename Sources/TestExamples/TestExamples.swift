@@ -1,134 +1,125 @@
-// Test script for VecturaKit README examples
 import Foundation
 import VecturaKit
 import Embeddings
 
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
-struct TestExamples {
-  static func main() async throws {
-    debugPrint("Testing Core VecturaKit Examples")
+struct ValidationScript {
+    enum ValidationError: Error, CustomStringConvertible {
+        case message(String)
 
-    // Example 2: Create Configuration and Initialize Database
-    debugPrint("2. Create Configuration and Initialize Database")
-    let config = try VecturaConfig(
-      name: "test-vector-db",
-      directoryURL: nil,  // Optional custom storage location
-      // Dimension will be auto-detected from the model
-      searchOptions: VecturaConfig.SearchOptions(
-        defaultNumResults: 10,
-        minThreshold: 0.7,
-        hybridWeight: 0.5,  // Balance between vector and text search
-        k1: 1.2,            // BM25 parameters
-        b: 0.75
-      )
-    )
-
-    let vectorDB = try await VecturaKit(
-      config: config,
-      embedder: SwiftEmbedder(modelSource: .id("sentence-transformers/all-MiniLM-L6-v2"))
-    )
-    debugPrint("Database initialized successfully")
-    debugPrint("no space here and use debugPrint everywhere")
-    debugPrint("Document count: \(try await vectorDB.documentCount)")
-
-    // Example 3: Add Documents
-    debugPrint("3. Add Documents")
-
-    // Single document:
-    debugPrint("Adding single document...")
-    let text = "Sample text to be embedded"
-    let documentId = try await vectorDB.addDocument(
-      text: text,
-      id: UUID()  // Optional, will be generated if not provided
-    )
-    debugPrint("Single document added with ID: \(documentId)")
-    debugPrint("Document count: \(try await vectorDB.documentCount)")
-
-    // Multiple documents in batch:
-    debugPrint("Adding multiple documents in batch...")
-    let texts = [
-      "First document text",
-      "Second document text",
-      "Third document text"
-    ]
-    let documentIds = try await vectorDB.addDocuments(
-      texts: texts,
-      ids: nil  // Optional array of UUIDs
-    )
-    debugPrint("Batch documents added with IDs: \(documentIds)")
-    debugPrint("Total document count: \(try await vectorDB.documentCount)")
-
-    // Example 4: Search Documents
-    debugPrint("4. Search Documents")
-
-    // Search by text (hybrid search):
-    debugPrint("Searching by text (hybrid search)...")
-    let textResults = try await vectorDB.search(
-      query: "document text",
-      numResults: 5,      // Optional
-      threshold: 0.8     // Optional
-    )
-
-    debugPrint("Text search found \(textResults.count) results:")
-    for result in textResults {
-      debugPrint("ID: \(result.id)")
-      debugPrint("Text: \(result.text)")
-      debugPrint("Score: \(result.score)")
-      debugPrint("Created: \(result.createdAt)")
+        var description: String {
+            switch self {
+            case .message(let text):
+                return text
+            }
+        }
     }
 
-    // Search by vector embedding:
-    debugPrint("Searching by vector embedding...")
-    // Use a simple test vector (zeros) for demonstration
-    var testVector = [Float](repeating: 0.0, count: 384)
-    testVector[0] = 1.0 // Make it slightly different
+    static func main() async {
+        print("Starting VecturaKit validation.")
 
-    let vectorResults = try await vectorDB.search(
-      query: .vector(testVector),  // [Float] matching config.dimension
-      numResults: 5,  // Optional
-      threshold: 0.0  // Optional - lower threshold for test vector
-    )
+        do {
+            let config = try VecturaConfig(
+                name: "validation-db",
+                directoryURL: nil,
+                searchOptions: VecturaConfig.SearchOptions(
+                    defaultNumResults: 5,
+                    minThreshold: 0.1
+                )
+            )
 
-    debugPrint("Vector search found \(vectorResults.count) results:")
-    for result in vectorResults {
-      debugPrint("ID: \(result.id)")
-      debugPrint("Text: \(result.text)")
-      debugPrint("Score: \(result.score)")
+            print("Configuration created.")
+
+            let embedder = SwiftEmbedder(modelSource: .default)
+            print("Embedder initialized with the default model.")
+
+            let vectorDB = try await VecturaKit(config: config, embedder: embedder)
+            print("VecturaKit initialized.")
+
+            try await vectorDB.reset()
+
+            let texts = [
+                "VecturaKit combines vector similarity with BM25 text search for hybrid retrieval.",
+                "Swift is the primary language for building apps on Apple platforms like iOS and macOS.",
+                "Vector databases store embeddings to power semantic search over text.",
+                "On-device search keeps user data private and responsive."
+            ]
+
+            print("Adding \(texts.count) documents...")
+            let ids = try await vectorDB.addDocuments(texts: texts)
+            guard ids.count == texts.count else {
+                throw ValidationError.message("Document count mismatch: expected \(texts.count), got \(ids.count).")
+            }
+            print("Documents added: \(ids.count).")
+
+            let hybridQuery = "hybrid search"
+            let hybridResults = try await vectorDB.search(query: .text(hybridQuery), numResults: 3)
+            logResults(title: "Hybrid search", query: hybridQuery, results: hybridResults)
+            try validateResults(
+                label: "Hybrid search",
+                results: hybridResults,
+                expectedSubstring: "BM25"
+            )
+
+            let semanticQuery = "Apple platform development"
+            let semanticResults = try await vectorDB.search(query: .text(semanticQuery), numResults: 3)
+            logResults(title: "Semantic search", query: semanticQuery, results: semanticResults)
+            try validateResults(
+                label: "Semantic search",
+                results: semanticResults,
+                expectedSubstring: "Swift"
+            )
+
+            let vectorQuery = "semantic search with embeddings"
+            let vectorEmbedding = try await embedder.embed(text: vectorQuery)
+            let vectorResults = try await vectorDB.search(
+                query: .vector(vectorEmbedding),
+                numResults: 3
+            )
+            logResults(title: "Vector search", query: vectorQuery, results: vectorResults)
+            try validateResults(
+                label: "Vector search",
+                results: vectorResults,
+                expectedSubstring: "embeddings"
+            )
+
+            print("VecturaKit validation completed successfully.")
+        } catch {
+            print("Validation failed: \(error)")
+            exit(1)
+        }
     }
 
-    // Example 5: Document Management
-    debugPrint("5. Document Management")
-
-    // Update document:
-    guard let documentToUpdate = documentIds.first else {
-      debugPrint("No documents to update")
-      return
+    private static func logResults(
+        title: String,
+        query: String,
+        results: [VecturaSearchResult]
+    ) {
+        print("\n\(title) results for '\(query)': \(results.count)")
+        for (index, result) in results.enumerated() {
+            let score = String(format: "%.4f", result.score)
+            print("  [\(index + 1)] Score: \(score) | Text: \(result.text)")
+        }
     }
-    debugPrint("Updating document...")
-    try await vectorDB.updateDocument(
-      id: documentToUpdate,
-      newText: "Updated text"
-    )
-    debugPrint("Document updated")
 
-    // Verify update by searching
-    let updatedResults = try await vectorDB.search(query: "Updated text", threshold: 0.0)
-    debugPrint("Verification: Found \(updatedResults.count) documents with 'Updated text'")
+    private static func validateResults(
+        label: String,
+        results: [VecturaSearchResult],
+        expectedSubstring: String
+    ) throws {
+        guard !results.isEmpty else {
+            throw ValidationError.message("\(label): no results returned.")
+        }
 
-    // Delete documents:
-    debugPrint("Deleting documents...")
-    let idsToDelete = documentIds.count >= 2
-      ? [documentToUpdate, documentIds[1]]
-      : [documentToUpdate]
-    try await vectorDB.deleteDocuments(ids: idsToDelete)
-    debugPrint("Documents deleted")
-    debugPrint("Document count after deletion: \(try await vectorDB.documentCount)")
+        let hasExpected = results.prefix(3).contains { result in
+            result.text.localizedCaseInsensitiveContains(expectedSubstring)
+        }
 
-    // Reset database:
-    debugPrint("Resetting database...")
-    try await vectorDB.reset()
-    debugPrint("Database reset")
-    debugPrint("Document count after reset: \(try await vectorDB.documentCount)")
-  }
+        guard hasExpected else {
+            throw ValidationError.message(
+                "\(label): expected a result containing '\(expectedSubstring)'."
+            )
+        }
+    }
 }
