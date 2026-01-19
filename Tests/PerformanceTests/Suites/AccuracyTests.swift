@@ -150,27 +150,29 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-
-    // Setup fullMemory baseline
-    let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
-    defer { cleanupBaseline() }
-
-    let configBaseline = try VecturaConfig(
-      name: "baseline-db",
-      directoryURL: dirBaseline,
-      memoryStrategy: .fullMemory
-    )
-    let baselineVectura = try await VecturaKit(config: configBaseline, embedder: makeEmbedder())
+    let embedder = makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
-    _ = try await baselineVectura.addDocuments(texts: documents, ids: documentIds)
 
     // Get baseline results
     var baselineResultSets: [[UUID]] = []
-    for query in queries {
-      let results = try await baselineVectura.search(query: .text(query), numResults: 10)
-      baselineResultSets.append(results.map { $0.id })
+    do {
+      let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
+      defer { cleanupBaseline() }
+
+      let configBaseline = try VecturaConfig(
+        name: "baseline-db",
+        directoryURL: dirBaseline,
+        memoryStrategy: .fullMemory
+      )
+      let baselineVectura = try await VecturaKit(config: configBaseline, embedder: embedder)
+      _ = try await baselineVectura.addDocuments(texts: documents, ids: documentIds)
+
+      for query in queries {
+        let results = try await baselineVectura.search(query: .text(query), numResults: 10)
+        baselineResultSets.append(results.map { $0.id })
+      }
     }
 
     // Test different multipliers
@@ -187,7 +189,7 @@ struct AccuracyTests {
         memoryStrategy: .indexed(candidateMultiplier: mult)
       )
       let mockStorage = MockIndexedStorage()
-      let vectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: mockStorage)
+      let vectura = try await VecturaKit(config: config, embedder: embedder, storageProvider: mockStorage)
       // Use the same document IDs as baseline
       _ = try await vectura.addDocuments(texts: documents, ids: documentIds)
 
@@ -212,7 +214,7 @@ struct AccuracyTests {
     // Print results
     print("\n📈 Candidate Multiplier vs Accuracy:")
     print("=" * 80)
-    print(String(format: "%-20s %-25s %-25s", "Multiplier", "Recall@10", "Avg Overlap (out of 10)"))
+    print(String(format: "%-20@ %-25@ %-25@", "Multiplier", "Recall@10", "Avg Overlap (out of 10)"))
     print("-" * 80)
 
     for result in accuracyResults {
@@ -234,33 +236,35 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-
-    // Baseline
-    let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
-    defer { cleanupBaseline() }
-
-    let configBaseline = try VecturaConfig(
-      name: "baseline-db",
-      directoryURL: dirBaseline,
-      memoryStrategy: .fullMemory
-    )
-    let baselineVectura = try await VecturaKit(config: configBaseline, embedder: makeEmbedder())
+    let embedder = makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
-    _ = try await baselineVectura.addDocuments(texts: documents, ids: documentIds)
 
     // Get baseline results and timing
     var baselineResultSets: [[UUID]] = []
     var baselineLatencies: [UInt64] = []
 
-    for query in queries {
-      let start = DispatchTime.now().uptimeNanoseconds
-      let results = try await baselineVectura.search(query: .text(query), numResults: 10)
-      let elapsed = DispatchTime.now().uptimeNanoseconds - start
+    do {
+      let (dirBaseline, cleanupBaseline) = try makeTestDirectory()
+      defer { cleanupBaseline() }
 
-      baselineResultSets.append(results.map { $0.id })
-      baselineLatencies.append(elapsed)
+      let configBaseline = try VecturaConfig(
+        name: "baseline-db",
+        directoryURL: dirBaseline,
+        memoryStrategy: .fullMemory
+      )
+      let baselineVectura = try await VecturaKit(config: configBaseline, embedder: embedder)
+      _ = try await baselineVectura.addDocuments(texts: documents, ids: documentIds)
+
+      for query in queries {
+        let start = DispatchTime.now().uptimeNanoseconds
+        let results = try await baselineVectura.search(query: .text(query), numResults: 10)
+        let elapsed = DispatchTime.now().uptimeNanoseconds - start
+
+        baselineResultSets.append(results.map { $0.id })
+        baselineLatencies.append(elapsed)
+      }
     }
 
     let baselineAvgLatency = Double(baselineLatencies.reduce(0, +)) / Double(baselineLatencies.count) / 1_000_000.0
@@ -279,7 +283,7 @@ struct AccuracyTests {
         memoryStrategy: .indexed(candidateMultiplier: mult)
       )
       let mockStorage = MockIndexedStorage()
-      let vectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: mockStorage)
+      let vectura = try await VecturaKit(config: config, embedder: embedder, storageProvider: mockStorage)
       // Use the same document IDs as baseline
       _ = try await vectura.addDocuments(texts: documents, ids: documentIds)
 
@@ -310,13 +314,13 @@ struct AccuracyTests {
     print("=" * 95)
     print(
       String(
-        format: "%-15s %-20s %-25s %-25s",
+        format: "%-15@ %-20@ %-25@ %-25@",
         "Multiplier", "Recall@10", "Avg Latency (ms)", "Speedup vs Baseline"
       )
     )
     print("-" * 95)
 
-    print(String(format: "%-15s %-20s %-25.2f %-25s", "Baseline", "100.0%", baselineAvgLatency, "1.00x"))
+    print(String(format: "%-15@ %-20@ %-25.2f %-25@", "Baseline", "100.0%", baselineAvgLatency, "1.00x"))
     print("-" * 95)
 
     for result in tradeoffResults {

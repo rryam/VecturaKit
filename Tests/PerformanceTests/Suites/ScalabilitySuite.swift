@@ -219,7 +219,7 @@ struct ScalabilitySuite {
     // Print throughput comparison
     print("\n📊 Document Addition Throughput Comparison:")
     print("=" * 80)
-    print(String(format: "%-20s %-25s %-25s", "Dataset Size", "Full Memory (docs/sec)", "Indexed (docs/sec)"))
+    print(String(format: "%-20@ %-25@ %-25@", "Dataset Size", "Full Memory (docs/sec)", "Indexed (docs/sec)"))
     print("-" * 80)
 
     for index in 0..<dataSizes.count {
@@ -273,7 +273,7 @@ struct ScalabilitySuite {
     // Print memory growth analysis
     print("\n💾 Memory Usage Growth Analysis:")
     print("=" * 100)
-    print(String(format: "%-12s %-20s %-20s %-20s %-20s",
+    print(String(format: "%-12@ %-20@ %-20@ %-20@ %-20@",
            "Size", "Full Peak (MB)", "Full Per Doc (KB)", "Indexed Peak (MB)", "Indexed Per Doc (KB)"))
     print("-" * 100)
 

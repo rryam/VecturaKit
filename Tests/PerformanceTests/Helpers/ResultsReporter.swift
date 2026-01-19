@@ -91,7 +91,7 @@ public struct ResultsReporter: Sendable {
     print("=".repeating(count: 100))
 
     // Header
-    let header = String(format: "%-30s %8s %8s %8s %8s %10s %10s",
+    let header = String(format: "%-30@ %8@ %8@ %8@ %8@ %10@ %10@",
                "Configuration", "Avg (ms)", "P95 (ms)", "P99 (ms)", "Init (ms)", "Peak (MB)", "Per Doc (KB)")
     print(header)
     print("-".repeating(count: 100))
@@ -100,7 +100,7 @@ public struct ResultsReporter: Sendable {
     for (label, metrics) in results {
       let truncatedLabel = String(label.prefix(30))
       let row = String(
-        format: "%-30s %8.2f %8.2f %8.2f %8.2f %10.2f %10.2f",
+        format: "%-30@ %8.2f %8.2f %8.2f %8.2f %10.2f %10.2f",
         truncatedLabel,
         metrics.avgLatency,
         metrics.p95Latency,
@@ -124,7 +124,7 @@ public struct ResultsReporter: Sendable {
     let indicator = percentChange > 5 ? "📈" : (percentChange < -5 ? "📉" : "➡️")
 
     print(String(
-      format: "  %-12s %.2f %s / %.2f %s (%s%.1f%%) %@",
+      format: "  %-12@ %.2f %@ / %.2f %@ (%@%.1f%%) %@",
       name + ":",
       comparison, unit,
       baseline, unit,
