@@ -5,90 +5,121 @@ import Embeddings
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 @main
 struct ValidationScript {
+    enum ValidationError: Error, CustomStringConvertible {
+        case message(String)
+
+        var description: String {
+            switch self {
+            case .message(let text):
+                return text
+            }
+        }
+    }
+
     static func main() async {
-        print("🚀 Starting VecturaKit Validation...")
-        
+        print("Starting VecturaKit validation.")
+
         do {
-            // 1. Setup Configuration
             let config = try VecturaConfig(
                 name: "validation-db",
-                directoryURL: nil, // In-memory/temp storage
+                directoryURL: nil,
                 searchOptions: VecturaConfig.SearchOptions(
                     defaultNumResults: 5,
-                    minThreshold: 0.1 // Low threshold to ensure we get matches for validation
+                    minThreshold: 0.1
                 )
             )
 
-            print("✅ Configuration created.")
+            print("Configuration created.")
 
-            // 2. Initialize Embedder
-            // Using a small, fast model for validation
-            let modelId = "sentence-transformers/all-MiniLM-L6-v2"
-            print("⏳ Initializing Embedder (\(modelId))...")
-            let embedder = SwiftEmbedder(modelSource: .id(modelId))
-            
-            // 3. Initialize VecturaKit
-            print("⏳ Initializing VecturaKit...")
+            let embedder = SwiftEmbedder(modelSource: .default)
+            print("Embedder initialized with the default model.")
+
             let vectorDB = try await VecturaKit(config: config, embedder: embedder)
-            print("✅ VecturaKit initialized.")
+            print("VecturaKit initialized.")
 
-            // Reset DB to ensure clean state
             try await vectorDB.reset()
 
-            // 4. Add Documents
             let texts = [
-                "The customized search engine works with vector embeddings.",
-                "Swift is a powerful language for iOS development.",
-                "Vector databases are essential for semantic search application.",
-                "Fruits like apples and oranges are healthy."
+                "VecturaKit combines vector similarity with BM25 text search for hybrid retrieval.",
+                "Swift is the primary language for building apps on Apple platforms like iOS and macOS.",
+                "Vector databases store embeddings to power semantic search over text.",
+                "On-device search keeps user data private and responsive."
             ]
-            
-            print("⏳ Adding \(texts.count) documents...")
+
+            print("Adding \(texts.count) documents...")
             let ids = try await vectorDB.addDocuments(texts: texts)
-            print("✅ Added \(ids.count) documents.")
-
-            // 5. Test Text Search (Hybrid)
-            let query = "vector search"
-            print("🔎 Searching for: '\(query)'")
-            
-            let results = try await vectorDB.search(query: .text(query), numResults: 3)
-            
-            if results.isEmpty {
-                print("❌ Validation Failed: No results found for query.")
-                exit(1)
+            guard ids.count == texts.count else {
+                throw ValidationError.message("Document count mismatch: expected \(texts.count), got \(ids.count).")
             }
-            
-            print("✅ Found \(results.count) results.")
-            for (index, result) in results.enumerated() {
-                print("   [\(index + 1)] Score: \(String(format: "%.4f", result.score)) | Text: \(result.text)")
-            }
+            print("Documents added: \(ids.count).")
 
-            // check if the top result is relevant
-            if results[0].text.contains("vector") {
-                 print("✅ Top result contains expected keyword 'vector'.")
-            } else {
-                 print("⚠️ Top result might not be the most relevant, check scores.")
-            }
+            let hybridQuery = "hybrid search"
+            let hybridResults = try await vectorDB.search(query: .text(hybridQuery), numResults: 3)
+            logResults(title: "Hybrid search", query: hybridQuery, results: hybridResults)
+            try validateResults(
+                label: "Hybrid search",
+                results: hybridResults,
+                expectedSubstring: "BM25"
+            )
 
-            // 6. Test Semantic Search (Different words, same meaning)
-            let semanticQuery = "programming tools for apple"
-            print("🔎 Searching for semantic match: '\(semanticQuery)'")
-            
-            let semanticResults = try await vectorDB.search(query: .text(semanticQuery), numResults: 1)
-            if let first = semanticResults.first, first.text.contains("Swift") {
-                 print("✅ Semantic Search Validated! matched 'Swift' document.")
-            } else {
-                 print("⚠️ Semantic match weak or incorrect.")
-                 if let first = semanticResults.first {
-                     print("   Got: \(first.text)")
-                 }
-            }
+            let semanticQuery = "Apple platform development"
+            let semanticResults = try await vectorDB.search(query: .text(semanticQuery), numResults: 3)
+            logResults(title: "Semantic search", query: semanticQuery, results: semanticResults)
+            try validateResults(
+                label: "Semantic search",
+                results: semanticResults,
+                expectedSubstring: "Swift"
+            )
 
-            print("\n🎉 VECTURAKIT VALIDATION COMPLETED SUCCESSFULLY!")
-            
+            let vectorQuery = "semantic search with embeddings"
+            let vectorEmbedding = try await embedder.embed(text: vectorQuery)
+            let vectorResults = try await vectorDB.search(
+                query: .vector(vectorEmbedding),
+                numResults: 3
+            )
+            logResults(title: "Vector search", query: vectorQuery, results: vectorResults)
+            try validateResults(
+                label: "Vector search",
+                results: vectorResults,
+                expectedSubstring: "embeddings"
+            )
+
+            print("VecturaKit validation completed successfully.")
         } catch {
-            print("❌ Validation Failed with error: \(error)")
+            print("Validation failed: \(error)")
             exit(1)
+        }
+    }
+
+    private static func logResults(
+        title: String,
+        query: String,
+        results: [VecturaSearchResult]
+    ) {
+        print("\n\(title) results for '\(query)': \(results.count)")
+        for (index, result) in results.enumerated() {
+            let score = String(format: "%.4f", result.score)
+            print("  [\(index + 1)] Score: \(score) | Text: \(result.text)")
+        }
+    }
+
+    private static func validateResults(
+        label: String,
+        results: [VecturaSearchResult],
+        expectedSubstring: String
+    ) throws {
+        guard !results.isEmpty else {
+            throw ValidationError.message("\(label): no results returned.")
+        }
+
+        let hasExpected = results.prefix(3).contains { result in
+            result.text.localizedCaseInsensitiveContains(expectedSubstring)
+        }
+
+        guard hasExpected else {
+            throw ValidationError.message(
+                "\(label): expected a result containing '\(expectedSubstring)'."
+            )
         }
     }
 }
