@@ -147,6 +147,23 @@ public actor VecturaKit {
       documentIds.append(docId)
     }
 
+    let existingDocumentsById: [UUID: VecturaDocument]
+    let idsToRestore = Set(documentIds)
+    if idsToRestore.isEmpty {
+      existingDocumentsById = [:]
+    } else if let indexedStorage = storageProvider as? IndexedVecturaStorage {
+      existingDocumentsById = try await indexedStorage.loadDocuments(ids: Array(idsToRestore))
+    } else if ids != nil {
+      let existingDocs = try await storageProvider.loadDocuments()
+      existingDocumentsById = existingDocs.reduce(into: [:]) { dict, doc in
+        if idsToRestore.contains(doc.id) {
+          dict[doc.id] = doc
+        }
+      }
+    } else {
+      existingDocumentsById = [:]
+    }
+
     // Save documents to storage (storage provider handles batch concurrency)
     try await storageProvider.saveDocuments(documentsToSave)
 
@@ -173,11 +190,34 @@ public actor VecturaKit {
       }
 
       for doc in documentsToSave {
+        if let existingDoc = existingDocumentsById[doc.id] {
+          do {
+            try await storageProvider.updateDocument(existingDoc)
+          } catch {
+            Self.logger.warning(
+              "Failed to restore stored document \(doc.id): \(error.localizedDescription)"
+            )
+          }
+        } else {
+          do {
+            try await storageProvider.deleteDocument(withID: doc.id)
+          } catch {
+            Self.logger.warning(
+              "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
+            )
+          }
+        }
+      }
+
+      for id in indexedDocumentIDs {
+        guard let existingDoc = existingDocumentsById[id] else {
+          continue
+        }
         do {
-          try await storageProvider.deleteDocument(withID: doc.id)
+          try await searchEngine.indexDocument(existingDoc)
         } catch {
           Self.logger.warning(
-            "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
+            "Failed to restore search index for \(id): \(error.localizedDescription)"
           )
         }
       }
