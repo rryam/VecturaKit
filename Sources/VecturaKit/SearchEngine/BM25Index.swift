@@ -210,10 +210,12 @@ public actor BM25Index {
       scores.append((document, score))
     }
 
-    return scores
-      .sorted { $0.1 > $1.1 }
-      .filter { $0.1 > 0 }
-      .prefix(topK)
+    return Array(
+      scores
+        .sorted { $0.1 > $1.1 }
+        .filter { $0.1 > 0 }
+        .prefix(topK)
+    )
   }
 
   /// Add a new document to the index incrementally

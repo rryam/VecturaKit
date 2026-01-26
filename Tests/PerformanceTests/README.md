@@ -69,6 +69,15 @@ Tests/PerformanceTests/
 
 **Total: 26 performance tests**
 
+### Embedder Selection (Speed vs Realism)
+
+By default, performance tests use a deterministic embedder to keep runtimes short and avoid
+downloading CoreML models. To run with real embeddings, set:
+
+```bash
+VECTURA_PERF_USE_SWIFT_EMBEDDER=1
+```
+
 ---
 
 ## Running Tests
@@ -350,7 +359,10 @@ func myCustomBenchmark() async throws {
 
     // Setup VecturaKit
     let config = VecturaConfig(name: "test-db", memoryStrategy: .fullMemory)
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+        config: config,
+        embedder: PerformanceTestConfig.makeEmbedder()
+    )
 
     // Measure performance
     await monitor.startTimer()
