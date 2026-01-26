@@ -212,6 +212,7 @@ public actor BM25Index {
 
     return scores
       .sorted { $0.1 > $1.1 }
+      .filter { $0.1 > 0 }
       .prefix(topK)
   }
 

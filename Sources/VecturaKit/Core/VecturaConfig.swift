@@ -219,7 +219,7 @@ public struct VecturaConfig: Sendable {
       break
     }
 
-    self.name = name
+    self.name = trimmedName
     self.directoryURL = directoryURL
     self.dimension = dimension
     self.searchOptions = searchOptions
