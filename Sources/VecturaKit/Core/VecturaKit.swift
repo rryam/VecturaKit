@@ -99,75 +99,16 @@ public actor VecturaKit {
   ///   - ids: Optional unique identifiers for the documents.
   /// - Returns: The IDs of the added documents.
   public func addDocuments(texts: [String], ids: [UUID]? = nil) async throws -> [UUID] {
-    // Validate input
-    guard !texts.isEmpty else {
-      throw VecturaError.invalidInput("Cannot add empty array of documents")
-    }
+    try validateAddDocumentsInput(texts: texts, ids: ids)
 
-    // Validate that no text is empty
-    for (index, text) in texts.enumerated() {
-      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        throw VecturaError.invalidInput("Document at index \(index) cannot be empty or whitespace-only")
-      }
-    }
-
-    if let ids = ids, ids.count != texts.count {
-      throw VecturaError.invalidInput("Number of IDs must match number of texts")
-    }
-
-    // Get embeddings from the embedder
     let embeddings = try await embedder.embed(texts: texts)
+    try validateEmbeddings(embeddings: embeddings, expectedCount: texts.count)
 
-    guard embeddings.count == texts.count else {
-      throw VecturaError.invalidInput(
-        "Embedder returned \(embeddings.count) embedding(s) for \(texts.count) text(s)"
-      )
-    }
+    let (documentIds, documentsToSave) = try prepareDocuments(texts: texts, ids: ids, embeddings: embeddings)
+    let existingDocumentsById = try await loadExistingDocumentsForRollback(documentIds: documentIds, ids: ids)
 
-    // Validate embeddings
-    for embedding in embeddings {
-      try validateDimension(embedding)
-    }
-
-    var documentIds = [UUID]()
-    var documentsToSave = [VecturaDocument]()
-
-    for i in 0..<texts.count {
-      let docId = ids?[i] ?? UUID()
-
-      // Pre-normalize embedding at storage time to avoid per-search normalization
-      let normalizedEmbedding = try VectorMath.normalizeEmbedding(embeddings[i])
-
-      let doc = VecturaDocument(
-        id: docId,
-        text: texts[i],
-        embedding: normalizedEmbedding
-      )
-      documentsToSave.append(doc)
-      documentIds.append(docId)
-    }
-
-    let existingDocumentsById: [UUID: VecturaDocument]
-    let idsToRestore = Set(documentIds)
-    if idsToRestore.isEmpty {
-      existingDocumentsById = [:]
-    } else if let indexedStorage = storageProvider as? IndexedVecturaStorage {
-      existingDocumentsById = try await indexedStorage.loadDocuments(ids: Array(idsToRestore))
-    } else if ids != nil {
-      let existingDocs = try await storageProvider.loadDocuments()
-      existingDocumentsById = existingDocs.reduce(into: [:]) { dict, doc in
-        if idsToRestore.contains(doc.id) {
-          dict[doc.id] = doc
-        }
-      }
-    } else {
-      existingDocumentsById = [:]
-    }
-
-    // Save documents to storage (storage provider handles batch concurrency)
     try await storageProvider.saveDocuments(documentsToSave)
 
-    // Notify search engine to index documents
     var indexedDocumentIDs: [UUID] = []
     indexedDocumentIDs.reserveCapacity(documentsToSave.count)
 
@@ -178,50 +119,11 @@ public actor VecturaKit {
       }
     } catch {
       Self.logger.error("Indexing failed after saving documents: \(error.localizedDescription)")
-
-      for id in indexedDocumentIDs {
-        do {
-          try await searchEngine.removeDocument(id: id)
-        } catch {
-          Self.logger.warning(
-            "Failed to rollback search index for \(id): \(error.localizedDescription)"
-          )
-        }
-      }
-
-      for doc in documentsToSave {
-        if let existingDoc = existingDocumentsById[doc.id] {
-          do {
-            try await storageProvider.updateDocument(existingDoc)
-          } catch {
-            Self.logger.warning(
-              "Failed to restore stored document \(doc.id): \(error.localizedDescription)"
-            )
-          }
-        } else {
-          do {
-            try await storageProvider.deleteDocument(withID: doc.id)
-          } catch {
-            Self.logger.warning(
-              "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
-            )
-          }
-        }
-      }
-
-      for id in indexedDocumentIDs {
-        guard let existingDoc = existingDocumentsById[id] else {
-          continue
-        }
-        do {
-          try await searchEngine.indexDocument(existingDoc)
-        } catch {
-          Self.logger.warning(
-            "Failed to restore search index for \(id): \(error.localizedDescription)"
-          )
-        }
-      }
-
+      try await rollbackIndexingFailure(
+        documentsToSave: documentsToSave,
+        indexedDocumentIDs: indexedDocumentIDs,
+        existingDocumentsById: existingDocumentsById
+      )
       throw error
     }
 
@@ -432,6 +334,135 @@ public actor VecturaKit {
         expected: dimension,
         got: embedding.count
       )
+    }
+  }
+
+  /// Validates input for addDocuments
+  private func validateAddDocumentsInput(texts: [String], ids: [UUID]?) throws {
+    guard !texts.isEmpty else {
+      throw VecturaError.invalidInput("Cannot add empty array of documents")
+    }
+
+    for (index, text) in texts.enumerated() {
+      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        throw VecturaError.invalidInput("Document at index \(index) cannot be empty or whitespace-only")
+      }
+    }
+
+    if let ids = ids, ids.count != texts.count {
+      throw VecturaError.invalidInput("Number of IDs must match number of texts")
+    }
+  }
+
+  /// Validates embeddings count and dimensions
+  private func validateEmbeddings(embeddings: [[Float]], expectedCount: Int) throws {
+    guard embeddings.count == expectedCount else {
+      throw VecturaError.invalidInput(
+        "Embedder returned \(embeddings.count) embedding(s) for \(expectedCount) text(s)"
+      )
+    }
+
+    for embedding in embeddings {
+      try validateDimension(embedding)
+    }
+  }
+
+  /// Prepares documents from texts, IDs, and embeddings
+  private func prepareDocuments(
+    texts: [String],
+    ids: [UUID]?,
+    embeddings: [[Float]]
+  ) throws -> ([UUID], [VecturaDocument]) {
+    var documentIds = [UUID]()
+    var documentsToSave = [VecturaDocument]()
+
+    for i in 0..<texts.count {
+      let docId = ids?[i] ?? UUID()
+      let normalizedEmbedding = try VectorMath.normalizeEmbedding(embeddings[i])
+
+      let doc = VecturaDocument(
+        id: docId,
+        text: texts[i],
+        embedding: normalizedEmbedding
+      )
+      documentsToSave.append(doc)
+      documentIds.append(docId)
+    }
+
+    return (documentIds, documentsToSave)
+  }
+
+  /// Loads existing documents for rollback purposes
+  private func loadExistingDocumentsForRollback(
+    documentIds: [UUID],
+    ids: [UUID]?
+  ) async throws -> [UUID: VecturaDocument] {
+    let idsToRestore = Set(documentIds)
+    guard !idsToRestore.isEmpty else {
+      return [:]
+    }
+
+    if let indexedStorage = storageProvider as? IndexedVecturaStorage {
+      return try await indexedStorage.loadDocuments(ids: Array(idsToRestore))
+    } else if ids != nil {
+      let existingDocs = try await storageProvider.loadDocuments()
+      return existingDocs.reduce(into: [:]) { dict, doc in
+        if idsToRestore.contains(doc.id) {
+          dict[doc.id] = doc
+        }
+      }
+    } else {
+      return [:]
+    }
+  }
+
+  /// Rolls back indexing failure by restoring or deleting documents
+  private func rollbackIndexingFailure(
+    documentsToSave: [VecturaDocument],
+    indexedDocumentIDs: [UUID],
+    existingDocumentsById: [UUID: VecturaDocument]
+  ) async throws {
+    for id in indexedDocumentIDs {
+      do {
+        try await searchEngine.removeDocument(id: id)
+      } catch {
+        Self.logger.warning(
+          "Failed to rollback search index for \(id): \(error.localizedDescription)"
+        )
+      }
+    }
+
+    for doc in documentsToSave {
+      if let existingDoc = existingDocumentsById[doc.id] {
+        do {
+          try await storageProvider.updateDocument(existingDoc)
+        } catch {
+          Self.logger.warning(
+            "Failed to restore stored document \(doc.id): \(error.localizedDescription)"
+          )
+        }
+      } else {
+        do {
+          try await storageProvider.deleteDocument(withID: doc.id)
+        } catch {
+          Self.logger.warning(
+            "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
+          )
+        }
+      }
+    }
+
+    for id in indexedDocumentIDs {
+      guard let existingDoc = existingDocumentsById[id] else {
+        continue
+      }
+      do {
+        try await searchEngine.indexDocument(existingDoc)
+      } catch {
+        Self.logger.warning(
+          "Failed to restore search index for \(id): \(error.localizedDescription)"
+        )
+      }
     }
   }
 }
