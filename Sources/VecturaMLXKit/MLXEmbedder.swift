@@ -52,7 +52,7 @@ public actor MLXEmbedder: VecturaEmbedder {
       }
     }
 
-    try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+    return try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }

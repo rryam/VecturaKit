@@ -35,10 +35,6 @@ struct ScalabilitySuite {
   }
 
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
-  }
-
   /// Run a benchmark for a specific document count and strategy.
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   private func runScaleBenchmark(
@@ -64,7 +60,10 @@ struct ScalabilitySuite {
       directoryURL: directory,
       memoryStrategy: strategy
     )
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+      config: config,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
     let initTime = await monitor.getElapsed()
     await monitor.updateMemoryUsage()
 

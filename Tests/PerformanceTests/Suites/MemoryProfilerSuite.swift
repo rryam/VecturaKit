@@ -42,10 +42,6 @@ struct MemoryProfilerSuite {
   }
 
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
-  }
-
   /// Get current memory usage in megabytes.
   private func getCurrentMemoryMB() -> Double {
     var info = mach_task_basic_info()
@@ -83,7 +79,10 @@ struct MemoryProfilerSuite {
       directoryURL: directory,
       memoryStrategy: .fullMemory
     )
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+      config: config,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
     memorySnapshots.append(("After Init", getCurrentMemoryMB()))
 
     // After adding documents
@@ -140,7 +139,10 @@ struct MemoryProfilerSuite {
       directoryURL: directory,
       memoryStrategy: .indexed()
     )
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+      config: config,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
     memorySnapshots.append(("After Init", getCurrentMemoryMB()))
 
     // After adding documents
@@ -200,7 +202,10 @@ struct MemoryProfilerSuite {
         directoryURL: directory,
         memoryStrategy: .fullMemory
       )
-      let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+      let vectura = try await VecturaKit(
+        config: config,
+        embedder: PerformanceTestConfig.makeEmbedder()
+      )
       _ = try await vectura.addDocuments(texts: documents)
 
       let peakMemory = getCurrentMemoryMB()
@@ -222,7 +227,10 @@ struct MemoryProfilerSuite {
         directoryURL: directory,
         memoryStrategy: .indexed()
       )
-      let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+      let vectura = try await VecturaKit(
+        config: config,
+        embedder: PerformanceTestConfig.makeEmbedder()
+      )
       _ = try await vectura.addDocuments(texts: documents)
 
       let peakMemory = getCurrentMemoryMB()
@@ -268,7 +276,10 @@ struct MemoryProfilerSuite {
       directoryURL: directory,
       memoryStrategy: .fullMemory
     )
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+      config: config,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
 
     // Add documents
     let documents = generator.generateDocuments(count: 500, seed: 12345)
@@ -326,7 +337,10 @@ struct MemoryProfilerSuite {
         directoryURL: directory,
         memoryStrategy: .indexed(batchSize: batchSize)
       )
-      let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+      let vectura = try await VecturaKit(
+        config: config,
+        embedder: PerformanceTestConfig.makeEmbedder()
+      )
       _ = try await vectura.addDocuments(texts: documents)
 
       let peakMemory = getCurrentMemoryMB()
