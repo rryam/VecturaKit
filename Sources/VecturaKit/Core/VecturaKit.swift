@@ -151,8 +151,38 @@ public actor VecturaKit {
     try await storageProvider.saveDocuments(documentsToSave)
 
     // Notify search engine to index documents
-    for doc in documentsToSave {
-      try await searchEngine.indexDocument(doc)
+    var indexedDocumentIDs: [UUID] = []
+    indexedDocumentIDs.reserveCapacity(documentsToSave.count)
+
+    do {
+      for doc in documentsToSave {
+        try await searchEngine.indexDocument(doc)
+        indexedDocumentIDs.append(doc.id)
+      }
+    } catch {
+      Self.logger.error("Indexing failed after saving documents: \(error.localizedDescription)")
+
+      for id in indexedDocumentIDs {
+        do {
+          try await searchEngine.removeDocument(id: id)
+        } catch {
+          Self.logger.warning(
+            "Failed to rollback search index for \(id): \(error.localizedDescription)"
+          )
+        }
+      }
+
+      for doc in documentsToSave {
+        do {
+          try await storageProvider.deleteDocument(withID: doc.id)
+        } catch {
+          Self.logger.warning(
+            "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
+          )
+        }
+      }
+
+      throw error
     }
 
     return documentIds

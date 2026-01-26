@@ -179,6 +179,9 @@ public actor BM25Index {
   /// - Returns: Array of tuples containing lightweight documents and their BM25 scores
   public func search(query: String, topK: Int = 10) -> [(document: BM25Document, score: Float)] {
     let queryTerms = tokenize(query)
+    guard !queryTerms.isEmpty else {
+      return []
+    }
     var scores: [(BM25Document, Float)] = []
 
     for document in documents.values {
@@ -210,7 +213,6 @@ public actor BM25Index {
     return scores
       .sorted { $0.1 > $1.1 }
       .prefix(topK)
-      .filter { $0.1 > 0 }
   }
 
   /// Add a new document to the index incrementally
