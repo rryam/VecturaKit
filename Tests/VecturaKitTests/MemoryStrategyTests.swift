@@ -464,7 +464,7 @@ struct PartialFailureTests {
     SwiftEmbedder(modelSource: modelSource)
   }
 
-  @Test("Search succeeds with partial batch failures")
+  @Test("Search fails on partial batch failures")
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   func partialBatchFailure() async throws {
     let (directory, cleanup) = try makeTestDirectory()
@@ -500,20 +500,18 @@ struct PartialFailureTests {
     // Setting ids[0] to fail should cause Batch 0 to fail
     await mockStorage.setFailingIds(Set([ids[0]]))
 
-    // Search should still work with remaining documents from successful batches
-    let results = try await vectura.search(query: "learning")
-
-    // We should get results from the documents that didn't fail
-    // Batch 1 contains documents matching "learning", so we expect results
-    #expect(results.count > 0, "Should get results from successful batches")
-
-    // Verify that the failed document is not in results
-    let resultIds = Set(results.map { $0.id })
-    #expect(!resultIds.contains(ids[0]), "Failed document should not appear in results")
-
-    // Verify that results come from the successful batch (Batch 1)
-    let successfulBatchIds = Set([ids[3], ids[4]])
-    let hasSuccessfulResults = resultIds.intersection(successfulBatchIds).count > 0
-    #expect(hasSuccessfulResults, "Should have at least one result from successful batch")
+    do {
+      _ = try await vectura.search(query: "learning")
+      Issue.record("Expected search to fail when a candidate batch fails to load")
+    } catch let error as VecturaError {
+      switch error {
+      case .loadFailed(let message):
+        #expect(message.contains("Failed to load"))
+      default:
+        Issue.record("Unexpected error: \(error)")
+      }
+    } catch {
+      Issue.record("Unexpected error type: \(error)")
+    }
   }
 }
