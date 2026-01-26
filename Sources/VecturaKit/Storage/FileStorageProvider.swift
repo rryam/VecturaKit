@@ -105,18 +105,60 @@ extension FileStorageProvider: VecturaStorage {
   /// Uses nonisolated file I/O to achieve true parallelism, then updates
   /// the cache after all writes complete.
   public func saveDocuments(_ documents: [VecturaDocument]) async throws {
-    let directory = storageDirectory
-
-    // Perform concurrent file writes outside actor isolation
-    try await documents.concurrentForEach(maxConcurrency: Self.maxConcurrentFileOperations) { document in
-      try Self.writeDocumentToFile(document, in: directory)
+    guard !documents.isEmpty else {
+      return
     }
 
-    // Update cache after all writes succeed
-    if cacheEnabled {
-      for document in documents {
-        cache[document.id] = document
+    let directory = storageDirectory
+
+    struct SaveOutcome: Sendable {
+      let document: VecturaDocument
+      let errorDescription: String?
+    }
+
+    // Perform concurrent file writes outside actor isolation
+    let outcomes = await documents.concurrentMap(maxConcurrency: Self.maxConcurrentFileOperations) { document in
+      do {
+        try Self.writeDocumentToFile(document, in: directory)
+        return SaveOutcome(document: document, errorDescription: nil)
+      } catch {
+        return SaveOutcome(document: document, errorDescription: error.localizedDescription)
       }
+    }
+
+    let failures = outcomes.filter { $0.errorDescription != nil }
+    if !failures.isEmpty {
+      for failure in failures {
+        Self.logger.warning(
+          "Failed to save document \(failure.document.id): \(failure.errorDescription ?? "Unknown error")"
+        )
+      }
+    }
+
+    if cacheEnabled {
+      if failures.isEmpty {
+        for outcome in outcomes {
+          cache[outcome.document.id] = outcome.document
+        }
+      } else {
+        do {
+          let refreshed = try await loadDocumentsFromStorage()
+          cache = refreshed.reduce(into: [:]) { dict, doc in
+            if dict[doc.id] != nil {
+              Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
+            }
+            dict[doc.id] = doc
+          }
+        } catch {
+          cache.removeAll()
+        }
+      }
+    }
+
+    if let firstFailure = failures.first {
+      throw VecturaError.loadFailed(
+        "Failed to save \(failures.count) document(s). First error: \(firstFailure.errorDescription ?? "Unknown error")"
+      )
     }
   }
 
@@ -164,18 +206,39 @@ extension FileStorageProvider: CachableVecturaStorage {
 
     let jsonFileURLs = fileURLs.filter { $0.pathExtension.lowercased() == "json" }
 
-    return await jsonFileURLs.concurrentMap(maxConcurrency: Self.maxConcurrentFileOperations) { fileURL in
+    struct LoadOutcome: Sendable {
+      let document: VecturaDocument?
+      let path: String
+      let errorDescription: String?
+    }
+
+    let outcomes = await jsonFileURLs.concurrentMap(maxConcurrency: Self.maxConcurrentFileOperations) { fileURL in
+      let path = fileURL.path(percentEncoded: false)
       do {
         let data = try Data(contentsOf: fileURL)
-        return try JSONDecoder().decode(VecturaDocument.self, from: data)
+        let document = try JSONDecoder().decode(VecturaDocument.self, from: data)
+        return LoadOutcome(document: document, path: path, errorDescription: nil)
       } catch {
-        let path = fileURL.path(percentEncoded: false)
-        Self.logger.warning(
-          "Failed to load document at \(path): \(error.localizedDescription)"
-        )
-        return nil
+        return LoadOutcome(document: nil, path: path, errorDescription: error.localizedDescription)
       }
     }
+
+    let failures = outcomes.filter { $0.document == nil }
+    if !failures.isEmpty {
+      for failure in failures {
+        Self.logger.warning(
+          "Failed to load document at \(failure.path): \(failure.errorDescription ?? "Unknown error")"
+        )
+      }
+
+      let firstFailure = failures[0]
+      throw VecturaError.loadFailed(
+        "Failed to load \(failures.count) document(s). First error at \(firstFailure.path): "
+          + "\(firstFailure.errorDescription ?? "Unknown error")"
+      )
+    }
+
+    return outcomes.compactMap(\.document)
   }
 
   /// Saves a document by encoding it to JSON and writing it to disk (bypasses cache).

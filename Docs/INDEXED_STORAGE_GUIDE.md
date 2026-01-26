@@ -47,7 +47,7 @@ let vectura = try await VecturaKit(config: config)
 **Behavior:**
 - < 10,000 documents → Uses `fullMemory` mode
 - ≥ 10,000 documents → Uses `indexed` mode (if storage supports it) with default parameters:
-  - `candidateMultiplier: 10`
+  - `candidateMultiplier: 4`
   - `batchSize: 100`
   - `maxConcurrentBatches: 4`
 
@@ -79,7 +79,7 @@ Use indexed mode for large datasets:
 let config = VecturaConfig(
     name: "my-database",
     memoryStrategy: .indexed(
-        candidateMultiplier: 10      // Search 10× topK candidates
+        candidateMultiplier: 4       // Search 4× topK candidates
     )
 )
 

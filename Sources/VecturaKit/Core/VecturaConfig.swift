@@ -166,7 +166,36 @@ public struct VecturaConfig: Sendable {
     searchOptions: SearchOptions = .init(),
     memoryStrategy: MemoryStrategy = .automatic()
   ) throws {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else {
+      throw VecturaError.invalidInput("Database name cannot be empty or whitespace")
+    }
+    guard trimmedName != "." && trimmedName != ".." else {
+      throw VecturaError.invalidInput("Database name cannot be '.' or '..'")
+    }
+    guard !trimmedName.contains("/") && !trimmedName.contains("\\") else {
+      throw VecturaError.invalidInput("Database name cannot contain path separators")
+    }
+
     // Validate search options
+    guard searchOptions.defaultNumResults > 0 else {
+      throw VecturaError.invalidInput(
+        "defaultNumResults must be greater than 0, got \(searchOptions.defaultNumResults)"
+      )
+    }
+    if let threshold = searchOptions.minThreshold {
+      guard threshold >= 0.0 && threshold <= 1.0 else {
+        throw VecturaError.invalidInput(
+          "minThreshold must be between 0.0 and 1.0, got \(threshold)"
+        )
+      }
+    }
+    guard searchOptions.k1 > 0 else {
+      throw VecturaError.invalidInput("k1 must be greater than 0, got \(searchOptions.k1)")
+    }
+    guard searchOptions.b >= 0.0 && searchOptions.b <= 1.0 else {
+      throw VecturaError.invalidInput("b must be between 0.0 and 1.0, got \(searchOptions.b)")
+    }
     guard searchOptions.bm25NormalizationFactor > 0 else {
       throw VecturaError.invalidInput(
         "bm25NormalizationFactor must be positive, got \(searchOptions.bm25NormalizationFactor)"
@@ -190,7 +219,7 @@ public struct VecturaConfig: Sendable {
       break
     }
 
-    self.name = name
+    self.name = trimmedName
     self.directoryURL = directoryURL
     self.dimension = dimension
     self.searchOptions = searchOptions

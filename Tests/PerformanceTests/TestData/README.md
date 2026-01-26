@@ -173,7 +173,10 @@ func wikipediaAbstractsTest() async throws {
     let documents = content.components(separatedBy: "\n").filter { !$0.isEmpty }
 
     let config = VecturaConfig(name: "wiki-test", memoryStrategy: .fullMemory)
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+        config: config,
+        embedder: PerformanceTestConfig.makeEmbedder()
+    )
 
     // Benchmark document addition
     let addStart = DispatchTime.now().uptimeNanoseconds

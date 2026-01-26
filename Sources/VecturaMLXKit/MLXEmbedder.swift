@@ -42,7 +42,17 @@ public actor MLXEmbedder: VecturaEmbedder {
   /// - Returns: An array of embedding vectors, one for each input text.
   /// - Throws: An error if embedding generation fails.
   public func embed(texts: [String]) async throws -> [[Float]] {
-    try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+    guard !texts.isEmpty else {
+      throw VecturaError.invalidInput("Cannot embed empty array of texts")
+    }
+
+    for (index, text) in texts.enumerated() {
+      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        throw VecturaError.invalidInput("Text at index \(index) cannot be empty or whitespace-only")
+      }
+    }
+
+    return try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }

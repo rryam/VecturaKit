@@ -65,7 +65,7 @@ struct VecturaCLI: AsyncParsableCommand {
     }
   }
 
-  static func setupDB(dbName: String, dimension: Int, numResults: Int, threshold: Float, modelId: String) async throws
+  static func setupDB(dbName: String, dimension: Int?, numResults: Int, threshold: Float, modelId: String) async throws
   -> VecturaKit {
     let config = try VecturaConfig(
       name: dbName,
@@ -90,8 +90,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-demo-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 512
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold for searches")
     var threshold: Float = 0.5
@@ -252,7 +252,8 @@ extension VecturaCLI {
       print("Total search queries: \(searchQueries.count)")
       print("Average search time: \(String(format: "%.1f", avgSearchTime * 1000))ms")
       print("Model: \(modelId)")
-      print("Vector dimension: \(dimension)")
+      let dimensionDescription = dimension.map(String.init) ?? "auto-detected"
+      print("Vector dimension: \(dimensionDescription)")
     }
 
     private func loadMockDataset() throws -> MockDataset {
@@ -275,8 +276,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     @Option(name: [.long, .customShort("m")], help: "Model ID for embeddings")
     var modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
@@ -310,8 +311,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     @Option(name: [.long, .customShort("t")], help: "Minimum similarity threshold")
     var threshold: Float = 0.7
@@ -363,8 +364,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     @Option(name: [.long, .customShort("m")], help: "Model ID for embeddings")
     var modelId: String = "sentence-transformers/all-MiniLM-L6-v2"
@@ -396,8 +397,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     @Argument(help: "Document IDs to delete")
     var ids: [DocumentID]
@@ -423,8 +424,8 @@ extension VecturaCLI {
     @Option(name: [.long, .customShort("d")], help: "Database name")
     var dbName: String = "vectura-cli-db"
 
-    @Option(name: [.long, .customShort("v")], help: "Vector dimension")
-    var dimension: Int = 384
+    @Option(name: [.long, .customShort("v")], help: "Vector dimension (auto-detected if not specified)")
+    var dimension: Int?
 
     mutating func run() async throws {
       let db = try await VecturaCLI.setupDB(

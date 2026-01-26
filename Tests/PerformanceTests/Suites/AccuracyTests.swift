@@ -54,10 +54,6 @@ struct AccuracyTests {
   }
 
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
-  }
-
   /// Calculate recall: percentage of baseline results found in candidate results.
   private func calculateRecall(baseline: [UUID], candidate: [UUID]) -> Double {
     let baselineSet = Set(baseline)
@@ -92,7 +88,10 @@ struct AccuracyTests {
       directoryURL: dir1,
       memoryStrategy: .fullMemory
     )
-    let baselineVectura = try await VecturaKit(config: config1, embedder: makeEmbedder())
+    let baselineVectura = try await VecturaKit(
+      config: config1,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -108,7 +107,11 @@ struct AccuracyTests {
       memoryStrategy: .indexed(candidateMultiplier: 10)
     )
     let mockStorage = MockIndexedStorage()
-    let indexedVectura = try await VecturaKit(config: config2, embedder: makeEmbedder(), storageProvider: mockStorage)
+    let indexedVectura = try await VecturaKit(
+      config: config2,
+      embedder: PerformanceTestConfig.makeEmbedder(),
+      storageProvider: mockStorage
+    )
     // Use the same document IDs to ensure comparison is valid
     _ = try await indexedVectura.addDocuments(texts: documents, ids: documentIds)
 
@@ -150,7 +153,7 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-    let embedder = makeEmbedder()
+    let embedder = PerformanceTestConfig.makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -236,7 +239,7 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-    let embedder = makeEmbedder()
+    let embedder = PerformanceTestConfig.makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -360,7 +363,10 @@ struct AccuracyTests {
       directoryURL: dir1,
       memoryStrategy: .fullMemory
     )
-    let baselineVectura = try await VecturaKit(config: config1, embedder: makeEmbedder())
+    let baselineVectura = try await VecturaKit(
+      config: config1,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -376,7 +382,11 @@ struct AccuracyTests {
       memoryStrategy: .indexed(candidateMultiplier: 15)
     )
     let mockStorage = MockIndexedStorage()
-    let indexedVectura = try await VecturaKit(config: config2, embedder: makeEmbedder(), storageProvider: mockStorage)
+    let indexedVectura = try await VecturaKit(
+      config: config2,
+      embedder: PerformanceTestConfig.makeEmbedder(),
+      storageProvider: mockStorage
+    )
     // Use the same document IDs to ensure comparison is valid
     _ = try await indexedVectura.addDocuments(texts: documents, ids: documentIds)
 

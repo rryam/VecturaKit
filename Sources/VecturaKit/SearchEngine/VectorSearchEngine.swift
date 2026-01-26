@@ -321,35 +321,41 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     // Load batches with controlled concurrency
     var allDocuments: [UUID: VecturaDocument] = [:]
     var failureCount = 0
+    var firstError: Error?
+    let totalBatches = batches.count
 
     // Process batches in groups to limit concurrency
     for batchGroup in batches.chunked(into: maxConcurrentBatches) {
-      await withTaskGroup(of: (success: Bool, docs: [UUID: VecturaDocument]).self) { group in
+      await withTaskGroup(of: Result<[UUID: VecturaDocument], Error>.self) { group in
         for batch in batchGroup {
           group.addTask {
             do {
               let docs = try await storage.loadDocuments(ids: batch)
-              return (success: true, docs: docs)
+              return .success(docs)
             } catch {
-              return (success: false, docs: [:])
+              return .failure(error)
             }
           }
         }
 
         for await result in group {
-          if result.success {
-            allDocuments.merge(result.docs) { _, new in new }
-          } else {
+          switch result {
+          case .success(let docs):
+            allDocuments.merge(docs) { _, new in new }
+          case .failure(let error):
             failureCount += 1
+            if firstError == nil {
+              firstError = error
+            }
           }
         }
       }
     }
 
-    // Only throw if we got NO results at all
-    if allDocuments.isEmpty && failureCount > 0 {
+    if failureCount > 0 {
+      let firstMessage = firstError?.localizedDescription ?? "Unknown error"
       throw VecturaError.loadFailed(
-        "Failed to load any candidate documents (\(failureCount) batch(es) failed)"
+        "Failed to load \(failureCount) of \(totalBatches) batch(es). First error: \(firstMessage)"
       )
     }
 

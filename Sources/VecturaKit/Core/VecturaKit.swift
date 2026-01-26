@@ -147,12 +147,82 @@ public actor VecturaKit {
       documentIds.append(docId)
     }
 
+    let existingDocumentsById: [UUID: VecturaDocument]
+    let idsToRestore = Set(documentIds)
+    if idsToRestore.isEmpty {
+      existingDocumentsById = [:]
+    } else if let indexedStorage = storageProvider as? IndexedVecturaStorage {
+      existingDocumentsById = try await indexedStorage.loadDocuments(ids: Array(idsToRestore))
+    } else if ids != nil {
+      let existingDocs = try await storageProvider.loadDocuments()
+      existingDocumentsById = existingDocs.reduce(into: [:]) { dict, doc in
+        if idsToRestore.contains(doc.id) {
+          dict[doc.id] = doc
+        }
+      }
+    } else {
+      existingDocumentsById = [:]
+    }
+
     // Save documents to storage (storage provider handles batch concurrency)
     try await storageProvider.saveDocuments(documentsToSave)
 
     // Notify search engine to index documents
-    for doc in documentsToSave {
-      try await searchEngine.indexDocument(doc)
+    var indexedDocumentIDs: [UUID] = []
+    indexedDocumentIDs.reserveCapacity(documentsToSave.count)
+
+    do {
+      for doc in documentsToSave {
+        try await searchEngine.indexDocument(doc)
+        indexedDocumentIDs.append(doc.id)
+      }
+    } catch {
+      Self.logger.error("Indexing failed after saving documents: \(error.localizedDescription)")
+
+      for id in indexedDocumentIDs {
+        do {
+          try await searchEngine.removeDocument(id: id)
+        } catch {
+          Self.logger.warning(
+            "Failed to rollback search index for \(id): \(error.localizedDescription)"
+          )
+        }
+      }
+
+      for doc in documentsToSave {
+        if let existingDoc = existingDocumentsById[doc.id] {
+          do {
+            try await storageProvider.updateDocument(existingDoc)
+          } catch {
+            Self.logger.warning(
+              "Failed to restore stored document \(doc.id): \(error.localizedDescription)"
+            )
+          }
+        } else {
+          do {
+            try await storageProvider.deleteDocument(withID: doc.id)
+          } catch {
+            Self.logger.warning(
+              "Failed to rollback stored document \(doc.id): \(error.localizedDescription)"
+            )
+          }
+        }
+      }
+
+      for id in indexedDocumentIDs {
+        guard let existingDoc = existingDocumentsById[id] else {
+          continue
+        }
+        do {
+          try await searchEngine.indexDocument(existingDoc)
+        } catch {
+          Self.logger.warning(
+            "Failed to restore search index for \(id): \(error.localizedDescription)"
+          )
+        }
+      }
+
+      throw error
     }
 
     return documentIds

@@ -34,11 +34,6 @@ struct BenchmarkSuite {
     return (directory, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
-  }
-
   /// Run a complete benchmark for a given configuration.
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   private func runBenchmark(
@@ -64,7 +59,10 @@ struct BenchmarkSuite {
       directoryURL: directory,
       memoryStrategy: strategy
     )
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+    let vectura = try await VecturaKit(
+      config: config,
+      embedder: PerformanceTestConfig.makeEmbedder()
+    )
     let initTime = await monitor.getElapsed()
     await monitor.updateMemoryUsage()
 
@@ -113,7 +111,8 @@ struct BenchmarkSuite {
     reporter.printReport(metrics)
 
     // Basic sanity checks
-    #expect(metrics.avgLatency < 100.0, "Average search latency should be < 100ms for 1K docs")
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 100.0 : 200.0
+    #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 1_000)
   }
 
@@ -130,7 +129,8 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    #expect(metrics.avgLatency < 100.0, "Average search latency should be < 100ms for 1K docs")
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 100.0 : 200.0
+    #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 1_000)
   }
 
@@ -149,7 +149,8 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    #expect(metrics.avgLatency < 200.0, "Average search latency should be < 200ms for 3K docs")
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 200.0 : 300.0
+    #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 3_000)
   }
 
@@ -166,7 +167,8 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    #expect(metrics.avgLatency < 500.0, "Average search latency should be < 500ms for 3K docs")
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 500.0 : 750.0
+    #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 3_000)
   }
 
