@@ -111,7 +111,7 @@ struct BenchmarkSuite {
     reporter.printReport(metrics)
 
     // Basic sanity checks
-    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 100.0 : 200.0
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 200.0 : 100.0
     #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 1_000)
   }
@@ -129,7 +129,7 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 100.0 : 200.0
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 200.0 : 100.0
     #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 1_000)
   }
@@ -149,7 +149,7 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 200.0 : 300.0
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 300.0 : 200.0
     #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 3_000)
   }
@@ -167,7 +167,7 @@ struct BenchmarkSuite {
     let reporter = ResultsReporter()
     reporter.printReport(metrics)
 
-    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 500.0 : 750.0
+    let latencyThreshold = PerformanceTestConfig.useSwiftEmbedder ? 750.0 : 500.0
     #expect(metrics.avgLatency < latencyThreshold, "Average search latency should be < \(latencyThreshold)ms")
     #expect(metrics.documentCount == 3_000)
   }
