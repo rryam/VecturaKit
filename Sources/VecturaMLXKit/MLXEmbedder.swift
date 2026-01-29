@@ -1,3 +1,4 @@
+#if canImport(MLXEmbedders)
 import Foundation
 import MLX
 import MLXEmbedders
@@ -126,3 +127,4 @@ enum EmbeddingError: Error {
   case unsupportedPoolingShape([Int])
   case vectorCountMismatch(expected: Int, received: Int)
 }
+#endif

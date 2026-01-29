@@ -28,14 +28,27 @@ definitions:
         # Set environment variables for model downloads
         export HF_HUB_OFFLINE=0
 
-        # Run core tests (excluding 30-min PerformanceTests suite)
+        # Run core tests (excluding PerformanceTests and MLX-related tests)
+        # MLX tests require the MLX trait to be enabled
         # Using --no-parallel to avoid concurrent model download issues
-        swift test --no-parallel --skip PerformanceTests
+        swift test --no-parallel \
+          --skip PerformanceTests \
+          --skip VecturaMLXKitTests
+    - &run_tests_with_mlx
+      name: Run Tests (with MLX)
+      script: |
+        #!/bin/zsh
+
+        # Set environment variables for model downloads
+        export HF_HUB_OFFLINE=0
+
+        # Run all tests with MLX trait enabled
+        swift test --no-parallel --traits MLX --skip PerformanceTests
 workflows:
   vecturakit:
     name: VecturaKit Workflow
     environment:
-      xcode: 26.0
+      xcode: 26.2
       vars:
         XCODE_SCHEME: "VecturaKit"
         APP_ID: "VecturaKit"
@@ -53,7 +66,7 @@ workflows:
   vecturamlxkit:
     name: VecturaMLXKit Workflow
     environment:
-      xcode: 26.0
+      xcode: 26.2
       vars:
         XCODE_SCHEME: "VecturaMLXKit"
         APP_ID: "VecturaMLXKit"
@@ -72,4 +85,4 @@ workflows:
 
           xcodebuild -downloadComponent MetalToolchain
       - *build_framework
-      - *run_tests
+      - *run_tests_with_mlx

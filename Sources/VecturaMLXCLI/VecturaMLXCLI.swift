@@ -1,5 +1,7 @@
 import ArgumentParser
 import Foundation
+
+#if canImport(MLXEmbedders)
 import MLXEmbedders
 import VecturaKit
 import VecturaMLXKit
@@ -280,3 +282,17 @@ extension VecturaMLXCLI {
     }
   }
 }
+#else
+@main
+struct VecturaMLXCLI: ParsableCommand {
+  static let configuration = CommandConfiguration(
+    commandName: "vectura-mlx",
+    abstract: "A CLI tool for VecturaKit vector database using MLX embeddings"
+  )
+
+  mutating func run() throws {
+    print("VecturaMLXKit is not available. Enable the MLX trait to use this CLI.")
+    print("Usage: swift run --traits MLX vectura-mlx-cli <command>")
+  }
+}
+#endif

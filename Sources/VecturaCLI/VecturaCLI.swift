@@ -100,7 +100,7 @@ extension VecturaCLI {
     var numResults: Int = 5
 
     @Option(name: [.long, .customShort("m")], help: "Model ID for embeddings")
-    var modelId: String = "minishlab/potion-retrieval-32M"
+    var modelId: String = "minishlab/potion-base-4M"
 
     mutating func run() async throws {
       print("VecturaKit Mock Demonstration")

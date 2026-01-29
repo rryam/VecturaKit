@@ -29,7 +29,7 @@ public enum VecturaModelSource: Sendable {
 public extension VecturaModelSource {
 
   /// The default model identifier when not otherwise specified.
-  static let defaultModelId = "minishlab/potion-retrieval-32M"
+  static let defaultModelId = "minishlab/potion-base-4M"
 
   /// The default model when not otherwise specified.
   static let `default` = Self.id(Self.defaultModelId)
