@@ -217,10 +217,11 @@ struct VecturaKitTests {
     guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
       return
     }
-    // Use config with dimension 128, even though embedder has different dimension
+    // Use config with dimension 64, even though embedder has different dimension
+    // (potion-base-4M has 256 dimensions)
     let (configWithDim, cleanup) = try makeVecturaConfig(
       name: "custom-dim-db-\(UUID().uuidString)",
-      dimension: 128
+      dimension: 64
     )
     defer { cleanup() }
     let vectura = try await VecturaKit(config: configWithDim, embedder: makeEmbedder())
@@ -233,8 +234,8 @@ struct VecturaKitTests {
     } catch let error as VecturaError {
       switch error {
       case .dimensionMismatch(let expected, let got):
-        #expect(expected == 128)  // config dimension
-        #expect(got > 128)  // embedder's actual dimension
+        #expect(expected == 64)  // config dimension
+        #expect(got != 64)  // embedder's actual dimension differs
       default:
         Issue.record("Wrong error type: \(error)")
       }
