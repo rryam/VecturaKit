@@ -1,3 +1,4 @@
+#if canImport(MLXEmbedders)
 import Foundation
 import Metal
 import MLX
@@ -11,6 +12,7 @@ import Testing
 /// 1. Metal device (GPU) availability
 /// 2. Metal Toolchain (install via: xcodebuild -downloadComponent MetalToolchain)
 /// 3. MLX device libraries to be available
+/// 4. MLX trait enabled (swift test --traits MLX)
 ///
 /// Run tests with: xcodebuild test -scheme VecturaMLXKitTests -destination 'platform=macOS'
 /// (swift test may not work due to Metal library compilation requirements)
@@ -238,3 +240,4 @@ struct VecturaMLXKitTests {
     #expect(results.isEmpty, "Search should return no results when the query does not match any document.")
   }
 }
+#endif

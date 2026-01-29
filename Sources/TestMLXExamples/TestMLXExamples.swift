@@ -1,5 +1,7 @@
 // Test script for VecturaMLXKit README examples
 import Foundation
+
+#if canImport(MLXEmbedders)
 import VecturaKit
 import VecturaMLXKit
 import MLXEmbedders
@@ -87,3 +89,12 @@ struct TestMLXExamples {
     debugPrint("Document count after reset: \(try await vectorDB.documentCount)")
   }
 }
+#else
+@main
+struct TestMLXExamples {
+  static func main() {
+    print("VecturaMLXKit is not available. Enable the MLX trait to run this example.")
+    print("Usage: swift run --traits MLX TestMLXExamples")
+  }
+}
+#endif
