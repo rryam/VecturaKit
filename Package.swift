@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -34,9 +34,18 @@ let package = Package(
       targets: ["VecturaMLXCLI"]
     ),
   ],
+  traits: [
+    .trait(
+      name: "MLX",
+      description: "Enable MLX-based embeddings for GPU-accelerated inference"
+    ),
+  ],
   dependencies: [
+    // Always included - lightweight dependencies
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.21"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
+
+    // MLX dependency - only loaded when MLX trait is enabled via target conditions
     .package(url: "https://github.com/ml-explore/mlx-swift-lm/", from: "2.30.3"),
   ],
   targets: [
@@ -54,7 +63,11 @@ let package = Package(
       name: "VecturaMLXKit",
       dependencies: [
         "VecturaKit",
-        .product(name: "MLXEmbedders", package: "mlx-swift-lm"),
+        .product(
+          name: "MLXEmbedders",
+          package: "mlx-swift-lm",
+          condition: .when(traits: ["MLX"])
+        ),
       ]
     ),
     .target(
@@ -77,7 +90,7 @@ let package = Package(
       name: "VecturaMLXCLI",
       dependencies: [
         "VecturaKit",
-        "VecturaMLXKit",
+        .target(name: "VecturaMLXKit", condition: .when(traits: ["MLX"])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
     ),
@@ -87,7 +100,9 @@ let package = Package(
     ),
     .executableTarget(
       name: "TestMLXExamples",
-      dependencies: ["VecturaMLXKit"]
+      dependencies: [
+        .target(name: "VecturaMLXKit", condition: .when(traits: ["MLX"]))
+      ]
     ),
     .executableTarget(
       name: "TestNLExamples",
@@ -99,7 +114,9 @@ let package = Package(
     ),
     .testTarget(
       name: "VecturaMLXKitTests",
-      dependencies: ["VecturaMLXKit"]
+      dependencies: [
+        .target(name: "VecturaMLXKit", condition: .when(traits: ["MLX"]))
+      ]
     ),
     .testTarget(
       name: "VecturaNLKitTests",
