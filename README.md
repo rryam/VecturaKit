@@ -10,7 +10,7 @@ The framework offers `VecturaKit` as the core vector database with pluggable emb
 It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
+  <img src="https://img.shields.io/badge/Swift-6.1+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.1+">
   <br>
   <img src="https://img.shields.io/badge/iOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 17.0+">
   <img src="https://img.shields.io/badge/macOS-14.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 14.0+">
@@ -40,6 +40,7 @@ Explore the following books to understand more about AI and iOS development:
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
   - [Swift Package Manager](#swift-package-manager)
+  - [Package Traits (MLX Support)](#package-traits-mlx-support)
   - [Dependencies](#dependencies)
 - [Usage](#usage)
   - [Import VecturaKit](#import-vecturakit)
@@ -102,9 +103,31 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "2.5.2"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
 ],
 ```
+
+### Package Traits (MLX Support)
+
+Starting with version 3.0.0, VecturaKit uses [Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (SE-0450) to reduce dependency footprint. The heavy MLX dependencies are only downloaded when explicitly enabled.
+
+**For VecturaKit or VecturaNLKit only (lightweight):**
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+],
+```
+
+**For VecturaMLXKit (enables MLX dependencies):**
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0", traits: ["MLX"]),
+],
+```
+
+> **Note:** Package Traits require Swift 6.1+ (Xcode 16.3+). If using Xcode's "Add Package Dependencies" UI for MLX support, you'll need to manually edit your `Package.swift` to add the `traits: ["MLX"]` parameter.
 
 ### Dependencies
 
@@ -418,6 +441,8 @@ let results = try await vectorDB.search(query: "search query")
 
 VecturaKit supports Apple's MLX framework through the `MLXEmbedder` for accelerated on-device machine learning performance.
 
+> **Important:** To use `VecturaMLXKit`, you must enable the `MLX` trait in your package dependency. See [Package Traits](#package-traits-mlx-support) for details.
+
 ### Import MLX Support
 
 ```swift
@@ -696,7 +721,7 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 ### Code Style
 
 - Follow SwiftLint rules (run `swiftlint lint`)
-- Use Swift 6.0+ features where appropriate
+- Use Swift 6.1+ features where appropriate
 - Maintain backward compatibility when possible
 - Document public APIs with DocC comments
 
