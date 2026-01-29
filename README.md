@@ -672,7 +672,7 @@ Common options for `vectura-cli`:
 -   `--dimension, -v`: Vector dimension (auto-detected by default)
 -   `--threshold, -t`: Minimum similarity threshold (default: 0.7)
 -   `--num-results, -n`: Number of results to return (default: 10)
--   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-retrieval-32M")
+-   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-base-4M")
 
 ### MLX CLI Tool (`vectura-mlx-cli`)
 
