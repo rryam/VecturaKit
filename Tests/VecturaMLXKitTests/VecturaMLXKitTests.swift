@@ -1,3 +1,4 @@
+#if canImport(MLXEmbedders)
 import Foundation
 import Metal
 import MLX
@@ -238,3 +239,4 @@ struct VecturaMLXKitTests {
     #expect(results.isEmpty, "Search should return no results when the query does not match any document.")
   }
 }
+#endif

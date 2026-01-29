@@ -45,8 +45,12 @@ let package = Package(
     .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.21"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
 
-    // MLX dependency - only loaded when MLX trait is enabled via target conditions
-    .package(url: "https://github.com/ml-explore/mlx-swift-lm/", from: "2.30.3"),
+    // MLX dependency - only resolved when MLX trait is enabled
+    .package(
+      url: "https://github.com/ml-explore/mlx-swift-lm/",
+      from: "2.30.3",
+      condition: .when(traits: ["MLX"])
+    ),
   ],
   targets: [
     .target(

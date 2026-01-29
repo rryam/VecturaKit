@@ -1,3 +1,4 @@
+#if canImport(MLXEmbedders)
 import ArgumentParser
 import Foundation
 import MLXEmbedders
@@ -280,3 +281,16 @@ extension VecturaMLXCLI {
     }
   }
 }
+#else
+import Foundation
+
+@main
+struct VecturaMLXCLI {
+  static func main() {
+    let message = "vectura-mlx requires MLX support. Enable the MLX trait in Package.swift.\n"
+    if let data = message.data(using: .utf8) {
+      FileHandle.standardError.write(data)
+    }
+  }
+}
+#endif
