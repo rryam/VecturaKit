@@ -5,12 +5,12 @@ VecturaKit is a Swift-based vector database designed for on-device apps through 
 
 Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings.
 
-The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `MLXEmbedder` for Apple's MLX framework acceleration, or `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies.
+The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies, or [`MLXEmbedder`](https://github.com/rryam/VecturaMLXKit) for Apple's MLX framework acceleration (available as a separate package).
 
-It also includes CLI tools (`vectura-cli` and `vectura-mlx-cli`) for easily trying out the package.
+It also includes a CLI tool (`vectura-cli`) for easily trying out the package.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Swift-6.1+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.1+">
+  <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
   <br>
   <img src="https://img.shields.io/badge/iOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 17.0+">
   <img src="https://img.shields.io/badge/macOS-14.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 14.0+">
@@ -40,7 +40,6 @@ Explore the following books to understand more about AI and iOS development:
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
   - [Swift Package Manager](#swift-package-manager)
-  - [Package Traits (MLX Support)](#package-traits-mlx-support)
   - [Dependencies](#dependencies)
 - [Usage](#usage)
   - [Import VecturaKit](#import-vecturakit)
@@ -52,11 +51,6 @@ Explore the following books to understand more about AI and iOS development:
   - [Custom Storage Provider](#custom-storage-provider)
   - [Custom Search Engine](#custom-search-engine)
 - [MLX Integration](#mlx-integration)
-  - [Import MLX Support](#import-mlx-support)
-  - [Initialize Database with MLX](#initialize-database-with-mlx)
-  - [Add Documents](#add-documents-1)
-  - [Search Documents](#search-documents-1)
-  - [Document Management](#document-management-1)
 - [NaturalLanguage Integration](#naturallanguage-integration)
   - [Import NaturalLanguage Support](#import-naturallanguage-support)
   - [Initialize Database with NLContextualEmbedding](#initialize-database-with-nlcontextualembedding)
@@ -65,7 +59,6 @@ Explore the following books to understand more about AI and iOS development:
   - [Document Management](#nl-document-management)
 - [Command Line Interface](#command-line-interface)
   - [Swift CLI Tool (`vectura-cli`)](#swift-cli-tool-vectura-cli)
-  - [MLX CLI Tool (`vectura-mlx-cli`)](#mlx-cli-tool-vectura-mlx-cli)
 - [License](#license)
 - [Contributing](#contributing)
 - [Support](#support)
@@ -83,9 +76,9 @@ Explore the following books to understand more about AI and iOS development:
 -   **Custom Storage Location:** Specifies a custom directory for database storage.
 -   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
 -   **Memory Management Strategies:** Choose between automatic, full-memory, or indexed modes to optimize performance for datasets ranging from thousands to millions of documents. [Learn more](Docs/INDEXED_STORAGE_GUIDE.md)
--   **MLX Support:** Uses Apple's MLX framework for accelerated embedding generation through `MLXEmbedder`.
+-   **MLX Support:** GPU-accelerated embedding generation available via the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package.
 -   **NaturalLanguage Support:** Uses Apple's NaturalLanguage framework for contextual embeddings with zero external dependencies through `NLContextualEmbedder`.
--   **CLI Tools:** Includes `vectura-cli` (Swift embeddings) and `vectura-mlx-cli` (MLX embeddings) for database management and testing.
+-   **CLI Tool:** Includes `vectura-cli` for database management and testing.
 
 ## Supported Platforms
 
@@ -107,27 +100,14 @@ dependencies: [
 ],
 ```
 
-### Package Traits (MLX Support)
-
-Starting with version 3.0.0, VecturaKit uses [Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (SE-0450) to reduce dependency footprint. The heavy MLX dependencies are only downloaded when explicitly enabled.
-
-**For VecturaKit or VecturaNLKit only (lightweight):**
+For MLX support, also add the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package:
 
 ```swift
 dependencies: [
     .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+    .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
 ],
 ```
-
-**For VecturaMLXKit (enables MLX dependencies):**
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0", traits: ["MLX"]),
-],
-```
-
-> **Note:** Package Traits require Swift 6.1+ (Xcode 16.3+). If using Xcode's "Add Package Dependencies" UI for MLX support, you'll need to manually edit your `Package.swift` to add the `traits: ["MLX"]` parameter.
 
 ### Dependencies
 
@@ -135,9 +115,8 @@ VecturaKit uses the following Swift packages:
 
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
--   [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples): Provides MLX-based embeddings and vector search capabilities, specifically for `VecturaMLXKit`.
 
-**Note:** `VecturaNLKit` has no external dependencies beyond Apple's native NaturalLanguage framework.
+**Note:** `VecturaNLKit` has no external dependencies beyond Apple's native NaturalLanguage framework. For MLX-based embeddings, see [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
 
 ## Quick Start
 
@@ -439,80 +418,12 @@ let results = try await vectorDB.search(query: "search query")
 
 ## MLX Integration
 
-VecturaKit supports Apple's MLX framework through the `MLXEmbedder` for accelerated on-device machine learning performance.
-
-> **Important:** To use `VecturaMLXKit`, you must enable the `MLX` trait in your package dependency. See [Package Traits](#package-traits-mlx-support) for details.
-
-### Import MLX Support
+For GPU-accelerated embeddings using Apple's MLX framework, see the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package. It provides `MLXEmbedder`, a drop-in `VecturaEmbedder` implementation, plus the `vectura-mlx-cli` command-line tool.
 
 ```swift
-import VecturaKit
-import VecturaMLXKit
-import MLXEmbedders
-```
-
-### Initialize Database with MLX
-
-```swift
-let config = VecturaConfig(
-  name: "my-mlx-vector-db",
-  dimension: nil  // Auto-detect dimension from MLX embedder
-)
-
-// Create MLX embedder
-let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
-let vectorDB = try await VecturaKit(config: config, embedder: embedder)
-```
-
-### Add Documents
-
-```swift
-let texts = [
-  "First document text",
-  "Second document text",
-  "Third document text"
-]
-let documentIds = try await vectorDB.addDocuments(texts: texts)
-```
-
-### Search Documents
-
-```swift
-let results = try await vectorDB.search(
-    query: "search query",
-    numResults: 5,      // Optional
-    threshold: 0.8     // Optional
-)
-
-for result in results {
-    print("Document ID: \(result.id)")
-    print("Text: \(result.text)")
-    print("Similarity Score: \(result.score)")
-    print("Created At: \(result.createdAt)")
-}
-```
-
-### Document Management
-
-Update document:
-
-```swift
-try await vectorDB.updateDocument(
-     id: documentId,
-     newText: "Updated text"
- )
-```
-
-Delete documents:
-
-```swift
-try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
-```
-
-Reset database:
-
-```swift
-try await vectorDB.reset()
+// Add both packages to your dependencies:
+.package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+.package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
 ```
 
 ## NaturalLanguage Integration
@@ -620,7 +531,7 @@ try await vectorDB.reset()
 
 **Performance Characteristics:**
 
-- **Speed:** Moderate (slower than Model2Vec, comparable to MLX)
+- **Speed:** Moderate (slower than Model2Vec, comparable to [MLX](https://github.com/rryam/VecturaMLXKit))
 - **Accuracy:** High contextual understanding for supported languages
 - **Memory:** Efficient on-device processing
 - **Use Cases:** Ideal for apps requiring semantic search without external dependencies
@@ -674,34 +585,6 @@ Common options for `vectura-cli`:
 -   `--num-results, -n`: Number of results to return (default: 10)
 -   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-base-4M")
 
-### MLX CLI Tool (`vectura-mlx-cli`)
-
-```bash
-# Add documents
-vectura-mlx add "First document" "Second document" "Third document" --db-name "my-mlx-vector-db"
-
-# Search documents
-vectura-mlx search "search query" --db-name "my-mlx-vector-db"  --threshold 0.7 --num-results 5
-
-# Update document
-vectura-mlx update <document-uuid> "Updated text content" --db-name "my-mlx-vector-db"
-
-# Delete documents
-vectura-mlx delete <document-uuid-1> <document-uuid-2> --db-name "my-mlx-vector-db"
-
-# Reset database
-vectura-mlx reset --db-name "my-mlx-vector-db"
-
-# Run demo with sample data
-vectura-mlx mock  --db-name "my-mlx-vector-db"
-```
-
-Options for `vectura-mlx-cli`:
-
--   `--db-name, -d`: Database name (default: "vectura-mlx-cli-db")
--   `--threshold, -t`: Minimum similarity threshold (default: no threshold)
--   `--num-results, -n`: Number of results to return (default: 10)
-
 ## License
 
 VecturaKit is released under the MIT License. See the LICENSE file for more information. Copyright (c) 2025 Rudrank Riyam.
@@ -721,7 +604,7 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 ### Code Style
 
 - Follow SwiftLint rules (run `swiftlint lint`)
-- Use Swift 6.1+ features where appropriate
+- Use Swift 6.0+ features where appropriate
 - Maintain backward compatibility when possible
 - Document public APIs with DocC comments
 
