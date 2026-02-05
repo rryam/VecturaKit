@@ -25,26 +25,6 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:VecturaKit}",
-            "name": "Debug vectura-mlx-cli",
-            "target": "vectura-mlx-cli",
-            "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug vectura-mlx-cli"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:VecturaKit}",
-            "name": "Release vectura-mlx-cli",
-            "target": "vectura-mlx-cli",
-            "configuration": "release",
-            "preLaunchTask": "swift: Build Release vectura-mlx-cli"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:VecturaKit}",
             "name": "Debug TestNLExamples",
             "target": "TestNLExamples",
             "configuration": "debug",
@@ -59,26 +39,6 @@
             "target": "TestNLExamples",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release TestNLExamples"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:VecturaKit}",
-            "name": "Debug TestMLXExamples",
-            "target": "TestMLXExamples",
-            "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug TestMLXExamples"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:VecturaKit}",
-            "name": "Release TestMLXExamples",
-            "target": "TestMLXExamples",
-            "configuration": "release",
-            "preLaunchTask": "swift: Build Release TestMLXExamples"
         },
         {
             "type": "swift",
