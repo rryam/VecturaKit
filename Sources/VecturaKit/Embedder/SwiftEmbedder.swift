@@ -73,15 +73,13 @@ public actor SwiftEmbedder {
     if modelId.contains("minishlab") ||
         modelId.contains("potion") ||
         modelId.contains("model2vec") ||
-        modelId.contains("m2v")
-    {
+        modelId.contains("m2v") {
       return .model2vec
     }
 
     if modelId.contains("static-retrieval") ||
         modelId.contains("static-similarity") ||
-        modelId.contains("static-embed")
-    {
+        modelId.contains("static-embed") {
       return .staticEmbeddings
     }
 
