@@ -34,7 +34,6 @@ struct VecturaKitTests {
     return (config, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
     SwiftEmbedder(modelSource: modelSource)
   }
@@ -61,9 +60,6 @@ struct VecturaKitTests {
 
   @Test("Add and search document")
   func addAndSearchDocument() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -79,9 +75,6 @@ struct VecturaKitTests {
 
   @Test("Add multiple documents")
   func addMultipleDocuments() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -102,9 +95,6 @@ struct VecturaKitTests {
 
   @Test("Persistence across instances")
   func persistence() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let databaseName = UUID().uuidString
     let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
     defer { cleanup() }
@@ -122,9 +112,6 @@ struct VecturaKitTests {
 
   @Test("Search threshold reduces results")
   func searchThreshold() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -142,9 +129,6 @@ struct VecturaKitTests {
 
   @Test("Custom identifiers are preserved")
   func customIds() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -183,9 +167,6 @@ struct VecturaKitTests {
 
   @Test("Model reuse remains performant")
   func modelReuse() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -201,9 +182,6 @@ struct VecturaKitTests {
 
   @Test("Empty search returns no results")
   func emptySearch() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -214,9 +192,6 @@ struct VecturaKitTests {
 
   @Test("Config dimension overrides embedder dimension")
   func configDimensionOverride() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     // Use config with dimension 64, even though embedder has different dimension
     // (potion-base-4M has 256 dimensions)
     let (configWithDim, cleanup) = try makeVecturaConfig(
@@ -246,9 +221,6 @@ struct VecturaKitTests {
 
   @Test("Duplicate identifiers overwrite documents")
   func duplicateIds() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -267,9 +239,6 @@ struct VecturaKitTests {
 
   @Test("Threshold edge cases")
   func searchThresholdEdgeCases() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -285,9 +254,6 @@ struct VecturaKitTests {
 
   @Test("Large number of documents")
   func largeNumberOfDocuments() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -304,9 +270,6 @@ struct VecturaKitTests {
 
   @Test("Persistence after reset")
   func persistenceAfterReset() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let databaseName = UUID().uuidString
     let (config, cleanup) = try makeVecturaConfig(name: "test-db-\(databaseName)")
     defer { cleanup() }
@@ -327,9 +290,6 @@ struct VecturaKitTests {
 
   @Test("Folder URL model source")
   func folderURLModelSource() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
     let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
@@ -364,9 +324,6 @@ struct VecturaKitTests {
 
   @Test("Custom storage directory")
   func customStorageDirectory() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let customDirectoryURL = URL(filePath: NSTemporaryDirectory())
       .appending(path: "VecturaKitTest-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: customDirectoryURL) }
@@ -412,9 +369,6 @@ struct VecturaKitTests {
 
   @Test("Custom storage provider")
   func customStorageProvider() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (config, cleanup) = try makeVecturaConfig()
     defer { cleanup() }
 
@@ -447,9 +401,6 @@ struct VecturaKitTests {
 
   @Test("FileStorageProvider is stateless and reads from disk")
   func fileStorageProviderStateless() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
