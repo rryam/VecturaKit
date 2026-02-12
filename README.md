@@ -3,7 +3,7 @@
 
 VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval.
 
-Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings, and supports **NomicBERT** and **ModernBERT** models.
+Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings, and supports **NomicBERT**, **ModernBERT**, **RoBERTa**, and **XLM-RoBERTa** models.
 
 The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies, or [`MLXEmbedder`](https://github.com/rryam/VecturaMLXKit) for Apple's MLX framework acceleration (available as a separate package).
 
@@ -68,6 +68,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **Model2Vec Support:** Uses the retrieval 32M parameter Model2Vec model as default for fast static embeddings.
 -   **NomicBERT Support:** Supports Nomic embedding models such as `nomic-ai/nomic-embed-text-v1.5`.
 -   **ModernBERT Support:** Supports ModernBERT embedding models such as `nomic-ai/modernbert-embed-base`.
+-   **RoBERTa/XLM-RoBERTa Support:** Supports models such as `FacebookAI/roberta-base` and `FacebookAI/xlm-roberta-base`.
 -   **Auto-Dimension Detection:** Automatically detects embedding dimensions from models.
 -   **On-Device Storage:** Stores and manages vector embeddings locally.
 -   **Hybrid Search:** Combines vector similarity with BM25 text search for relevant search results (`VecturaKit`).
