@@ -268,8 +268,8 @@ extension Bert {
     case .id(let modelId, _):
       do {
         return try await loadModelBundle(from: modelId)
-      } catch is CancellationError {
-        throw error
+      } catch let cancellationError as CancellationError {
+        throw cancellationError
       } catch {
         let originalError = error
         guard isKeyMappingError(originalError) else {
@@ -280,8 +280,8 @@ extension Bert {
         // require alternative key mapping.
         do {
           return try await loadModelBundle(from: modelId, loadConfig: .googleBert)
-        } catch is CancellationError {
-          throw error
+        } catch let cancellationError as CancellationError {
+          throw cancellationError
         } catch {
           throw originalError
         }
