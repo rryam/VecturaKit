@@ -9,6 +9,8 @@ public enum VecturaModelSource: Sendable {
     case bert
     /// Model2Vec distilled models (e.g., potion, minishlab models)
     case model2vec
+    /// Nomic BERT embedding models (e.g., nomic-embed-text-v1.5)
+    case nomicBert
   }
 
   /// Automatically fetch the model from a remote repository based on its id.
