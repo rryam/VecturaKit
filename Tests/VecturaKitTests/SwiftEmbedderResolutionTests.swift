@@ -48,9 +48,6 @@ struct SwiftEmbedderResolutionTests {
 
   @Test("RoBERTa family inferred from known ids")
   func inferRobertaFamily() {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let source = VecturaModelSource.id("FacebookAI/roberta-base")
     let family = SwiftEmbedder.resolveModelFamily(for: source)
     #expect(family == .roberta)
@@ -58,9 +55,6 @@ struct SwiftEmbedderResolutionTests {
 
   @Test("XLM-RoBERTa family inferred from known ids")
   func inferXlmRobertaFamily() {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let source = VecturaModelSource.id("FacebookAI/xlm-roberta-base")
     let family = SwiftEmbedder.resolveModelFamily(for: source)
     #expect(family == .xlmRoberta)
@@ -68,9 +62,6 @@ struct SwiftEmbedderResolutionTests {
 
   @Test("XLM-RoBERTa family inferred from multilingual e5 ids")
   func inferXlmRobertaFamilyFromE5() {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let source = VecturaModelSource.id("intfloat/multilingual-e5-small")
     let family = SwiftEmbedder.resolveModelFamily(for: source)
     #expect(family == .xlmRoberta)
@@ -78,9 +69,6 @@ struct SwiftEmbedderResolutionTests {
 
   @Test("Explicit XLM-RoBERTa type overrides heuristics")
   func explicitXlmRobertaTypeOverridesHeuristics() {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
     let source = VecturaModelSource.id("FacebookAI/roberta-base", type: .xlmRoberta)
     let family = SwiftEmbedder.resolveModelFamily(for: source)
     #expect(family == .xlmRoberta)
