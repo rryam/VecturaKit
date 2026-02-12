@@ -2,12 +2,14 @@ import CoreML
 import Embeddings
 import Foundation
 
-/// An embedder implementation using swift-embeddings library (Bert, Model2Vec, and StaticEmbeddings models).
+/// An embedder implementation using swift-embeddings library
+/// (Bert, NomicBert, Model2Vec, and StaticEmbeddings models).
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 public actor SwiftEmbedder {
 
   private let modelSource: VecturaModelSource
   private var bertModel: Bert.ModelBundle?
+  private var nomicBertModel: NomicBert.ModelBundle?
   private var model2vecModel: Model2Vec.ModelBundle?
   private var staticEmbeddingsModel: StaticEmbeddings.ModelBundle?
   private var cachedDimension: Int?
@@ -45,6 +47,14 @@ extension SwiftEmbedder: VecturaEmbedder {
         dim = model2vec.model.dimienstion
       } else if let staticEmbeddings = staticEmbeddingsModel {
         dim = staticEmbeddings.model.dimension
+      } else if let nomicBert = nomicBertModel {
+        let testEmbedding = try nomicBert.encode("test")
+        guard let lastDim = testEmbedding.shape.last else {
+          throw VecturaError.invalidInput(
+            "Could not determine NomicBert model dimension from shape \(testEmbedding.shape)"
+          )
+        }
+        dim = lastDim
       } else if let bert = bertModel {
         // For BERT, we need to get dimension from a test encoding
         let testEmbedding = try bert.encode("test")
@@ -76,6 +86,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       embeddingsTensor = try model2vec.batchEncode(texts)
     } else if let staticEmbeddings = staticEmbeddingsModel {
       embeddingsTensor = try staticEmbeddings.batchEncode(texts, normalize: true)
+    } else if let nomicBert = nomicBertModel {
+      embeddingsTensor = try nomicBert.batchEncode(texts)
     } else if let bert = bertModel {
       embeddingsTensor = try bert.batchEncode(texts)
     } else {
@@ -107,6 +119,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       embeddingTensor = try model2vec.encode(text)
     } else if let staticEmbeddings = staticEmbeddingsModel {
       embeddingTensor = try staticEmbeddings.encode(text, normalize: true)
+    } else if let nomicBert = nomicBertModel {
+      embeddingTensor = try nomicBert.encode(text)
     } else if let bert = bertModel {
       embeddingTensor = try bert.encode(text)
     } else {
@@ -118,7 +132,11 @@ extension SwiftEmbedder: VecturaEmbedder {
   }
 
   private func ensureModelLoaded() async throws {
-    guard bertModel == nil && model2vecModel == nil && staticEmbeddingsModel == nil else {
+    guard bertModel == nil &&
+        nomicBertModel == nil &&
+        model2vecModel == nil &&
+        staticEmbeddingsModel == nil
+    else {
       return
     }
 
@@ -126,6 +144,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       model2vecModel = try await Model2Vec.loadModelBundle(from: modelSource)
     } else if isStaticEmbeddingsModel(modelSource) {
       staticEmbeddingsModel = try await StaticEmbeddings.loadModelBundle(from: modelSource)
+    } else if isNomicBertModel(modelSource) {
+      nomicBertModel = try await NomicBert.loadModelBundle(from: modelSource)
     } else {
       bertModel = try await Bert.loadModelBundle(from: modelSource)
     }
@@ -170,6 +190,26 @@ extension SwiftEmbedder: VecturaEmbedder {
          modelId.contains("static-similarity") ||
          modelId.contains("static-embed")
   }
+
+  /// Determines if a model source refers to a NomicBert model.
+  ///
+  /// First checks for an explicit model type, then falls back to string matching.
+  /// The string matching intentionally targets Nomic embedding IDs to avoid
+  /// classifying other `nomic-*` models (for example, ModernBERT variants) as NomicBert.
+  ///
+  /// - Parameter source: The model source to check.
+  /// - Returns: `true` if the source appears to be a NomicBert model, `false` otherwise.
+  private func isNomicBertModel(_ source: VecturaModelSource) -> Bool {
+    switch source {
+    case .id(_, let type), .folder(_, let type):
+      if let type = type {
+        return type == .nomicBert
+      }
+    }
+
+    let modelId = source.description.lowercased()
+    return modelId.contains("nomic-embed-text")
+  }
 }
 
 // MARK: - Model Loading Extensions
@@ -209,6 +249,19 @@ extension StaticEmbeddings {
       try await loadModelBundle(from: modelId, loadConfig: .staticEmbeddings)
     case .folder(let url, _):
       try await loadModelBundle(from: url, loadConfig: .staticEmbeddings)
+    }
+  }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension NomicBert {
+
+  static func loadModelBundle(from source: VecturaModelSource) async throws -> NomicBert.ModelBundle {
+    switch source {
+    case .id(let modelId, _):
+      try await loadModelBundle(from: modelId)
+    case .folder(let url, _):
+      try await loadModelBundle(from: url)
     }
   }
 }
