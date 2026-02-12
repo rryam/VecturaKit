@@ -1,5 +1,5 @@
 {
-  "originHash" : "3520813f27d08077b3242b4d168cab56d6edb28256ed173a8a3cfe6edfee1f98",
+  "originHash" : "2e1e1e5f807bd56390f5d86557b9a146122a6917c82880039873bd856e2dcef0",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "revision" : "66994e3b3ed172a9b691b59d11bd0702c3f5eb33",
-        "version" : "0.0.26"
+        "branch" : "main",
+        "revision" : "66994e3b3ed172a9b691b59d11bd0702c3f5eb33"
       }
     },
     {

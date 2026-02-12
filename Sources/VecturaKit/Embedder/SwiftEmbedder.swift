@@ -7,7 +7,28 @@ import Foundation
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 public actor SwiftEmbedder {
 
+  /// Configuration options for `SwiftEmbedder`.
+  public struct Configuration: Sendable {
+    /// Optional output dimension for StaticEmbeddings models.
+    ///
+    /// When set, embeddings are truncated to this dimension (capped at the model dimension).
+    /// Values less than 1 are rejected with `VecturaError.invalidInput`.
+    public var staticEmbeddingsTruncateDimension: Int?
+
+    public init(staticEmbeddingsTruncateDimension: Int? = nil) {
+      self.staticEmbeddingsTruncateDimension = staticEmbeddingsTruncateDimension
+    }
+  }
+
+  enum ResolvedModelFamily: Sendable, Equatable {
+    case bert
+    case model2vec
+    case staticEmbeddings
+    case nomicBert
+  }
+
   private let modelSource: VecturaModelSource
+  private let configuration: Configuration
   private var bertModel: Bert.ModelBundle?
   private var nomicBertModel: NomicBert.ModelBundle?
   private var model2vecModel: Model2Vec.ModelBundle?
@@ -17,8 +38,78 @@ public actor SwiftEmbedder {
   /// Initializes a SwiftEmbedder with the specified model source.
   ///
   /// - Parameter modelSource: The source from which to load the embedding model.
-  public init(modelSource: VecturaModelSource = .default) {
+  /// - Parameter configuration: Additional embedder behavior configuration.
+  public init(
+    modelSource: VecturaModelSource = .default,
+    configuration: Configuration = .init()
+  ) {
     self.modelSource = modelSource
+    self.configuration = configuration
+  }
+
+  static func resolveModelFamily(for source: VecturaModelSource) -> ResolvedModelFamily {
+    switch source {
+    case .id(_, let type), .folder(_, let type):
+      if let type {
+        switch type {
+        case .bert: return .bert
+        case .model2vec: return .model2vec
+        case .staticEmbeddings: return .staticEmbeddings
+        case .nomicBert: return .nomicBert
+        }
+      }
+    }
+
+    let modelId = source.description.lowercased()
+    if modelId.contains("minishlab") ||
+        modelId.contains("potion") ||
+        modelId.contains("model2vec") ||
+        modelId.contains("m2v") {
+      return .model2vec
+    }
+
+    if modelId.contains("static-retrieval") ||
+        modelId.contains("static-similarity") ||
+        modelId.contains("static-embed") {
+      return .staticEmbeddings
+    }
+
+    if modelId.contains("nomic-embed-text") {
+      return .nomicBert
+    }
+
+    return .bert
+  }
+
+  static func resolvedStaticEmbeddingDimension(
+    baseDimension: Int,
+    truncateDimension: Int?
+  ) throws -> Int {
+    guard let truncateDimension else {
+      return baseDimension
+    }
+
+    guard truncateDimension > 0 else {
+      throw VecturaError.invalidInput(
+        "StaticEmbeddings truncateDimension must be greater than 0, got \(truncateDimension)"
+      )
+    }
+
+    return min(baseDimension, truncateDimension)
+  }
+
+  private func staticEmbeddingsTruncateDimension() throws -> Int? {
+    guard let truncateDimension = configuration.staticEmbeddingsTruncateDimension else {
+      return nil
+    }
+
+    guard truncateDimension > 0 else {
+      throw VecturaError.invalidInput(
+        "StaticEmbeddings truncateDimension must be greater than 0, got \(truncateDimension)"
+      )
+    }
+
+    return truncateDimension
   }
 }
 
@@ -39,6 +130,7 @@ extension SwiftEmbedder: VecturaEmbedder {
 
       // Ensure model is loaded
       try await ensureModelLoaded()
+      let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
       let dim: Int
       if let model2vec = model2vecModel {
@@ -46,7 +138,10 @@ extension SwiftEmbedder: VecturaEmbedder {
         // See: swift-embeddings/Sources/Embeddings/Model2Vec/Model2VecModel.swift
         dim = model2vec.model.dimienstion
       } else if let staticEmbeddings = staticEmbeddingsModel {
-        dim = staticEmbeddings.model.dimension
+        dim = try Self.resolvedStaticEmbeddingDimension(
+          baseDimension: staticEmbeddings.model.dimension,
+          truncateDimension: staticTruncateDimension
+        )
       } else if let nomicBert = nomicBertModel {
         let testEmbedding = try nomicBert.encode("test")
         guard let lastDim = testEmbedding.shape.last else {
@@ -80,12 +175,17 @@ extension SwiftEmbedder: VecturaEmbedder {
   /// - Throws: An error if embedding generation fails.
   public func embed(texts: [String]) async throws -> [[Float]] {
     try await ensureModelLoaded()
+    let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
     let embeddingsTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingsTensor = try model2vec.batchEncode(texts)
     } else if let staticEmbeddings = staticEmbeddingsModel {
-      embeddingsTensor = try staticEmbeddings.batchEncode(texts, normalize: true)
+      embeddingsTensor = try staticEmbeddings.batchEncode(
+        texts,
+        normalize: true,
+        truncateDimension: staticTruncateDimension
+      )
     } else if let nomicBert = nomicBertModel {
       embeddingsTensor = try nomicBert.batchEncode(texts)
     } else if let bert = bertModel {
@@ -113,12 +213,17 @@ extension SwiftEmbedder: VecturaEmbedder {
   /// - Throws: An error if embedding generation fails.
   public func embed(text: String) async throws -> [Float] {
     try await ensureModelLoaded()
+    let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
     let embeddingTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingTensor = try model2vec.encode(text)
     } else if let staticEmbeddings = staticEmbeddingsModel {
-      embeddingTensor = try staticEmbeddings.encode(text, normalize: true)
+      embeddingTensor = try staticEmbeddings.encode(
+        text,
+        normalize: true,
+        truncateDimension: staticTruncateDimension
+      )
     } else if let nomicBert = nomicBertModel {
       embeddingTensor = try nomicBert.encode(text)
     } else if let bert = bertModel {
@@ -140,75 +245,16 @@ extension SwiftEmbedder: VecturaEmbedder {
       return
     }
 
-    if isModel2VecModel(modelSource) {
+    switch Self.resolveModelFamily(for: modelSource) {
+    case .model2vec:
       model2vecModel = try await Model2Vec.loadModelBundle(from: modelSource)
-    } else if isStaticEmbeddingsModel(modelSource) {
+    case .staticEmbeddings:
       staticEmbeddingsModel = try await StaticEmbeddings.loadModelBundle(from: modelSource)
-    } else if isNomicBertModel(modelSource) {
+    case .nomicBert:
       nomicBertModel = try await NomicBert.loadModelBundle(from: modelSource)
-    } else {
+    case .bert:
       bertModel = try await Bert.loadModelBundle(from: modelSource)
     }
-  }
-
-  /// Determines if a model source refers to a Model2Vec model.
-  ///
-  /// First checks for an explicit model type, then falls back to string-based heuristics.
-  /// The string matching covers known Model2Vec model families including minishlab, potion, and M2V variants.
-  ///
-  /// - Note: For best reliability, explicitly specify the model type when creating VecturaModelSource.
-  /// - Parameter source: The model source to check.
-  /// - Returns: `true` if the source appears to be a Model2Vec model, `false` otherwise.
-  private func isModel2VecModel(_ source: VecturaModelSource) -> Bool {
-    // Check explicit type first
-    switch source {
-    case .id(_, let type), .folder(_, let type):
-      if let type = type {
-        return type == .model2vec
-      }
-    }
-
-    // Fall back to string matching
-    let modelId = source.description
-    return modelId.contains("minishlab") ||
-         modelId.contains("potion") ||
-         modelId.contains("model2vec") ||
-         modelId.contains("M2V")
-  }
-
-  /// Determines if a model source refers to a StaticEmbeddings model based on string matching.
-  ///
-  /// This uses string-based heuristics to identify StaticEmbeddings models from sentence-transformers.
-  /// The check covers known StaticEmbeddings model families including static-retrieval and static-similarity.
-  ///
-  /// - Note: This approach may need updates if new StaticEmbeddings naming schemes are introduced.
-  /// - Parameter source: The model source to check.
-  /// - Returns: `true` if the source appears to be a StaticEmbeddings model, `false` otherwise.
-  private func isStaticEmbeddingsModel(_ source: VecturaModelSource) -> Bool {
-    let modelId = source.description
-    return modelId.contains("static-retrieval") ||
-         modelId.contains("static-similarity") ||
-         modelId.contains("static-embed")
-  }
-
-  /// Determines if a model source refers to a NomicBert model.
-  ///
-  /// First checks for an explicit model type, then falls back to string matching.
-  /// The string matching intentionally targets Nomic embedding IDs to avoid
-  /// classifying other `nomic-*` models (for example, ModernBERT variants) as NomicBert.
-  ///
-  /// - Parameter source: The model source to check.
-  /// - Returns: `true` if the source appears to be a NomicBert model, `false` otherwise.
-  private func isNomicBertModel(_ source: VecturaModelSource) -> Bool {
-    switch source {
-    case .id(_, let type), .folder(_, let type):
-      if let type = type {
-        return type == .nomicBert
-      }
-    }
-
-    let modelId = source.description.lowercased()
-    return modelId.contains("nomic-embed-text")
   }
 }
 
@@ -220,9 +266,15 @@ extension Bert {
   static func loadModelBundle(from source: VecturaModelSource) async throws -> Bert.ModelBundle {
     switch source {
     case .id(let modelId, _):
-      try await loadModelBundle(from: modelId)
+      do {
+        return try await loadModelBundle(from: modelId)
+      } catch {
+        // Some BERT checkpoints (for example, google-bert/bert-base-uncased)
+        // require alternative key mapping.
+        return try await loadModelBundle(from: modelId, loadConfig: .googleBert)
+      }
     case .folder(let url, _):
-      try await loadModelBundle(from: url)
+      return try await loadModelBundle(from: url)
     }
   }
 }
