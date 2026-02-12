@@ -151,7 +151,6 @@ extension SwiftEmbedder: VecturaEmbedder {
 
       // Ensure model is loaded
       try await ensureModelLoaded()
-      let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
       let dim: Int
       if let model2vec = model2vecModel {
@@ -159,6 +158,7 @@ extension SwiftEmbedder: VecturaEmbedder {
         // See: swift-embeddings/Sources/Embeddings/Model2Vec/Model2VecModel.swift
         dim = model2vec.model.dimienstion
       } else if let staticEmbeddings = staticEmbeddingsModel {
+        let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
         dim = try Self.resolvedStaticEmbeddingDimension(
           baseDimension: staticEmbeddings.model.dimension,
           truncateDimension: staticTruncateDimension
@@ -220,12 +220,12 @@ extension SwiftEmbedder: VecturaEmbedder {
   /// - Throws: An error if embedding generation fails.
   public func embed(texts: [String]) async throws -> [[Float]] {
     try await ensureModelLoaded()
-    let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
     let embeddingsTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingsTensor = try model2vec.batchEncode(texts)
     } else if let staticEmbeddings = staticEmbeddingsModel {
+      let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
       embeddingsTensor = try staticEmbeddings.batchEncode(
         texts,
         normalize: true,
@@ -264,12 +264,12 @@ extension SwiftEmbedder: VecturaEmbedder {
   /// - Throws: An error if embedding generation fails.
   public func embed(text: String) async throws -> [Float] {
     try await ensureModelLoaded()
-    let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
 
     let embeddingTensor: MLTensor
     if let model2vec = model2vecModel {
       embeddingTensor = try model2vec.encode(text)
     } else if let staticEmbeddings = staticEmbeddingsModel {
+      let staticTruncateDimension = try staticEmbeddingsTruncateDimension()
       embeddingTensor = try staticEmbeddings.encode(
         text,
         normalize: true,
@@ -334,14 +334,39 @@ extension Bert {
     case .id(let modelId, _):
       do {
         return try await loadModelBundle(from: modelId)
+      } catch let cancellationError as CancellationError {
+        throw cancellationError
       } catch {
+        let originalError = error
+        guard isKeyMappingError(originalError) else {
+          throw originalError
+        }
+
         // Some BERT checkpoints (for example, google-bert/bert-base-uncased)
         // require alternative key mapping.
-        return try await loadModelBundle(from: modelId, loadConfig: .googleBert)
+        do {
+          return try await loadModelBundle(from: modelId, loadConfig: .googleBert)
+        } catch let cancellationError as CancellationError {
+          throw cancellationError
+        } catch {
+          throw originalError
+        }
       }
     case .folder(let url, _):
       return try await loadModelBundle(from: url)
     }
+  }
+
+  private static func isKeyMappingError(_ error: Error) -> Bool {
+    let description = String(describing: error).lowercased()
+    let localizedDescription = (error as NSError).localizedDescription.lowercased()
+    let combinedDescription = "\(description) \(localizedDescription)"
+    return combinedDescription.contains("key mapping") ||
+      combinedDescription.contains("key-mapping") ||
+      combinedDescription.contains("missing key") ||
+      combinedDescription.contains("unexpected key") ||
+      combinedDescription.contains("state_dict") ||
+      combinedDescription.contains("state dict")
   }
 }
 
