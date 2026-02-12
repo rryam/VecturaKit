@@ -20,7 +20,6 @@ struct ConcurrencyTests {
     return (directory, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   private func makeEmbedder() -> SwiftEmbedder {
     SwiftEmbedder(modelSource: .default)
   }
@@ -28,10 +27,6 @@ struct ConcurrencyTests {
   /// Test concurrent document additions to ensure thread safety
   @Test("Concurrent document addition")
   func concurrentAddDocuments() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
-
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
@@ -78,10 +73,6 @@ struct ConcurrencyTests {
   /// Test concurrent reads while writing
   @Test("Concurrent reads during writes")
   func concurrentReadsAndWrites() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
-
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
@@ -145,10 +136,6 @@ struct ConcurrencyTests {
   /// Test concurrent search operations
   @Test("Concurrent search operations")
   func concurrentSearches() async throws {
-    guard #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *) else {
-      return
-    }
-
     let (directory, cleanup) = try makeTestDirectory()
     defer { cleanup() }
 
