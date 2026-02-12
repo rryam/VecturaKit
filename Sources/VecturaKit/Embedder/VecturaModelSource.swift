@@ -9,6 +9,8 @@ public enum VecturaModelSource: Sendable {
     case bert
     /// Model2Vec distilled models (e.g., potion, minishlab models)
     case model2vec
+    /// Static Embeddings models (e.g., static-retrieval/static-similarity)
+    case staticEmbeddings
     /// Nomic BERT embedding models (e.g., nomic-embed-text-v1.5)
     case nomicBert
   }
