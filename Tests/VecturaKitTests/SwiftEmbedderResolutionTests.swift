@@ -32,6 +32,20 @@ struct SwiftEmbedderResolutionTests {
     #expect(family == .nomicBert)
   }
 
+  @Test("ModernBert family inferred from known ids")
+  func inferModernBertFamily() {
+    let source = VecturaModelSource.id("nomic-ai/modernbert-embed-base")
+    let family = SwiftEmbedder.resolveModelFamily(for: source)
+    #expect(family == .modernBert)
+  }
+
+  @Test("Explicit ModernBert type overrides heuristics")
+  func explicitModernBertTypeOverridesHeuristics() {
+    let source = VecturaModelSource.id("sentence-transformers/all-MiniLM-L6-v2", type: .modernBert)
+    let family = SwiftEmbedder.resolveModelFamily(for: source)
+    #expect(family == .modernBert)
+  }
+
   @Test("Unknown models default to BERT family")
   func unknownModelDefaultsToBertFamily() {
     let source = VecturaModelSource.id("sentence-transformers/all-MiniLM-L6-v2")

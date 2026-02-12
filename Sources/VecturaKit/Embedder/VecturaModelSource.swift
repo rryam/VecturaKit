@@ -13,6 +13,8 @@ public enum VecturaModelSource: Sendable {
     case staticEmbeddings
     /// Nomic BERT embedding models (e.g., nomic-embed-text-v1.5)
     case nomicBert
+    /// ModernBERT models (e.g., answerdotai/ModernBERT-base)
+    case modernBert
   }
 
   /// Automatically fetch the model from a remote repository based on its id.
