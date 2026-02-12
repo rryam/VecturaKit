@@ -3,7 +3,7 @@ import Embeddings
 import Foundation
 
 /// An embedder implementation using swift-embeddings library
-/// (Bert, NomicBert, Model2Vec, and StaticEmbeddings models).
+/// (Bert, ModernBert, NomicBert, Model2Vec, and StaticEmbeddings models).
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 public actor SwiftEmbedder {
 
@@ -22,6 +22,7 @@ public actor SwiftEmbedder {
 
   enum ResolvedModelFamily: Sendable, Equatable {
     case bert
+    case modernBert
     case model2vec
     case staticEmbeddings
     case nomicBert
@@ -30,6 +31,7 @@ public actor SwiftEmbedder {
   private let modelSource: VecturaModelSource
   private let configuration: Configuration
   private var bertModel: Bert.ModelBundle?
+  private var modernBertModel: ModernBert.ModelBundle?
   private var nomicBertModel: NomicBert.ModelBundle?
   private var model2vecModel: Model2Vec.ModelBundle?
   private var staticEmbeddingsModel: StaticEmbeddings.ModelBundle?
@@ -53,6 +55,7 @@ public actor SwiftEmbedder {
       if let type {
         switch type {
         case .bert: return .bert
+        case .modernBert: return .modernBert
         case .model2vec: return .model2vec
         case .staticEmbeddings: return .staticEmbeddings
         case .nomicBert: return .nomicBert
@@ -78,6 +81,10 @@ public actor SwiftEmbedder {
 
     if modelId.contains("nomic-embed-text") {
       return .nomicBert
+    }
+
+    if modelId.contains("modernbert") {
+      return .modernBert
     }
 
     return .bert
@@ -152,6 +159,14 @@ extension SwiftEmbedder: VecturaEmbedder {
           )
         }
         dim = lastDim
+      } else if let modernBert = modernBertModel {
+        let testEmbedding = try modernBert.encode("test", postProcess: .meanPool)
+        guard let lastDim = testEmbedding.shape.last else {
+          throw VecturaError.invalidInput(
+            "Could not determine ModernBert model dimension from shape \(testEmbedding.shape)"
+          )
+        }
+        dim = lastDim
       } else if let bert = bertModel {
         // For BERT, we need to get dimension from a test encoding
         let testEmbedding = try bert.encode("test")
@@ -190,6 +205,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       )
     } else if let nomicBert = nomicBertModel {
       embeddingsTensor = try nomicBert.batchEncode(texts)
+    } else if let modernBert = modernBertModel {
+      embeddingsTensor = try modernBert.batchEncode(texts, postProcess: .meanPool)
     } else if let bert = bertModel {
       embeddingsTensor = try bert.batchEncode(texts)
     } else {
@@ -228,6 +245,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       )
     } else if let nomicBert = nomicBertModel {
       embeddingTensor = try nomicBert.encode(text)
+    } else if let modernBert = modernBertModel {
+      embeddingTensor = try modernBert.encode(text, postProcess: .meanPool)
     } else if let bert = bertModel {
       embeddingTensor = try bert.encode(text)
     } else {
@@ -240,6 +259,7 @@ extension SwiftEmbedder: VecturaEmbedder {
 
   private func ensureModelLoaded() async throws {
     guard bertModel == nil &&
+        modernBertModel == nil &&
         nomicBertModel == nil &&
         model2vecModel == nil &&
         staticEmbeddingsModel == nil
@@ -254,6 +274,8 @@ extension SwiftEmbedder: VecturaEmbedder {
       staticEmbeddingsModel = try await StaticEmbeddings.loadModelBundle(from: modelSource)
     case .nomicBert:
       nomicBertModel = try await NomicBert.loadModelBundle(from: modelSource)
+    case .modernBert:
+      modernBertModel = try await ModernBert.loadModelBundle(from: modelSource)
     case .bert:
       bertModel = try await Bert.loadModelBundle(from: modelSource)
     }
@@ -316,6 +338,28 @@ extension NomicBert {
       try await loadModelBundle(from: modelId)
     case .folder(let url, _):
       try await loadModelBundle(from: url)
+    }
+  }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension ModernBert {
+
+  static func loadModelBundle(from source: VecturaModelSource) async throws -> ModernBert.ModelBundle {
+    switch source {
+    case .id(let modelId, _):
+      do {
+        return try await loadModelBundle(from: modelId)
+      } catch {
+        // answerdotai/ModernBERT-base requires "model." weight prefix.
+        return try await loadModelBundle(from: modelId, loadConfig: .addWeightKeyPrefix("model."))
+      }
+    case .folder(let url, _):
+      do {
+        return try await loadModelBundle(from: url)
+      } catch {
+        return try await loadModelBundle(from: url, loadConfig: .addWeightKeyPrefix("model."))
+      }
     }
   }
 }
