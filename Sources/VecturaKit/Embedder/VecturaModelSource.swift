@@ -15,6 +15,10 @@ public enum VecturaModelSource: Sendable {
     case nomicBert
     /// ModernBERT models (e.g., answerdotai/ModernBERT-base)
     case modernBert
+    /// RoBERTa models (e.g., FacebookAI/roberta-base)
+    case roberta
+    /// XLM-RoBERTa models (e.g., FacebookAI/xlm-roberta-base)
+    case xlmRoberta
   }
 
   /// Automatically fetch the model from a remote repository based on its id.

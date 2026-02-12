@@ -3,7 +3,7 @@ import Embeddings
 import Foundation
 
 /// An embedder implementation using swift-embeddings library
-/// (Bert, ModernBert, NomicBert, Model2Vec, and StaticEmbeddings models).
+/// (Bert, ModernBert, NomicBert, RoBERTa, XLM-RoBERTa, Model2Vec, and StaticEmbeddings models).
 @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
 public actor SwiftEmbedder {
 
@@ -23,6 +23,8 @@ public actor SwiftEmbedder {
   enum ResolvedModelFamily: Sendable, Equatable {
     case bert
     case modernBert
+    case roberta
+    case xlmRoberta
     case model2vec
     case staticEmbeddings
     case nomicBert
@@ -33,6 +35,8 @@ public actor SwiftEmbedder {
   private var bertModel: Bert.ModelBundle?
   private var modernBertModel: ModernBert.ModelBundle?
   private var nomicBertModel: NomicBert.ModelBundle?
+  private var robertaModel: Roberta.ModelBundle?
+  private var xlmRobertaModel: XLMRoberta.ModelBundle?
   private var model2vecModel: Model2Vec.ModelBundle?
   private var staticEmbeddingsModel: StaticEmbeddings.ModelBundle?
   private var cachedDimension: Int?
@@ -56,6 +60,8 @@ public actor SwiftEmbedder {
         switch type {
         case .bert: return .bert
         case .modernBert: return .modernBert
+        case .roberta: return .roberta
+        case .xlmRoberta: return .xlmRoberta
         case .model2vec: return .model2vec
         case .staticEmbeddings: return .staticEmbeddings
         case .nomicBert: return .nomicBert
@@ -85,6 +91,14 @@ public actor SwiftEmbedder {
 
     if modelId.contains("modernbert") {
       return .modernBert
+    }
+
+    if modelId.contains("xlm-roberta") || modelId.contains("multilingual-e5") {
+      return .xlmRoberta
+    }
+
+    if modelId.contains("roberta") {
+      return .roberta
     }
 
     return .bert
@@ -167,6 +181,22 @@ extension SwiftEmbedder: VecturaEmbedder {
           )
         }
         dim = lastDim
+      } else if let roberta = robertaModel {
+        let testEmbedding = try roberta.encode("test")
+        guard let lastDim = testEmbedding.shape.last else {
+          throw VecturaError.invalidInput(
+            "Could not determine RoBERTa model dimension from shape \(testEmbedding.shape)"
+          )
+        }
+        dim = lastDim
+      } else if let xlmRoberta = xlmRobertaModel {
+        let testEmbedding = try xlmRoberta.encode("test")
+        guard let lastDim = testEmbedding.shape.last else {
+          throw VecturaError.invalidInput(
+            "Could not determine XLM-RoBERTa model dimension from shape \(testEmbedding.shape)"
+          )
+        }
+        dim = lastDim
       } else if let bert = bertModel {
         // For BERT, we need to get dimension from a test encoding
         let testEmbedding = try bert.encode("test")
@@ -207,6 +237,10 @@ extension SwiftEmbedder: VecturaEmbedder {
       embeddingsTensor = try nomicBert.batchEncode(texts)
     } else if let modernBert = modernBertModel {
       embeddingsTensor = try modernBert.batchEncode(texts, postProcess: .meanPool)
+    } else if let roberta = robertaModel {
+      embeddingsTensor = try roberta.batchEncode(texts)
+    } else if let xlmRoberta = xlmRobertaModel {
+      embeddingsTensor = try xlmRoberta.batchEncode(texts)
     } else if let bert = bertModel {
       embeddingsTensor = try bert.batchEncode(texts)
     } else {
@@ -247,6 +281,10 @@ extension SwiftEmbedder: VecturaEmbedder {
       embeddingTensor = try nomicBert.encode(text)
     } else if let modernBert = modernBertModel {
       embeddingTensor = try modernBert.encode(text, postProcess: .meanPool)
+    } else if let roberta = robertaModel {
+      embeddingTensor = try roberta.encode(text)
+    } else if let xlmRoberta = xlmRobertaModel {
+      embeddingTensor = try xlmRoberta.encode(text)
     } else if let bert = bertModel {
       embeddingTensor = try bert.encode(text)
     } else {
@@ -261,6 +299,8 @@ extension SwiftEmbedder: VecturaEmbedder {
     guard bertModel == nil &&
         modernBertModel == nil &&
         nomicBertModel == nil &&
+        robertaModel == nil &&
+        xlmRobertaModel == nil &&
         model2vecModel == nil &&
         staticEmbeddingsModel == nil
     else {
@@ -276,6 +316,10 @@ extension SwiftEmbedder: VecturaEmbedder {
       nomicBertModel = try await NomicBert.loadModelBundle(from: modelSource)
     case .modernBert:
       modernBertModel = try await ModernBert.loadModelBundle(from: modelSource)
+    case .roberta:
+      robertaModel = try await Roberta.loadModelBundle(from: modelSource)
+    case .xlmRoberta:
+      xlmRobertaModel = try await XLMRoberta.loadModelBundle(from: modelSource)
     case .bert:
       bertModel = try await Bert.loadModelBundle(from: modelSource)
     }
@@ -359,6 +403,48 @@ extension ModernBert {
         return try await loadModelBundle(from: url)
       } catch {
         return try await loadModelBundle(from: url, loadConfig: .addWeightKeyPrefix("model."))
+      }
+    }
+  }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension Roberta {
+
+  static func loadModelBundle(from source: VecturaModelSource) async throws -> Roberta.ModelBundle {
+    switch source {
+    case .id(let modelId, _):
+      do {
+        return try await loadModelBundle(from: modelId)
+      } catch {
+        return try await loadModelBundle(from: modelId, loadConfig: .addWeightKeyPrefix("roberta."))
+      }
+    case .folder(let url, _):
+      do {
+        return try await loadModelBundle(from: url)
+      } catch {
+        return try await loadModelBundle(from: url, loadConfig: .addWeightKeyPrefix("roberta."))
+      }
+    }
+  }
+}
+
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+extension XLMRoberta {
+
+  static func loadModelBundle(from source: VecturaModelSource) async throws -> XLMRoberta.ModelBundle {
+    switch source {
+    case .id(let modelId, _):
+      do {
+        return try await loadModelBundle(from: modelId)
+      } catch {
+        return try await loadModelBundle(from: modelId, loadConfig: .addWeightKeyPrefix("roberta."))
+      }
+    case .folder(let url, _):
+      do {
+        return try await loadModelBundle(from: url)
+      } catch {
+        return try await loadModelBundle(from: url, loadConfig: .addWeightKeyPrefix("roberta."))
       }
     }
   }
