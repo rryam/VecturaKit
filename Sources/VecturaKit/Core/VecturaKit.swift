@@ -307,15 +307,8 @@ public actor VecturaKit {
       b: config.searchOptions.b
     )
 
-    // Determine if we should unload text index after search
-    // This is enabled for indexed memory strategy to minimize memory footprint
-    let shouldUnloadTextIndex: Bool
-    switch config.memoryStrategy {
-    case .indexed:
-      shouldUnloadTextIndex = true
-    case .automatic, .fullMemory:
-      shouldUnloadTextIndex = false
-    }
+    // Keep BM25 index warm across queries to avoid rebuilding on every search.
+    let shouldUnloadTextIndex = false
 
     // Combine into hybrid search engine
     return HybridSearchEngine(
