@@ -23,6 +23,7 @@ struct RealisticWorkloadSuite {
     let coldStartLatencies: [UInt64]
     let warmLatencies: [UInt64]
     let concurrentLatencies: [UInt64]
+    let concurrentElapsedNs: UInt64
     let mixedSearchLatencies: [UInt64]
     let mixedWriteLatencies: [UInt64]
 
@@ -42,7 +43,10 @@ struct RealisticWorkloadSuite {
     }
 
     var warmQueriesPerSecond: Double { queriesPerSecond(for: warmLatencies) }
-    var concurrentQueriesPerSecond: Double { queriesPerSecond(for: concurrentLatencies) }
+    var concurrentQueriesPerSecond: Double {
+      guard !concurrentLatencies.isEmpty, concurrentElapsedNs > 0 else { return 0 }
+      return Double(concurrentLatencies.count) / (Double(concurrentElapsedNs) / 1_000_000_000.0)
+    }
 
     private func average(_ values: [UInt64]) -> Double {
       guard !values.isEmpty else { return 0 }
@@ -171,6 +175,7 @@ struct RealisticWorkloadSuite {
     }
 
     let perClientQueryCount = max(1, queryCount / max(1, concurrentClients))
+    let concurrentStart = DispatchTime.now().uptimeNanoseconds
     let concurrentLatencies = try await withThrowingTaskGroup(of: [UInt64].self) { group in
       for client in 0..<concurrentClients {
         group.addTask {
@@ -192,6 +197,7 @@ struct RealisticWorkloadSuite {
       }
       return flattened
     }
+    let concurrentElapsedNs = elapsedNs(since: concurrentStart)
 
     var mutableIds = initialIds
     var mixedSearchLatencies: [UInt64] = []
@@ -199,29 +205,27 @@ struct RealisticWorkloadSuite {
     mixedSearchLatencies.reserveCapacity(mixedOperationCount)
     mixedWriteLatencies.reserveCapacity(mixedOperationCount / 3)
 
-    var operationCursor = 0
     for i in 0..<mixedOperationCount {
       let mode = i % 100
       if mode < 70 {
         let start = DispatchTime.now().uptimeNanoseconds
-        let query = queries[(operationCursor + i) % queries.count]
+        let query = queries[(2 * i) % queries.count]
         _ = try await vectura.search(query: .text(query), numResults: 10)
         mixedSearchLatencies.append(elapsedNs(since: start))
       } else if mode < 90 {
         let start = DispatchTime.now().uptimeNanoseconds
-        let text = mixedTexts[(operationCursor + i) % mixedTexts.count]
+        let text = mixedTexts[(2 * i) % mixedTexts.count]
         let id = try await vectura.addDocument(text: text)
         mutableIds.append(id)
         mixedWriteLatencies.append(elapsedNs(since: start))
       } else if !mutableIds.isEmpty {
         let start = DispatchTime.now().uptimeNanoseconds
-        let targetIndex = (operationCursor + i) % mutableIds.count
+        let targetIndex = (2 * i) % mutableIds.count
         let id = mutableIds[targetIndex]
-        let updatedText = mixedTexts[(operationCursor + i * 3 + 1) % mixedTexts.count]
+        let updatedText = mixedTexts[(4 * i + 1) % mixedTexts.count]
         try await vectura.updateDocument(id: id, newText: updatedText)
         mixedWriteLatencies.append(elapsedNs(since: start))
       }
-      operationCursor += 1
     }
 
     return RealisticReport(
@@ -234,6 +238,7 @@ struct RealisticWorkloadSuite {
       coldStartLatencies: coldStartLatencies,
       warmLatencies: warmLatencies,
       concurrentLatencies: concurrentLatencies,
+      concurrentElapsedNs: concurrentElapsedNs,
       mixedSearchLatencies: mixedSearchLatencies,
       mixedWriteLatencies: mixedWriteLatencies
     )
