@@ -57,6 +57,7 @@ Tests/PerformanceTests/
 ├── MemoryProfilerSuite.swift      # Memory profiling (5 tests)
 ├── ParameterTuningSuite.swift     # Parameter optimization (5 tests)
 ├── AccuracyTests.swift            # Search quality (4 tests)
+├── RealisticWorkloadSuite.swift   # Harder real-world profile (2 opt-in tests)
 │
 ├── Helpers/
 │   ├── PerformanceMetrics.swift   # Metrics collection
@@ -67,7 +68,7 @@ Tests/PerformanceTests/
     └── README.md                  # Custom data guide
 ```
 
-**Total: 26 performance tests**
+**Total: 28 performance tests (2 realistic tests are opt-in)**
 
 ### Embedder Selection (Speed vs Realism)
 
@@ -76,6 +77,24 @@ downloading CoreML models. To run with real embeddings, set:
 
 ```bash
 VECTURA_PERF_USE_SWIFT_EMBEDDER=1
+```
+
+### Realistic Profile (Harder Benchmark Mode)
+
+Enable the realistic suite to simulate heavier production-like workloads:
+
+```bash
+VECTURA_PERF_PROFILE=realistic swift test --filter RealisticWorkloadSuite
+```
+
+Optional knobs:
+
+```bash
+export VECTURA_PERF_REALISTIC_DOCS=12000
+export VECTURA_PERF_REALISTIC_QUERIES=600
+export VECTURA_PERF_REALISTIC_MIXED_OPS=1200
+export VECTURA_PERF_REALISTIC_CLIENTS=12
+export VECTURA_PERF_REALISTIC_COLD_RUNS=24
 ```
 
 ---
@@ -104,6 +123,9 @@ swift test --filter ParameterTuningSuite
 # Accuracy validation (~5 min)
 # Validates search quality with 1K documents
 swift test --filter AccuracyTests
+
+# Realistic workload profile (opt-in, heavier)
+VECTURA_PERF_PROFILE=realistic swift test --filter RealisticWorkloadSuite
 
 # All performance tests (~30 min)
 # Note: May fail on memory-constrained systems
@@ -136,6 +158,10 @@ swift test --filter MemoryProfilerSuite.strategyMemoryComparison
 
 # Accuracy testing
 swift test --filter AccuracyTests.basicAccuracyTest
+
+# Realistic profile
+VECTURA_PERF_PROFILE=realistic swift test --filter RealisticWorkloadSuite.realisticFullMemoryProfile
+VECTURA_PERF_PROFILE=realistic swift test --filter RealisticWorkloadSuite.realisticIndexedProfile
 ```
 
 ---
@@ -326,6 +352,35 @@ Reduced from 2K to 1K documents and reduced query counts to prevent memory issue
 - Validating indexed mode accuracy
 - Choosing optimal candidateMultiplier
 - Understanding recall trade-offs
+
+---
+
+### 6. RealisticWorkloadSuite (2 tests, opt-in)
+
+**Purpose:** Stress the system with harder workload characteristics closer to production traffic.
+
+**Key Tests:**
+- `realisticFullMemoryProfile` - cold vs warm behavior, multi-client queueing, mixed read/write traffic
+- `realisticIndexedProfile` - same workload in indexed mode with cold/warm and tail latency focus
+
+**What makes it harder:**
+- Larger document/query defaults than other suites
+- Variable document lengths with lexical noise and near-duplicates
+- Cold-start measurements (new instance + first search)
+- Multi-client pressure (concurrent callers)
+- Mixed workload phase (70% search / 30% writes)
+- Tail metrics emphasized (P99 and P99.9)
+
+**Enable:**
+
+```bash
+VECTURA_PERF_PROFILE=realistic swift test --filter RealisticWorkloadSuite
+```
+
+**Use Cases:**
+- Catching regressions hidden by small synthetic datasets
+- Evaluating cold-start impact separately from warm steady-state
+- Measuring tail-latency behavior under heavier pressure
 
 ---
 
