@@ -114,9 +114,10 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       1
     )
 
-    // Build results
-    var results = [VecturaSearchResult]()
-    results.reserveCapacity(docsCount)
+    var topResults = TopKSelector<VecturaSearchResult>(
+      maxCount: options.numResults,
+      isHigherRanked: { $0.score > $1.score }
+    )
 
     for (i, similarity) in similarities.enumerated() {
       if let threshold = options.threshold, similarity < threshold {
@@ -125,7 +126,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
 
       // docIds and documents are built in parallel, so indices correspond
       let doc = documents[i]
-      results.append(
+      topResults.insert(
         VecturaSearchResult(
           id: doc.id,
           text: doc.text,
@@ -135,11 +136,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       )
     }
 
-    results.sort { $0.score > $1.score }
-    if results.count > options.numResults {
-      results.removeSubrange(options.numResults..<results.count)
-    }
-    return results
+    return topResults.sortedElements()
   }
 
   private func searchWithIndexedStorage(
@@ -223,9 +220,10 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       1
     )
 
-    // Build results
-    var results = [VecturaSearchResult]()
-    results.reserveCapacity(candidatesCount)
+    var topResults = TopKSelector<VecturaSearchResult>(
+      maxCount: options.numResults,
+      isHigherRanked: { $0.score > $1.score }
+    )
 
     for (i, similarity) in similarities.enumerated() {
       if let threshold = options.threshold, similarity < threshold {
@@ -233,7 +231,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       }
 
       let doc = candidateDocs[i]
-      results.append(
+      topResults.insert(
         VecturaSearchResult(
           id: doc.id,
           text: doc.text,
@@ -243,11 +241,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
       )
     }
 
-    results.sort { $0.score > $1.score }
-    if results.count > options.numResults {
-      results.removeSubrange(options.numResults..<results.count)
-    }
-    return results
+    return topResults.sortedElements()
   }
 
   // MARK: - Helper Methods

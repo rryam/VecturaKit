@@ -220,10 +220,17 @@ public struct HybridSearchEngine: VecturaSearchEngine {
       )
     }
 
-    // Sort and return top K
-    return combinedResults.values
-      .sorted(by: { $0.score > $1.score })
-      .prefix(topK)
-      .map { $0 }
+    guard topK > 0 else {
+      return []
+    }
+
+    var topResults = TopKSelector<VecturaSearchResult>(
+      maxCount: topK,
+      isHigherRanked: { $0.score > $1.score }
+    )
+    for result in combinedResults.values {
+      topResults.insert(result)
+    }
+    return topResults.sortedElements()
   }
 }

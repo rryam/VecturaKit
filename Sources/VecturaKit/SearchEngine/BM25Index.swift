@@ -205,6 +205,10 @@ public actor BM25Index {
   ///   - topK: Maximum number of results to return
   /// - Returns: Array of tuples containing lightweight documents and their BM25 scores
   public func search(query: String, topK: Int = 10) -> [(document: BM25Document, score: Float)] {
+    guard topK > 0 else {
+      return []
+    }
+
     let queryTerms = tokenize(query)
     guard !queryTerms.isEmpty else {
       return []
@@ -223,8 +227,10 @@ public actor BM25Index {
       queryIDFs[term] = log(max(idfArgument, 1e-9))
     }
 
-    var scores: [(BM25Document, Float)] = []
-    scores.reserveCapacity(documents.count)
+    var topResults = TopKSelector<(BM25Document, Float)>(
+      maxCount: topK,
+      isHigherRanked: { $0.1 > $1.1 }
+    )
 
     for document in documents.values {
       let docLength = Float(documentLengths[document.id] ?? 0)
@@ -246,15 +252,12 @@ public actor BM25Index {
         score += Float(queryTermCount) * idf * (numerator / denominator)
       }
 
-      scores.append((document, score))
+      if score > 0 {
+        topResults.insert((document, score))
+      }
     }
 
-    return Array(
-      scores
-        .sorted { $0.1 > $1.1 }
-        .filter { $0.1 > 0 }
-        .prefix(topK)
-    )
+    return topResults.sortedElements()
   }
 
   /// Add a new document to the index incrementally
