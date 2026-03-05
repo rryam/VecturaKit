@@ -65,6 +65,7 @@ public actor BM25Index {
   private var documentFrequencies: [String: Int]
   private var documentLengths: [UUID: Int]
   private var documentTokens: [UUID: [String]]
+  private var documentTermFrequencies: [UUID: [String: Int]]
   private var averageDocumentLength: Float
 
   /// Creates a new BM25 index for the given documents
@@ -78,7 +79,14 @@ public actor BM25Index {
     self.b = b
     // Convert to lightweight BM25Document to reduce memory usage
     let lightweightDocs = documents.map { BM25Document(from: $0) }
-    (self.documents, self.documentFrequencies, self.documentLengths, self.documentTokens, self.averageDocumentLength) =
+    (
+      self.documents,
+      self.documentFrequencies,
+      self.documentLengths,
+      self.documentTokens,
+      self.documentTermFrequencies,
+      self.averageDocumentLength
+    ) =
       Self.buildIndex(from: lightweightDocs)
   }
 
@@ -100,16 +108,19 @@ public actor BM25Index {
     // Initialize empty dictionaries first
     var tempTokens: [UUID: [String]] = [:]
     var tempLengths: [UUID: Int] = [:]
+    var tempTermFrequencies: [UUID: [String: Int]] = [:]
 
     // Tokenize once per document and cache for later reuse
     for (id, document) in self.documents {
       let tokens = tokenize(document.text)
       tempTokens[id] = tokens
       tempLengths[id] = tokens.count
+      tempTermFrequencies[id] = Self.termFrequencyMap(tokens: tokens)
     }
 
     self.documentTokens = tempTokens
     self.documentLengths = tempLengths
+    self.documentTermFrequencies = tempTermFrequencies
 
     // Guard against division by zero when documents array is empty
     if self.documents.isEmpty {
@@ -134,6 +145,7 @@ public actor BM25Index {
     [String: Int],
     [UUID: Int],
     [UUID: [String]],
+    [UUID: [String: Int]],
     Float
   ) {
     // Use reduce to handle duplicate IDs gracefully (keep last occurrence)
@@ -143,12 +155,14 @@ public actor BM25Index {
     var documentFrequencies: [String: Int] = [:]
     var documentLengths: [UUID: Int] = [:]
     var documentTokens: [UUID: [String]] = [:]
+    var documentTermFrequencies: [UUID: [String: Int]] = [:]
 
     // Tokenize once per document and cache for later reuse
     for (id, document) in docsMap {
       let tokens = tokenize(document.text)
       documentTokens[id] = tokens
       documentLengths[id] = tokens.count
+      documentTermFrequencies[id] = termFrequencyMap(tokens: tokens)
     }
 
     // Calculate average document length
@@ -167,7 +181,20 @@ public actor BM25Index {
       }
     }
 
-    return (docsMap, documentFrequencies, documentLengths, documentTokens, averageDocumentLength)
+    return (
+      docsMap,
+      documentFrequencies,
+      documentLengths,
+      documentTokens,
+      documentTermFrequencies,
+      averageDocumentLength
+    )
+  }
+
+  private static func termFrequencyMap(tokens: [String]) -> [String: Int] {
+    tokens.reduce(into: [:]) { counts, token in
+      counts[token, default: 0] += 1
+    }
   }
   // swiftlint:enable large_tuple
 
@@ -182,29 +209,41 @@ public actor BM25Index {
     guard !queryTerms.isEmpty else {
       return []
     }
+    let queryTermFrequencies = queryTerms.reduce(into: [String: Int]()) { counts, term in
+      counts[term, default: 0] += 1
+    }
+    let avgDocLength = max(averageDocumentLength, 1e-9)
+    let documentCount = Float(documents.count)
+    var queryIDFs: [String: Float] = [:]
+    queryIDFs.reserveCapacity(queryTermFrequencies.count)
+
+    for term in queryTermFrequencies.keys {
+      let df = Float(documentFrequencies[term] ?? 0)
+      let idfArgument = (documentCount - df + 0.5) / (df + 0.5)
+      queryIDFs[term] = log(max(idfArgument, 1e-9))
+    }
+
     var scores: [(BM25Document, Float)] = []
+    scores.reserveCapacity(documents.count)
 
     for document in documents.values {
       let docLength = Float(documentLengths[document.id] ?? 0)
       var score: Float = 0.0
 
-      // Use cached tokens instead of re-tokenizing
-      let docTokens = documentTokens[document.id] ?? []
-      let docTokenCounts = Dictionary(grouping: docTokens, by: { $0 }).mapValues { Float($0.count) }
+      let docTermFrequencies = documentTermFrequencies[document.id] ?? [:]
+      let lengthNormalization = k1 * (1 - b + b * docLength / avgDocLength)
 
-      for term in queryTerms {
-        let tf = docTokenCounts[term] ?? 0
-        let df = Float(documentFrequencies[term] ?? 0)
+      for (term, queryTermCount) in queryTermFrequencies {
+        let tf = Float(docTermFrequencies[term] ?? 0)
+        guard tf > 0 else {
+          continue
+        }
 
-        // Ensure argument to log is positive for numerical stability
-        let idfArgument = (Float(documents.count) - df + 0.5) / (df + 0.5)
-        let idf = log(max(idfArgument, 1e-9))
-
+        let idf = queryIDFs[term] ?? 0
         let numerator = tf * (k1 + 1)
-        let avgDocLen = max(averageDocumentLength, 1e-9)  // Prevent division by zero
-        let denominator = tf + k1 * (1 - b + b * docLength / avgDocLen)
+        let denominator = tf + lengthNormalization
 
-        score += idf * (numerator / denominator)
+        score += Float(queryTermCount) * idf * (numerator / denominator)
       }
 
       scores.append((document, score))
@@ -246,6 +285,7 @@ public actor BM25Index {
 
     documentLengths.removeValue(forKey: documentID)
     documentTokens.removeValue(forKey: documentID)
+    documentTermFrequencies.removeValue(forKey: documentID)
     updateAverageDocumentLength()
   }
 
@@ -276,6 +316,7 @@ public actor BM25Index {
     // Tokenize once and cache for later reuse
     let tokens = tokenize(document.text)
     documentTokens[document.id] = tokens
+    documentTermFrequencies[document.id] = Self.termFrequencyMap(tokens: tokens)
     let length = tokens.count
     documentLengths[document.id] = length
 
@@ -302,6 +343,7 @@ public actor BM25Index {
     documentFrequencies.removeAll()
     documentLengths.removeAll()
     documentTokens.removeAll()
+    documentTermFrequencies.removeAll()
     averageDocumentLength = 0
   }
 

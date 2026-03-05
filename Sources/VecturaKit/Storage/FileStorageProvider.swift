@@ -73,6 +73,23 @@ extension FileStorageProvider: VecturaStorage {
     return documents
   }
 
+  /// Returns total document count without decoding all document files.
+  public func getTotalDocumentCount() async throws -> Int {
+    if cacheEnabled && !cache.isEmpty {
+      return cache.count
+    }
+
+    let fileURLs = try FileManager.default.contentsOfDirectory(
+      at: storageDirectory,
+      includingPropertiesForKeys: nil
+    )
+    return fileURLs.reduce(into: 0) { count, fileURL in
+      if fileURL.pathExtension.lowercased() == "json" {
+        count += 1
+      }
+    }
+  }
+
   /// Saves a document and updates cache
   public func saveDocument(_ document: VecturaDocument) async throws {
     try await saveDocumentToStorage(document)
