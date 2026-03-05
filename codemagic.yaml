@@ -32,6 +32,28 @@ definitions:
         # Using --no-parallel to avoid concurrent model download issues
         swift test --no-parallel \
           --skip PerformanceTests
+    - &run_realistic_perf_tests
+      name: Run Realistic Performance Tests (Optional)
+      script: |
+        #!/bin/zsh
+
+        if [[ "${RUN_REALISTIC_PERF_TESTS}" != "1" ]]; then
+          echo "Skipping realistic performance tests. Set RUN_REALISTIC_PERF_TESTS=1 to enable."
+          exit 0
+        fi
+
+        export VECTURA_PERF_PROFILE=realistic
+        export VECTURA_PERF_REALISTIC_DOCS="${VECTURA_PERF_REALISTIC_DOCS:-5000}"
+        export VECTURA_PERF_REALISTIC_QUERIES="${VECTURA_PERF_REALISTIC_QUERIES:-240}"
+        export VECTURA_PERF_REALISTIC_MIXED_OPS="${VECTURA_PERF_REALISTIC_MIXED_OPS:-500}"
+        export VECTURA_PERF_REALISTIC_CLIENTS="${VECTURA_PERF_REALISTIC_CLIENTS:-8}"
+        export VECTURA_PERF_REALISTIC_COLD_RUNS="${VECTURA_PERF_REALISTIC_COLD_RUNS:-10}"
+
+        # Keep deterministic embedder by default for CI stability/speed.
+        export VECTURA_PERF_USE_SWIFT_EMBEDDER="${VECTURA_PERF_USE_SWIFT_EMBEDDER:-0}"
+
+        swift test --no-parallel \
+          --filter RealisticWorkloadSuite
 workflows:
   vecturakit:
     name: VecturaKit Workflow
@@ -51,3 +73,4 @@ workflows:
       - *swiftlint
       - *build_framework
       - *run_tests
+      - *run_realistic_perf_tests
