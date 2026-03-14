@@ -290,8 +290,50 @@ extension FileStorageProvider: CachableVecturaStorage {
   }
 
   /// Deletes a document by removing its file from disk (bypasses cache).
+  ///
+  /// If the file does not exist, this is treated as a no-op rather than an error.
+  /// This makes `deleteDocuments(ids:)` idempotent and prevents partial-delete
+  /// failures when an ID is not present in storage.
   public func deleteDocumentFromStorage(withID id: UUID) async throws {
     let documentURL = storageDirectory.appendingPathComponent("\(id).json")
+    guard FileManager.default.fileExists(atPath: documentURL.path(percentEncoded: false)) else {
+      return
+    }
     try FileManager.default.removeItem(at: documentURL)
+  }
+}
+
+// MARK: - Efficient Single-Document Lookup
+
+extension FileStorageProvider {
+
+  /// Returns a single document by ID without loading all documents from disk.
+  ///
+  /// Lookup order:
+  /// 1. In-memory cache (O(1), no I/O) when cache is warm
+  /// 2. Single targeted file read when cache is cold
+  public func getDocument(id: UUID) async throws -> VecturaDocument? {
+    if cacheEnabled && !cache.isEmpty {
+      return cache[id]
+    }
+    let fileURL = storageDirectory.appendingPathComponent("\(id).json")
+    guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
+      return nil
+    }
+    let data = try Data(contentsOf: fileURL)
+    return try JSONDecoder().decode(VecturaDocument.self, from: data)
+  }
+
+  /// Returns whether a document with the given ID exists, without decoding its contents.
+  ///
+  /// Lookup order:
+  /// 1. In-memory cache (O(1), no I/O) when cache is warm
+  /// 2. File-existence check (O(1), no JSON decoding) when cache is cold
+  public func documentExists(id: UUID) async throws -> Bool {
+    if cacheEnabled && !cache.isEmpty {
+      return cache[id] != nil
+    }
+    let fileURL = storageDirectory.appendingPathComponent("\(id).json")
+    return FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false))
   }
 }

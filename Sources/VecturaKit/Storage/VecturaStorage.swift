@@ -41,6 +41,24 @@ public protocol VecturaStorage: Sendable {
   ///
   /// - Parameter documents: The documents to save.
   func saveDocuments(_ documents: [VecturaDocument]) async throws
+
+  /// Returns a single document by its ID, or nil if not found.
+  ///
+  /// Storage providers can override this for efficient single-document lookup.
+  /// The default implementation loads all documents and filters by ID.
+  ///
+  /// - Parameter id: The unique identifier of the document to retrieve.
+  /// - Returns: The document if found, nil otherwise.
+  func getDocument(id: UUID) async throws -> VecturaDocument?
+
+  /// Returns whether a document with the given ID exists in storage.
+  ///
+  /// Storage providers can override this for efficient existence checks.
+  /// The default implementation delegates to `getDocument(id:)`.
+  ///
+  /// - Parameter id: The unique identifier to check.
+  /// - Returns: True if the document exists, false otherwise.
+  func documentExists(id: UUID) async throws -> Bool
 }
 
 // MARK: - Default Implementation
@@ -61,5 +79,22 @@ extension VecturaStorage {
     for document in documents {
       try await saveDocument(document)
     }
+  }
+
+  /// Default implementation that loads all documents and finds by ID.
+  ///
+  /// Storage implementations should override this for better performance
+  /// (e.g., a cache lookup or a targeted file read instead of loading everything).
+  public func getDocument(id: UUID) async throws -> VecturaDocument? {
+    let docs = try await loadDocuments()
+    return docs.first { $0.id == id }
+  }
+
+  /// Default implementation that delegates to `getDocument(id:)`.
+  ///
+  /// Storage implementations can override this for a cheaper check that
+  /// avoids decoding the document (e.g., a file-existence check).
+  public func documentExists(id: UUID) async throws -> Bool {
+    return try await getDocument(id: id) != nil
   }
 }

@@ -202,21 +202,8 @@ public actor VecturaKit {
   ///   - id: The ID of the document to update.
   ///   - newText: The new text content for the document.
   public func updateDocument(id: UUID, newText: String) async throws {
-    // Load document from storage
-    let oldDocument: VecturaDocument
-    if let indexed = storageProvider as? IndexedVecturaStorage {
-      let loaded = try await indexed.loadDocuments(ids: [id])
-      guard let doc = loaded[id] else {
-        throw VecturaError.documentNotFound(id)
-      }
-      oldDocument = doc
-    } else {
-      // Fall back to loading all documents and finding the target
-      let allDocs = try await storageProvider.loadDocuments()
-      guard let doc = allDocs.first(where: { $0.id == id }) else {
-        throw VecturaError.documentNotFound(id)
-      }
-      oldDocument = doc
+    guard let oldDocument = try await getDocument(id: id) else {
+      throw VecturaError.documentNotFound(id)
     }
 
     // Generate new embedding
@@ -258,6 +245,37 @@ public actor VecturaKit {
   /// - Returns: Array of `VecturaDocument` objects
   public func getAllDocuments() async throws -> [VecturaDocument] {
     return try await storageProvider.loadDocuments()
+  }
+
+  /// Returns a single document by its ID, or nil if it does not exist.
+  ///
+  /// This is more efficient than `getAllDocuments()` when you only need one document.
+  /// For `FileStorageProvider`, the lookup is O(1) from cache or a single targeted
+  /// file read — no full scan is performed.
+  ///
+  /// - Parameter id: The unique identifier of the document to retrieve.
+  /// - Returns: The document if found, nil otherwise.
+  public func getDocument(id: UUID) async throws -> VecturaDocument? {
+    if let indexed = storageProvider as? IndexedVecturaStorage {
+      let loaded = try await indexed.loadDocuments(ids: [id])
+      return loaded[id]
+    }
+    return try await storageProvider.getDocument(id: id)
+  }
+
+  /// Returns whether a document with the given ID exists in the database.
+  ///
+  /// For `FileStorageProvider`, this never decodes JSON — it checks the in-memory
+  /// cache (O(1)) or performs a file-existence check without reading file contents.
+  ///
+  /// - Parameter id: The unique identifier to check.
+  /// - Returns: True if the document exists, false otherwise.
+  public func documentExists(id: UUID) async throws -> Bool {
+    if let indexed = storageProvider as? IndexedVecturaStorage {
+      let loaded = try await indexed.loadDocuments(ids: [id])
+      return loaded[id] != nil
+    }
+    return try await storageProvider.documentExists(id: id)
   }
 
   // MARK: - Private
