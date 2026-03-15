@@ -279,6 +279,27 @@ Delete documents:
 try await vectorDB.deleteDocuments(ids: [documentId1, documentId2])
 ```
 
+Fetch a single document by ID:
+
+```swift
+let document = try await vectorDB.getDocument(id: documentId)
+print(document?.text ?? "Document not found")
+```
+
+Check whether a document exists:
+
+```swift
+let exists = try await vectorDB.documentExists(id: documentId)
+print("Exists: \(exists)")
+```
+
+Load all persisted documents:
+
+```swift
+let documents = try await vectorDB.getAllDocuments()
+print("Loaded \(documents.count) documents")
+```
+
 Reset database:
 
 ```swift
@@ -351,6 +372,10 @@ let vectorDB = try await VecturaKit(
 // Use vectorDB normally - all storage operations will use your custom provider
 let documentId = try await vectorDB.addDocument(text: "Sample text")
 ```
+
+`VecturaStorage` also provides default `getDocument(id:)` and `documentExists(id:)`
+implementations. Custom providers can override them for more efficient single-document
+lookups when their backend supports it.
 
 ### Custom Search Engine
 
