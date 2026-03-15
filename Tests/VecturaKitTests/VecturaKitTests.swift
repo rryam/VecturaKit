@@ -58,6 +58,22 @@ struct VecturaKitTests {
     }
   }
 
+  private struct FixedEmbedder: VecturaEmbedder {
+    let embedding: [Float]
+
+    init(embedding: [Float] = [1.0, 0.0, 0.0]) {
+      self.embedding = embedding
+    }
+
+    var dimension: Int {
+      get async throws { embedding.count }
+    }
+
+    func embed(texts: [String]) async throws -> [[Float]] {
+      Array(repeating: embedding, count: texts.count)
+    }
+  }
+
   @Test("Add and search document")
   func addAndSearchDocument() async throws {
     let (config, cleanup) = try makeVecturaConfig()
@@ -515,6 +531,29 @@ struct VecturaKitTests {
     #expect(try await vectura.documentExists(id: id) == true)
   }
 
+  @Test("VecturaKit lookup APIs survive restart with a partially populated file cache")
+  func vecturaKitLookupAfterRestartWithPartialCache() async throws {
+    let databaseName = "partial-cache-\(UUID().uuidString)"
+    let (config, cleanup) = try makeVecturaConfig(name: databaseName, dimension: 3)
+    defer { cleanup() }
+
+    let initialVectura = try await VecturaKit(config: config, embedder: FixedEmbedder())
+    let originalID = try await initialVectura.addDocument(text: "Persisted before restart")
+
+    let restartedVectura = try await VecturaKit(config: config, embedder: FixedEmbedder())
+    let newID = try await restartedVectura.addDocument(text: "Added after restart")
+
+    let originalDoc = try await restartedVectura.getDocument(id: originalID)
+    #expect(originalDoc?.id == originalID)
+    #expect(originalDoc?.text == "Persisted before restart")
+    #expect(try await restartedVectura.documentExists(id: originalID) == true)
+    #expect(try await restartedVectura.documentCount == 2)
+
+    let allDocuments = try await restartedVectura.getAllDocuments()
+    #expect(allDocuments.count == 2)
+    #expect(Set(allDocuments.map(\.id)) == Set([originalID, newID]))
+  }
+
   // MARK: - deleteDocuments No-Op Bug Fix Tests
 
   @Test("deleteDocuments with non-existent ID does not throw")
@@ -613,6 +652,38 @@ struct VecturaKitTests {
     #expect(loadedDocs4.count == 1)
     #expect(loadedDocs4[0].text == "Updated document 2")
     #expect(loadedDocs4[0].embedding == [7.0, 8.0, 9.0])
+  }
+
+  @Test("FileStorageProvider falls back to disk when cache is only partially populated")
+  func fileStorageProviderPartialCacheFallsBackToDisk() async throws {
+    let (directory, cleanup) = try makeTestDirectory()
+    defer { cleanup() }
+
+    let seedProvider = try FileStorageProvider(storageDirectory: directory)
+    let existingDoc = VecturaDocument(
+      id: UUID(),
+      text: "Persisted before cache warms",
+      embedding: [1.0, 0.0, 0.0]
+    )
+    try await seedProvider.saveDocument(existingDoc)
+
+    let provider = try FileStorageProvider(storageDirectory: directory)
+    let newDoc = VecturaDocument(
+      id: UUID(),
+      text: "Added after restart",
+      embedding: [0.0, 1.0, 0.0]
+    )
+    try await provider.saveDocument(newDoc)
+
+    let found = try await provider.getDocument(id: existingDoc.id)
+    #expect(found?.id == existingDoc.id)
+    #expect(found?.text == existingDoc.text)
+    #expect(try await provider.documentExists(id: existingDoc.id) == true)
+    #expect(try await provider.getTotalDocumentCount() == 2)
+
+    let loadedDocs = try await provider.loadDocuments()
+    #expect(loadedDocs.count == 2)
+    #expect(Set(loadedDocs.map(\.id)) == Set([existingDoc.id, newDoc.id]))
   }
 }
 

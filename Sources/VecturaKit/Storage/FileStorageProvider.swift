@@ -15,8 +15,15 @@ public actor FileStorageProvider {
     category: "FileStorageProvider"
   )
 
-  /// Internal cache for documents (actor-isolated for thread safety)
+  /// Internal cache for documents (actor-isolated for thread safety).
+  ///
+  /// The cache may be only partially populated until the provider performs a
+  /// full load from disk, so cache misses cannot be treated as authoritative
+  /// unless `cacheIsFullyLoaded` is true.
   private var cache: [UUID: VecturaDocument] = [:]
+
+  /// Whether the in-memory cache currently represents the complete dataset.
+  private var cacheIsFullyLoaded = false
 
   /// Whether caching is enabled
   private let cacheEnabled: Bool
@@ -55,19 +62,14 @@ extension FileStorageProvider: VecturaStorage {
 
   /// Loads all documents, using cache if available
   public func loadDocuments() async throws -> [VecturaDocument] {
-    if cacheEnabled && !cache.isEmpty {
+    if cacheEnabled && cacheIsFullyLoaded {
       return Array(cache.values)
     }
 
     let documents = try await loadDocumentsFromStorage()
 
     if cacheEnabled {
-      cache = documents.reduce(into: [:]) { dict, doc in
-        if dict[doc.id] != nil {
-          Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
-        }
-        dict[doc.id] = doc
-      }
+      replaceCache(with: documents, fullyLoaded: true)
     }
 
     return documents
@@ -75,7 +77,7 @@ extension FileStorageProvider: VecturaStorage {
 
   /// Returns total document count without decoding all document files.
   public func getTotalDocumentCount() async throws -> Int {
-    if cacheEnabled && !cache.isEmpty {
+    if cacheEnabled && cacheIsFullyLoaded {
       return cache.count
     }
 
@@ -160,14 +162,10 @@ extension FileStorageProvider: VecturaStorage {
       } else {
         do {
           let refreshed = try await loadDocumentsFromStorage()
-          cache = refreshed.reduce(into: [:]) { dict, doc in
-            if dict[doc.id] != nil {
-              Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
-            }
-            dict[doc.id] = doc
-          }
+          replaceCache(with: refreshed, fullyLoaded: true)
         } catch {
           cache.removeAll()
+          cacheIsFullyLoaded = false
         }
       }
     }
@@ -310,11 +308,16 @@ extension FileStorageProvider {
   /// Returns a single document by ID without loading all documents from disk.
   ///
   /// Lookup order:
-  /// 1. In-memory cache (O(1), no I/O) when cache is warm
-  /// 2. Single targeted file read when cache is cold
+  /// 1. In-memory cache (O(1), no I/O) when the document is already cached
+  /// 2. Single targeted file read for cache misses or when the cache is cold
   public func getDocument(id: UUID) async throws -> VecturaDocument? {
-    if cacheEnabled && !cache.isEmpty {
-      return cache[id]
+    if cacheEnabled {
+      if let cachedDocument = cache[id] {
+        return cachedDocument
+      }
+      if cacheIsFullyLoaded {
+        return nil
+      }
     }
     let fileURL = storageDirectory.appendingPathComponent("\(id).json")
     guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
@@ -327,13 +330,28 @@ extension FileStorageProvider {
   /// Returns whether a document with the given ID exists, without decoding its contents.
   ///
   /// Lookup order:
-  /// 1. In-memory cache (O(1), no I/O) when cache is warm
-  /// 2. File-existence check (O(1), no JSON decoding) when cache is cold
+  /// 1. In-memory cache (O(1), no I/O) when the document is already cached
+  /// 2. File-existence check (O(1), no JSON decoding) for cache misses or when the cache is cold
   public func documentExists(id: UUID) async throws -> Bool {
-    if cacheEnabled && !cache.isEmpty {
-      return cache[id] != nil
+    if cacheEnabled {
+      if cache[id] != nil {
+        return true
+      }
+      if cacheIsFullyLoaded {
+        return false
+      }
     }
     let fileURL = storageDirectory.appendingPathComponent("\(id).json")
     return FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false))
+  }
+
+  private func replaceCache(with documents: [VecturaDocument], fullyLoaded: Bool) {
+    cache = documents.reduce(into: [:]) { dict, doc in
+      if dict[doc.id] != nil {
+        Self.logger.warning("Duplicate document ID found during cache load: \(doc.id)")
+      }
+      dict[doc.id] = doc
+    }
+    cacheIsFullyLoaded = fullyLoaded
   }
 }
