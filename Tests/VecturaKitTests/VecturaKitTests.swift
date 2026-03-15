@@ -58,6 +58,22 @@ struct VecturaKitTests {
     }
   }
 
+  private struct FixedEmbedder: VecturaEmbedder {
+    let embedding: [Float]
+
+    init(embedding: [Float] = [1.0, 0.0, 0.0]) {
+      self.embedding = embedding
+    }
+
+    var dimension: Int {
+      get async throws { embedding.count }
+    }
+
+    func embed(texts: [String]) async throws -> [[Float]] {
+      Array(repeating: embedding, count: texts.count)
+    }
+  }
+
   @Test("Add and search document")
   func addAndSearchDocument() async throws {
     let (config, cleanup) = try makeVecturaConfig()
@@ -399,6 +415,176 @@ struct VecturaKitTests {
     #expect(newResults[0].id == ids[1])
   }
 
+  // MARK: - getDocument Tests
+
+  @Test("getDocument returns correct document for existing ID")
+  func getDocumentExistingID() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let text = "Document to retrieve by ID"
+    let id = try await vectura.addDocument(text: text)
+
+    let found = try await vectura.getDocument(id: id)
+    #expect(found != nil)
+    #expect(found?.id == id)
+    #expect(found?.text == text)
+  }
+
+  @Test("getDocument returns nil for non-existent ID")
+  func getDocumentNonExistentID() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let ghostID = UUID()
+    let found = try await vectura.getDocument(id: ghostID)
+    #expect(found == nil)
+  }
+
+  @Test("getDocument returns nil after document is deleted")
+  func getDocumentAfterDelete() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let id = try await vectura.addDocument(text: "To be deleted")
+    #expect(try await vectura.getDocument(id: id) != nil)
+
+    try await vectura.deleteDocuments(ids: [id])
+    #expect(try await vectura.getDocument(id: id) == nil)
+  }
+
+  @Test("getDocument returns updated text after update")
+  func getDocumentAfterUpdate() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let id = try await vectura.addDocument(text: "Original text")
+    try await vectura.updateDocument(id: id, newText: "Updated text")
+
+    let found = try await vectura.getDocument(id: id)
+    #expect(found?.text == "Updated text")
+  }
+
+  @Test("getDocument works with custom storage provider via default protocol implementation")
+  func getDocumentCustomStorage() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+
+    let customStorage = InMemoryStorageProvider()
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder(), storageProvider: customStorage)
+
+    let text = "Custom storage document"
+    let id = try await vectura.addDocument(text: text)
+
+    let found = try await vectura.getDocument(id: id)
+    #expect(found != nil)
+    #expect(found?.id == id)
+    #expect(found?.text == text)
+  }
+
+  // MARK: - documentExists Tests
+
+  @Test("documentExists returns true for existing document")
+  func documentExistsTrue() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let id = try await vectura.addDocument(text: "Existing document")
+    #expect(try await vectura.documentExists(id: id) == true)
+  }
+
+  @Test("documentExists returns false for non-existent ID")
+  func documentExistsFalse() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    #expect(try await vectura.documentExists(id: UUID()) == false)
+  }
+
+  @Test("documentExists returns false after document is deleted")
+  func documentExistsAfterDelete() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let id = try await vectura.addDocument(text: "Will be deleted")
+    #expect(try await vectura.documentExists(id: id) == true)
+
+    try await vectura.deleteDocuments(ids: [id])
+    #expect(try await vectura.documentExists(id: id) == false)
+  }
+
+  @Test("documentExists returns true immediately after add")
+  func documentExistsAfterAdd() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    #expect(try await vectura.documentExists(id: UUID()) == false)
+    let id = try await vectura.addDocument(text: "Newly added")
+    #expect(try await vectura.documentExists(id: id) == true)
+  }
+
+  @Test("VecturaKit lookup APIs survive restart with a partially populated file cache")
+  func vecturaKitLookupAfterRestartWithPartialCache() async throws {
+    let databaseName = "partial-cache-\(UUID().uuidString)"
+    let (config, cleanup) = try makeVecturaConfig(name: databaseName, dimension: 3)
+    defer { cleanup() }
+
+    let initialVectura = try await VecturaKit(config: config, embedder: FixedEmbedder())
+    let originalID = try await initialVectura.addDocument(text: "Persisted before restart")
+
+    let restartedVectura = try await VecturaKit(config: config, embedder: FixedEmbedder())
+    let newID = try await restartedVectura.addDocument(text: "Added after restart")
+
+    let originalDoc = try await restartedVectura.getDocument(id: originalID)
+    #expect(originalDoc?.id == originalID)
+    #expect(originalDoc?.text == "Persisted before restart")
+    #expect(try await restartedVectura.documentExists(id: originalID) == true)
+    #expect(try await restartedVectura.documentCount == 2)
+
+    let allDocuments = try await restartedVectura.getAllDocuments()
+    #expect(allDocuments.count == 2)
+    #expect(Set(allDocuments.map(\.id)) == Set([originalID, newID]))
+  }
+
+  // MARK: - deleteDocuments No-Op Bug Fix Tests
+
+  @Test("deleteDocuments with non-existent ID does not throw")
+  func deleteNonExistentIDIsNoOp() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    // Should not throw even though the ID was never added
+    try await vectura.deleteDocuments(ids: [UUID()])
+  }
+
+  @Test("deleteDocuments with mixed valid and non-existent IDs deletes all valid ones")
+  func deleteMixedIDsDeletesAllValid() async throws {
+    let (config, cleanup) = try makeVecturaConfig()
+    defer { cleanup() }
+    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
+
+    let id1 = try await vectura.addDocument(text: "Document one")
+    let id2 = try await vectura.addDocument(text: "Document two")
+    let ghostID = UUID()
+
+    // ghost ID is sandwiched between two real IDs
+    try await vectura.deleteDocuments(ids: [id1, ghostID, id2])
+
+    // Both real documents must be gone — the ghost must not block id2's deletion
+    #expect(try await vectura.documentExists(id: id1) == false)
+    #expect(try await vectura.documentExists(id: id2) == false)
+    #expect(try await vectura.documentCount == 0)
+  }
+
   @Test("FileStorageProvider is stateless and reads from disk")
   func fileStorageProviderStateless() async throws {
     let (directory, cleanup) = try makeTestDirectory()
@@ -466,6 +652,38 @@ struct VecturaKitTests {
     #expect(loadedDocs4.count == 1)
     #expect(loadedDocs4[0].text == "Updated document 2")
     #expect(loadedDocs4[0].embedding == [7.0, 8.0, 9.0])
+  }
+
+  @Test("FileStorageProvider falls back to disk when cache is only partially populated")
+  func fileStorageProviderPartialCacheFallsBackToDisk() async throws {
+    let (directory, cleanup) = try makeTestDirectory()
+    defer { cleanup() }
+
+    let seedProvider = try FileStorageProvider(storageDirectory: directory)
+    let existingDoc = VecturaDocument(
+      id: UUID(),
+      text: "Persisted before cache warms",
+      embedding: [1.0, 0.0, 0.0]
+    )
+    try await seedProvider.saveDocument(existingDoc)
+
+    let provider = try FileStorageProvider(storageDirectory: directory)
+    let newDoc = VecturaDocument(
+      id: UUID(),
+      text: "Added after restart",
+      embedding: [0.0, 1.0, 0.0]
+    )
+    try await provider.saveDocument(newDoc)
+
+    let found = try await provider.getDocument(id: existingDoc.id)
+    #expect(found?.id == existingDoc.id)
+    #expect(found?.text == existingDoc.text)
+    #expect(try await provider.documentExists(id: existingDoc.id) == true)
+    #expect(try await provider.getTotalDocumentCount() == 2)
+
+    let loadedDocs = try await provider.loadDocuments()
+    #expect(loadedDocs.count == 2)
+    #expect(Set(loadedDocs.map(\.id)) == Set([existingDoc.id, newDoc.id]))
   }
 }
 
