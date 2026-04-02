@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/swift-embeddings.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "66994e3b3ed172a9b691b59d11bd0702c3f5eb33"
+        "revision" : "66994e3b3ed172a9b691b59d11bd0702c3f5eb33",
+        "version" : "0.0.26"
       }
     },
     {
