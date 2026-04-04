@@ -48,6 +48,56 @@ struct OpenAICompatibleEmbedderTests {
     #expect(embeddings[1] == [3.0, 4.0])
   }
 
+  @Test("Builds the embeddings endpoint from a trailing-slash base URL")
+  func embedBuildsEndpointFromTrailingSlashBaseURL() async throws {
+    MockURLProtocol.setHandler { request in
+      #expect(request.url?.absoluteString == "http://localhost:1234/v1/embeddings")
+
+      let url = try #require(request.url)
+      let response = try #require(
+        HTTPURLResponse(
+          url: url,
+          statusCode: 200,
+          httpVersion: nil,
+          headerFields: nil
+        )
+      )
+      let data = Data(#"{"data":[{"index":0,"embedding":[1.0,2.0]}]}"#.utf8)
+      return (response, data)
+    }
+    defer { MockURLProtocol.setHandler(nil) }
+
+    let embedder = makeEmbedder(baseURL: "http://localhost:1234/v1/")
+    let embeddings = try await embedder.embed(texts: ["first"])
+
+    #expect(embeddings == [[1.0, 2.0]])
+  }
+
+  @Test("Accepts a fully qualified embeddings endpoint without duplicating the path")
+  func embedAcceptsFullyQualifiedEmbeddingsEndpoint() async throws {
+    MockURLProtocol.setHandler { request in
+      #expect(request.url?.absoluteString == "http://localhost:1234/custom/v1/embeddings")
+
+      let url = try #require(request.url)
+      let response = try #require(
+        HTTPURLResponse(
+          url: url,
+          statusCode: 200,
+          httpVersion: nil,
+          headerFields: nil
+        )
+      )
+      let data = Data(#"{"data":[{"index":0,"embedding":[3.0,4.0]}]}"#.utf8)
+      return (response, data)
+    }
+    defer { MockURLProtocol.setHandler(nil) }
+
+    let embedder = makeEmbedder(baseURL: "http://localhost:1234/custom/v1/embeddings")
+    let embeddings = try await embedder.embed(texts: ["first"])
+
+    #expect(embeddings == [[3.0, 4.0]])
+  }
+
   @Test("Caches the detected dimension after the first request")
   func dimensionIsCachedAfterFirstRequest() async throws {
     let requestCount = CounterBox()
@@ -128,6 +178,7 @@ struct OpenAICompatibleEmbedderTests {
   }
 
   private func makeEmbedder(
+    baseURL: String = "http://localhost:1234/v1",
     apiKey: String? = nil,
     retryAttempts: Int = 0
   ) -> OpenAICompatibleEmbedder {
@@ -136,7 +187,7 @@ struct OpenAICompatibleEmbedderTests {
     let session = URLSession(configuration: configuration)
 
     return OpenAICompatibleEmbedder(
-      baseURL: "http://localhost:1234/v1",
+      baseURL: baseURL,
       model: "text-embedding-3-small",
       apiKey: apiKey,
       timeoutInterval: 5,
