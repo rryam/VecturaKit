@@ -5,9 +5,9 @@ VecturaKit is a Swift-based vector database designed for on-device apps through 
 
 Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** uses `MLTensor` and [`swift-embeddings`](https://github.com/jkrukowski/swift-embeddings) for generating and managing embeddings. It features **Model2Vec** support with the 32M parameter model as default for fast static embeddings, and supports **NomicBERT**, **ModernBERT**, **RoBERTa**, and **XLM-RoBERTa** models.
 
-The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies, or [`MLXEmbedder`](https://github.com/rryam/VecturaMLXKit) for Apple's MLX framework acceleration (available as a separate package).
+The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `SwiftEmbedder` for `swift-embeddings` integration, `OpenAICompatibleEmbedder` for hosted or local `/v1/embeddings` providers, `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies, or [`MLXEmbedder`](https://github.com/rryam/VecturaMLXKit) for Apple's MLX framework acceleration (available as a separate package).
 
-It also includes a CLI tool (`vectura-cli`) for easily trying out the package.
+It also includes CLI tools (`vectura-cli` and `vectura-oai-cli`) for easily trying out the package.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
@@ -51,6 +51,9 @@ Explore the following books to understand more about AI and iOS development:
   - [Custom Storage Provider](#custom-storage-provider)
   - [Custom Search Engine](#custom-search-engine)
 - [MLX Integration](#mlx-integration)
+- [OpenAI-Compatible Integration](#openai-compatible-integration)
+  - [Import OpenAI-Compatible Support](#import-openai-compatible-support)
+  - [Initialize Database with OpenAI-Compatible Embeddings](#initialize-database-with-openai-compatible-embeddings)
 - [NaturalLanguage Integration](#naturallanguage-integration)
   - [Import NaturalLanguage Support](#import-naturallanguage-support)
   - [Initialize Database with NLContextualEmbedding](#initialize-database-with-nlcontextualembedding)
@@ -59,6 +62,7 @@ Explore the following books to understand more about AI and iOS development:
   - [Document Management](#nl-document-management)
 - [Command Line Interface](#command-line-interface)
   - [Swift CLI Tool (`vectura-cli`)](#swift-cli-tool-vectura-cli)
+  - [OpenAI-Compatible CLI Tool (`vectura-oai-cli`)](#openai-compatible-cli-tool-vectura-oai-cli)
 - [License](#license)
 - [Contributing](#contributing)
 - [Support](#support)
@@ -80,8 +84,9 @@ Explore the following books to understand more about AI and iOS development:
 -   **Custom Storage Provider:** Implements custom storage backends (SQLite, Core Data, cloud storage) by conforming to the `VecturaStorage` protocol.
 -   **Memory Management Strategies:** Choose between automatic, full-memory, or indexed modes to optimize performance for datasets ranging from thousands to millions of documents. [Learn more](Docs/INDEXED_STORAGE_GUIDE.md)
 -   **MLX Support:** GPU-accelerated embedding generation available via the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package.
+-   **OpenAI-Compatible Support:** Connects to OpenAI-compatible `/v1/embeddings` endpoints exposed by local servers and hosted providers through `OpenAICompatibleEmbedder`.
 -   **NaturalLanguage Support:** Uses Apple's NaturalLanguage framework for contextual embeddings with zero external dependencies through `NLContextualEmbedder`.
--   **CLI Tool:** Includes `vectura-cli` for database management and testing.
+-   **CLI Tools:** Includes `vectura-cli` and `vectura-oai-cli` for database management and testing.
 
 ## Supported Platforms
 
@@ -103,6 +108,18 @@ dependencies: [
 ],
 ```
 
+Then add the products you want to your target:
+
+```swift
+target(
+    name: "MyApp",
+    dependencies: [
+        .product(name: "VecturaKit", package: "VecturaKit"),
+        .product(name: "VecturaOAIKit", package: "VecturaKit"),
+    ]
+)
+```
+
 For MLX support, also add the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package:
 
 ```swift
@@ -119,7 +136,7 @@ VecturaKit uses the following Swift packages:
 -   [swift-embeddings](https://github.com/jkrukowski/swift-embeddings): Used in `VecturaKit` for generating text embeddings using various models.
 -   [swift-argument-parser](https://github.com/apple/swift-argument-parser): Used for creating the command-line interface.
 
-**Note:** `VecturaNLKit` has no external dependencies beyond Apple's native NaturalLanguage framework. For MLX-based embeddings, see [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
+**Note:** `VecturaNLKit` and `VecturaOAIKit` are shipped from this package. The standalone `VecturaOAIKit` repository is intended to be deprecated after this integration lands. For MLX-based embeddings, see [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
 
 ## Quick Start
 
@@ -454,6 +471,44 @@ For GPU-accelerated embeddings using Apple's MLX framework, see the separate [Ve
 .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
 ```
 
+## OpenAI-Compatible Integration
+
+VecturaKit supports OpenAI-compatible embedding APIs through `OpenAICompatibleEmbedder`. This is useful for local servers such as Ollama, LM Studio, llama.cpp-compatible servers, vLLM, and hosted providers that expose `/v1/embeddings`.
+
+### Import OpenAI-Compatible Support
+
+```swift
+import VecturaKit
+import VecturaOAIKit
+```
+
+### Initialize Database with OpenAI-Compatible Embeddings
+
+```swift
+let config = VecturaConfig(
+  name: "my-oai-vector-db",
+  dimension: nil
+)
+
+let embedder = OpenAICompatibleEmbedder(
+  baseURL: "http://localhost:1234/v1",
+  model: "text-embedding-model",
+  apiKey: nil,
+  timeoutInterval: 120,
+  retryAttempts: 2,
+  retryBaseDelaySeconds: 1
+)
+
+let vectorDB = try await VecturaKit(config: config, embedder: embedder)
+```
+
+The embedder:
+
+- Sends batched requests to `POST <baseURL>/embeddings`
+- Adds `Authorization: Bearer ...` when an API key is configured
+- Retries HTTP 429 responses and honors `Retry-After` when present
+- Detects embedding dimension automatically on first use
+
 ## NaturalLanguage Integration
 
 VecturaKit supports Apple's NaturalLanguage framework through the `NLContextualEmbedder` for contextual embeddings with zero external dependencies.
@@ -612,6 +667,32 @@ Common options for `vectura-cli`:
 -   `--threshold, -t`: Minimum similarity threshold (default: 0.7)
 -   `--num-results, -n`: Number of results to return (default: 10)
 -   `--model-id, -m`: Model ID for embeddings (default: "minishlab/potion-base-4M")
+
+### OpenAI-Compatible CLI Tool (`vectura-oai-cli`)
+
+Set `VECTURA_OAI_BASE_URL` and `VECTURA_OAI_MODEL`, or pass `--base-url` and `--model` directly.
+
+```bash
+vectura-oai add "First document" "Second document" --model text-embedding-model
+vectura-oai search "search query" --model text-embedding-model --threshold 0.7 --num-results 5
+vectura-oai update <document-uuid> "Updated text" --model text-embedding-model
+vectura-oai delete <document-uuid-1> <document-uuid-2> --model text-embedding-model
+vectura-oai reset --model text-embedding-model
+vectura-oai mock --model text-embedding-model
+```
+
+Common options for `vectura-oai-cli`:
+
+-   `--db-name, -d`: Database name (default: `"vectura-oai-cli-db"`)
+-   `--directory`: Database directory (optional)
+-   `--base-url`: OpenAI-compatible base URL
+-   `--model`: Embedding model identifier
+-   `--api-key`: Optional API key
+-   `--timeout`: Request timeout in seconds
+-   `--retry-attempts`: HTTP 429 retry attempts
+-   `--retry-base-delay`: Base retry delay in seconds
+-   `--threshold, -t`: Minimum similarity threshold (default: `0.7`)
+-   `--num-results, -n`: Number of results to return (default: `10`)
 
 ## License
 
