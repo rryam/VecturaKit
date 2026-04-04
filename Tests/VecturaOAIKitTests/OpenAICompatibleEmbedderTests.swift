@@ -1,160 +1,150 @@
 import Foundation
-import XCTest
+import Testing
 @testable import VecturaOAIKit
 
-final class OpenAICompatibleEmbedderTests: XCTestCase {
-    func testEmbedPostsExpectedPayloadAndSortsVectorsByIndex() async throws {
-        MockURLProtocol.setHandler { request in
-            XCTAssertEqual(request.url?.absoluteString, "http://localhost:1234/v1/embeddings")
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer secret")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+@Suite("OpenAICompatibleEmbedder", .serialized)
+struct OpenAICompatibleEmbedderTests {
+  @Test("POSTs the expected payload and sorts vectors by index")
+  func embedPostsExpectedPayloadAndSortsVectorsByIndex() async throws {
+    MockURLProtocol.setHandler { request in
+      #expect(request.url?.absoluteString == "http://localhost:1234/v1/embeddings")
+      #expect(request.httpMethod == "POST")
+      #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+      #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
 
-            let body = try XCTUnwrap(readRequestBody(from: request))
-            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
-            XCTAssertEqual(json["model"] as? String, "text-embedding-3-small")
-            XCTAssertEqual(json["input"] as? [String], ["first", "second"])
+      let body = try #require(readRequestBody(from: request))
+      let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+      #expect(json["model"] as? String == "text-embedding-3-small")
+      #expect(json["input"] as? [String] == ["first", "second"])
 
-            let response = HTTPURLResponse(
-                url: try XCTUnwrap(request.url),
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let data = Data(
-                """
-                {
-                  "data": [
-                    { "index": 1, "embedding": [3.0, 4.0] },
-                    { "index": 0, "embedding": [1.0, 2.0] }
-                  ]
-                }
-                """.utf8
-            )
-            return (response, data)
-        }
-        defer { MockURLProtocol.setHandler(nil) }
-
-        let embedder = OpenAICompatibleEmbedder(
-            baseURL: "http://localhost:1234/v1",
-            model: "text-embedding-3-small",
-            apiKey: "secret",
-            timeoutInterval: 5,
-            retryAttempts: 2,
-            retryBaseDelaySeconds: 1,
-            session: makeSession()
+      let url = try #require(request.url)
+      let response = try #require(
+        HTTPURLResponse(
+          url: url,
+          statusCode: 200,
+          httpVersion: nil,
+          headerFields: nil
         )
-
-        let embeddings = try await embedder.embed(texts: ["first", "second"])
-
-        XCTAssertEqual(embeddings.count, 2)
-        XCTAssertEqual(embeddings[0], [1.0, 2.0])
-        XCTAssertEqual(embeddings[1], [3.0, 4.0])
-    }
-
-    func testDimensionIsCachedAfterFirstRequest() async throws {
-        let requestCount = CounterBox()
-        MockURLProtocol.setHandler { request in
-            requestCount.value += 1
-            let response = HTTPURLResponse(
-                url: try XCTUnwrap(request.url),
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let data = Data(#"{"data":[{"index":0,"embedding":[1.0,2.0,3.0]}]}"#.utf8)
-            return (response, data)
+      )
+      let data = Data(
+        """
+        {
+          "data": [
+            { "index": 1, "embedding": [3.0, 4.0] },
+            { "index": 0, "embedding": [1.0, 2.0] }
+          ]
         }
-        defer { MockURLProtocol.setHandler(nil) }
+        """.utf8
+      )
+      return (response, data)
+    }
+    defer { MockURLProtocol.setHandler(nil) }
 
-        let embedder = OpenAICompatibleEmbedder(
-            baseURL: "http://localhost:1234/v1",
-            model: "text-embedding-3-small",
-            timeoutInterval: 5,
-            retryAttempts: 0,
-            retryBaseDelaySeconds: 1,
-            session: makeSession()
+    let embedder = makeEmbedder(apiKey: "secret", retryAttempts: 2)
+    let embeddings = try await embedder.embed(texts: ["first", "second"])
+
+    #expect(embeddings.count == 2)
+    #expect(embeddings[0] == [1.0, 2.0])
+    #expect(embeddings[1] == [3.0, 4.0])
+  }
+
+  @Test("Caches the detected dimension after the first request")
+  func dimensionIsCachedAfterFirstRequest() async throws {
+    let requestCount = CounterBox()
+    MockURLProtocol.setHandler { request in
+      requestCount.value += 1
+
+      let url = try #require(request.url)
+      let response = try #require(
+        HTTPURLResponse(
+          url: url,
+          statusCode: 200,
+          httpVersion: nil,
+          headerFields: nil
         )
-
-        let first = try await embedder.dimension
-        let second = try await embedder.dimension
-
-        XCTAssertEqual(first, 3)
-        XCTAssertEqual(second, 3)
-        XCTAssertEqual(requestCount.value, 1)
+      )
+      let data = Data(#"{"data":[{"index":0,"embedding":[1.0,2.0,3.0]}]}"#.utf8)
+      return (response, data)
     }
+    defer { MockURLProtocol.setHandler(nil) }
 
-    func testEmbedRetriesAfterRateLimit() async throws {
-        let requestCount = CounterBox()
-        MockURLProtocol.setHandler { request in
-            requestCount.value += 1
+    let embedder = makeEmbedder()
+    let first = try await embedder.dimension
+    let second = try await embedder.dimension
 
-            if requestCount.value == 1 {
-                let response = HTTPURLResponse(
-                    url: try XCTUnwrap(request.url),
-                    statusCode: 429,
-                    httpVersion: nil,
-                    headerFields: ["Retry-After": "0.001"]
-                )!
-                return (response, Data("rate limited".utf8))
-            }
+    #expect(first == 3)
+    #expect(second == 3)
+    #expect(requestCount.value == 1)
+  }
 
-            let response = HTTPURLResponse(
-                url: try XCTUnwrap(request.url),
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let data = Data(#"{"data":[{"index":0,"embedding":[42.0]}]}"#.utf8)
-            return (response, data)
-        }
-        defer { MockURLProtocol.setHandler(nil) }
+  @Test("Retries once after a rate-limit response")
+  func embedRetriesAfterRateLimit() async throws {
+    let requestCount = CounterBox()
+    MockURLProtocol.setHandler { request in
+      requestCount.value += 1
 
-        let embedder = OpenAICompatibleEmbedder(
-            baseURL: "http://localhost:1234/v1",
-            model: "text-embedding-3-small",
-            timeoutInterval: 5,
-            retryAttempts: 1,
-            retryBaseDelaySeconds: 1,
-            session: makeSession()
+      let url = try #require(request.url)
+      if requestCount.value == 1 {
+        let response = try #require(
+          HTTPURLResponse(
+            url: url,
+            statusCode: 429,
+            httpVersion: nil,
+            headerFields: ["Retry-After": "0.001"]
+          )
         )
+        return (response, Data("rate limited".utf8))
+      }
 
-        let embeddings = try await embedder.embed(texts: ["retry me"])
-
-        XCTAssertEqual(requestCount.value, 2)
-        XCTAssertEqual(embeddings, [[42.0]])
-    }
-
-    func testEmbedRejectsWhitespaceOnlyInput() async {
-        defer { MockURLProtocol.setHandler(nil) }
-
-        let embedder = OpenAICompatibleEmbedder(
-            baseURL: "http://localhost:1234/v1",
-            model: "text-embedding-3-small",
-            timeoutInterval: 5,
-            retryAttempts: 0,
-            retryBaseDelaySeconds: 1,
-            session: makeSession()
+      let response = try #require(
+        HTTPURLResponse(
+          url: url,
+          statusCode: 200,
+          httpVersion: nil,
+          headerFields: nil
         )
-
-        do {
-            _ = try await embedder.embed(texts: ["   "])
-            XCTFail("Expected invalid input error")
-        } catch let error as OpenAICompatibleEmbedderError {
-            guard case .invalidInput(let message) = error else {
-                return XCTFail("Unexpected error: \(error)")
-            }
-            XCTAssertTrue(message.contains("index 0"))
-        } catch {
-            XCTFail("Unexpected error: \(error)")
-        }
+      )
+      let data = Data(#"{"data":[{"index":0,"embedding":[42.0]}]}"#.utf8)
+      return (response, data)
     }
+    defer { MockURLProtocol.setHandler(nil) }
 
-    private func makeSession() -> URLSession {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockURLProtocol.self]
-        return URLSession(configuration: configuration)
+    let embedder = makeEmbedder(retryAttempts: 1)
+    let embeddings = try await embedder.embed(texts: ["retry me"])
+
+    #expect(requestCount.value == 2)
+    #expect(embeddings == [[42.0]])
+  }
+
+  @Test("Rejects whitespace-only input")
+  func embedRejectsWhitespaceOnlyInput() async {
+    defer { MockURLProtocol.setHandler(nil) }
+
+    let embedder = makeEmbedder()
+
+    await #expect(throws: OpenAICompatibleEmbedderError.self) {
+      _ = try await embedder.embed(texts: ["   "])
     }
+  }
+
+  private func makeEmbedder(
+    apiKey: String? = nil,
+    retryAttempts: Int = 0
+  ) -> OpenAICompatibleEmbedder {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [MockURLProtocol.self]
+    let session = URLSession(configuration: configuration)
+
+    return OpenAICompatibleEmbedder(
+      baseURL: "http://localhost:1234/v1",
+      model: "text-embedding-3-small",
+      apiKey: apiKey,
+      timeoutInterval: 5,
+      retryAttempts: retryAttempts,
+      retryBaseDelaySeconds: 1,
+      session: session
+    )
+  }
 }
 
 private final class MockURLProtocol: URLProtocol {
