@@ -113,6 +113,7 @@ target(
     dependencies: [
         .product(name: "VecturaKit", package: "VecturaKit"),
         .product(name: "VecturaOAIKit", package: "VecturaKit"),
+        .product(name: "VecturaNLKit", package: "VecturaKit"),
     ]
 )
 ```
