@@ -12,11 +12,11 @@ It also includes `vectura-oai-cli` for trying OpenAI-compatible embedding provid
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
   <br>
-  <img src="https://img.shields.io/badge/iOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 17.0+">
-  <img src="https://img.shields.io/badge/macOS-14.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 14.0+">
-  <img src="https://img.shields.io/badge/watchOS-10.0+-000000?style=flat&logo=apple&logoColor=white" alt="watchOS 10.0+">
-  <img src="https://img.shields.io/badge/tvOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 17.0+">
-  <img src="https://img.shields.io/badge/visionOS-1.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 1.0+">
+  <img src="https://img.shields.io/badge/iOS-18.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 18.0+">
+  <img src="https://img.shields.io/badge/macOS-15.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 15.0+">
+  <img src="https://img.shields.io/badge/watchOS-11.0+-000000?style=flat&logo=apple&logoColor=white" alt="watchOS 11.0+">
+  <img src="https://img.shields.io/badge/tvOS-18.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 18.0+">
+  <img src="https://img.shields.io/badge/visionOS-2.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 2.0+">
 </p>
 
 ## Learn More
@@ -87,11 +87,11 @@ Explore the following books to understand more about AI and iOS development:
 
 ## Supported Platforms
 
--   macOS 14.0 or later
--   iOS 17.0 or later
--   tvOS 17.0 or later
--   visionOS 1.0 or later
--   watchOS 10.0 or later
+-   macOS 15.0 or later
+-   iOS 18.0 or later
+-   tvOS 18.0 or later
+-   visionOS 2.0 or later
+-   watchOS 11.0 or later
 
 ## Installation
 
@@ -101,7 +101,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.0.0"),
 ],
 ```
 
@@ -122,8 +122,16 @@ For MLX support, also add the separate [VecturaMLXKit](https://github.com/rryam/
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.0.0"),
     .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
+],
+```
+
+For `swift-embeddings` model support, add the separate [VecturaEmbeddingsKit](https://github.com/rryam/VecturaEmbeddingsKit) package:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/rryam/VecturaEmbeddingsKit.git", from: "1.0.1"),
 ],
 ```
 
@@ -466,7 +474,7 @@ For GPU-accelerated embeddings using Apple's MLX framework, see the separate [Ve
 
 ```swift
 // Add both packages to your dependencies:
-.package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
+.package(url: "https://github.com/rryam/VecturaKit.git", from: "6.0.0"),
 .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
 ```
 
@@ -620,7 +628,7 @@ try await vectorDB.reset()
 
 **Platform Requirements:**
 
-- iOS 17.0+ / macOS 14.0+ / tvOS 17.0+ / visionOS 1.0+ / watchOS 10.0+
+- iOS 18.0+ / macOS 15.0+ / tvOS 18.0+ / visionOS 2.0+ / watchOS 11.0+
 - NaturalLanguage framework (included with OS)
 
 ## Command Line Interface
