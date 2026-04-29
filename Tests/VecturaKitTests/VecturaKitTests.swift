@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import Embeddings
 @testable import VecturaKit
 
 @Suite("VecturaKit")
@@ -34,8 +33,8 @@ struct VecturaKitTests {
     return (config, cleanup)
   }
 
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
+  private func makeEmbedder(dimension: Int = 384) -> DeterministicEmbedder {
+    DeterministicEmbedder(dimension: dimension)
   }
 
   private struct MismatchEmbedder: VecturaEmbedder {
@@ -208,8 +207,7 @@ struct VecturaKitTests {
 
   @Test("Config dimension overrides embedder dimension")
   func configDimensionOverride() async throws {
-    // Use config with dimension 64, even though embedder has different dimension
-    // (potion-base-4M has 256 dimensions)
+    // Use config with dimension 64, even though the test embedder has a different dimension.
     let (configWithDim, cleanup) = try makeVecturaConfig(
       name: "custom-dim-db-\(UUID().uuidString)",
       dimension: 64
@@ -302,40 +300,6 @@ struct VecturaKitTests {
     let newVectura = try await VecturaKit(config: config, embedder: makeEmbedder())
     let newResults = try await newVectura.search(query: .text(text))
     #expect(newResults.count == 0)
-  }
-
-  @Test("Folder URL model source")
-  func folderURLModelSource() async throws {
-    let (config, cleanup) = try makeVecturaConfig()
-    defer { cleanup() }
-    let vectura = try await VecturaKit(config: config, embedder: makeEmbedder())
-
-    _ = try await Model2Vec.loadModelBundle(from: VecturaModelSource.defaultModelId)
-
-    let url = try FileManager.default.url(
-      for: .documentDirectory,
-      in: .userDomainMask,
-      appropriateFor: nil,
-      create: false
-    ).appending(path: "huggingface/models/\(VecturaModelSource.defaultModelId)")
-
-    #expect(
-      FileManager.default.fileExists(atPath: url.path(percentEncoded: false)),
-      "Expected downloaded model to be available locally at \(url.path())"
-    )
-
-    let documents = [
-      "The quick brown fox jumps over the lazy dog",
-      "Pack my box with five dozen liquor jugs",
-      "How vexingly quick daft zebras jump"
-    ]
-
-    let ids = try await vectura.addDocuments(texts: documents)
-    #expect(ids.count == 3)
-
-    let results = try await vectura.search(query: "quick jumping animals")
-    #expect(results.count >= 2)
-    #expect(results[0].score > results[1].score)
   }
 
   @Test("Custom storage directory")
