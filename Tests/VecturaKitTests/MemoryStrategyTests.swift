@@ -19,9 +19,8 @@ struct MemoryStrategyTests {
     return (directory, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
+  private func makeEmbedder() -> DeterministicEmbedder {
+    DeterministicEmbedder()
   }
 
   @Test("Default strategy is automatic")
@@ -286,9 +285,8 @@ struct MockIndexedStorageTests {
     return (directory, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
+  private func makeEmbedder() -> DeterministicEmbedder {
+    DeterministicEmbedder()
   }
 
   @Test("VecturaKit works with mock indexed storage")
@@ -459,9 +457,8 @@ struct PartialFailureTests {
     return (directory, cleanup)
   }
 
-  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
-  private func makeEmbedder(modelSource: VecturaModelSource = .default) -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: modelSource)
+  private func makeEmbedder() -> DeterministicEmbedder {
+    DeterministicEmbedder()
   }
 
   @Test("Search fails on partial batch failures")

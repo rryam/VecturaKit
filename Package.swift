@@ -26,24 +26,16 @@ let package = Package(
       targets: ["VecturaNLKit"]
     ),
     .executable(
-      name: "vectura-cli",
-      targets: ["VecturaCLI"]
-    ),
-    .executable(
       name: "vectura-oai-cli",
       targets: ["VecturaOAICLI"]
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.26"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
   ],
   targets: [
     .target(
       name: "VecturaKit",
-      dependencies: [
-        .product(name: "Embeddings", package: "swift-embeddings")
-      ],
       cSettings: [
         .define("ACCELERATE_NEW_LAPACK"),
         .define("ACCELERATE_LAPACK_ILP64"),
@@ -62,26 +54,12 @@ let package = Package(
       ]
     ),
     .executableTarget(
-      name: "VecturaCLI",
-      dependencies: [
-        "VecturaKit",
-        .product(name: "ArgumentParser", package: "swift-argument-parser"),
-      ],
-      resources: [
-        .copy("Resources/mock_documents.json")
-      ]
-    ),
-    .executableTarget(
       name: "VecturaOAICLI",
       dependencies: [
         "VecturaKit",
         "VecturaOAIKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
-    ),
-    .executableTarget(
-      name: "TestExamples",
-      dependencies: ["VecturaKit"]
     ),
     .executableTarget(
       name: "TestOAIExamples",

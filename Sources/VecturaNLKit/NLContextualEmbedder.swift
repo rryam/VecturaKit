@@ -89,8 +89,8 @@ extension NLContextualEmbedder: VecturaEmbedder {
   /// it is not marked as Sendable by Apple, preventing safe concurrent access
   /// in Swift 6+ strict concurrency mode.
   ///
-  /// For better performance with large batches, consider using other embedders
-  /// like SwiftEmbedder or MLXEmbedder which support concurrent processing.
+  /// For better performance with large batches, consider using a batch-native embedder
+  /// such as MLXEmbedder, which supports concurrent processing.
   ///
   /// - Parameter texts: The text strings to embed.
   /// - Returns: An array of embedding vectors, one for each input text.

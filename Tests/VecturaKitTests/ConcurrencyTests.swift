@@ -20,8 +20,8 @@ struct ConcurrencyTests {
     return (directory, cleanup)
   }
 
-  private func makeEmbedder() -> SwiftEmbedder {
-    SwiftEmbedder(modelSource: .default)
+  private func makeEmbedder() -> DeterministicEmbedder {
+    DeterministicEmbedder()
   }
 
   /// Test concurrent document additions to ensure thread safety
