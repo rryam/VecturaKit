@@ -25,13 +25,24 @@ definitions:
       script: |
         #!/bin/zsh
 
-        # Set environment variables for model downloads
-        export HF_HUB_OFFLINE=0
-
         # Run core tests (excluding PerformanceTests)
-        # Using --no-parallel to avoid concurrent model download issues
         swift test --no-parallel \
           --skip PerformanceTests
+    - &run_vectura_cli_smoke
+      name: Run vectura-cli Smoke Test
+      script: |
+        #!/bin/zsh
+
+        export VECTURA_TMP_DB="$CM_BUILD_DIR/.codemagic-vectura-cli-db"
+        rm -rf "$VECTURA_TMP_DB"
+
+        swift run vectura-cli mock \
+          --db-name codemagic-qa-db \
+          --directory "$VECTURA_TMP_DB" \
+          --threshold 0.4 \
+          --num-results 3
+
+        rm -rf "$VECTURA_TMP_DB"
     - &run_realistic_perf_tests
       name: Run Realistic Performance Tests (Optional)
       script: |
@@ -50,7 +61,7 @@ definitions:
         export VECTURA_PERF_REALISTIC_COLD_RUNS="${VECTURA_PERF_REALISTIC_COLD_RUNS:-10}"
 
         # Keep deterministic embedder by default for CI stability/speed.
-        export VECTURA_PERF_USE_SWIFT_EMBEDDER="${VECTURA_PERF_USE_SWIFT_EMBEDDER:-0}"
+        export VECTURA_PERF_USE_NL_EMBEDDER="${VECTURA_PERF_USE_NL_EMBEDDER:-0}"
 
         swift test --no-parallel \
           --filter RealisticWorkloadSuite
@@ -73,4 +84,5 @@ workflows:
       - *swiftlint
       - *build_framework
       - *run_tests
+      - *run_vectura_cli_smoke
       - *run_realistic_perf_tests

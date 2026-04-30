@@ -77,10 +77,8 @@ extension FileStorageProvider: VecturaStorage {
 
   /// Returns total document count without decoding all document files.
   public func getTotalDocumentCount() async throws -> Int {
-    if cacheEnabled && cacheIsFullyLoaded {
-      return cache.count
-    }
-
+    // Count directly from disk because overlapping loads and writes can temporarily leave
+    // the cache in a stale-but-fully-loaded state.
     let fileURLs = try FileManager.default.contentsOfDirectory(
       at: storageDirectory,
       includingPropertiesForKeys: nil

@@ -88,7 +88,7 @@ Docs/
 **Additional Resources:**
 - **Performance Tests:** [Tests/PerformanceTests/](../Tests/PerformanceTests/) - Run your own benchmarks
 - **Main README:** [../README.md](../README.md) - Project overview and quick start
-- **Examples:** [Sources/TestNLExamples/](../Sources/TestNLExamples/) and [Sources/TestOAIExamples/](../Sources/TestOAIExamples/) - Sample code
+- **Examples:** [Sources/TestExamples/](../Sources/TestExamples/), [Sources/TestNLExamples/](../Sources/TestNLExamples/), and [Sources/TestOAIExamples/](../Sources/TestOAIExamples/) - Sample code
 
 ---
 

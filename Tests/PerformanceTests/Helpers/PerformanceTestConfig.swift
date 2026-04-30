@@ -1,8 +1,12 @@
 import Foundation
 @testable import VecturaKit
+@testable import VecturaNLKit
 
 enum PerformanceTestConfig {
   private static let environment = ProcessInfo.processInfo.environment
+
+  static let useNLEmbedder: Bool =
+    environment["VECTURA_PERF_USE_NL_EMBEDDER"] == "1"
 
   static let performanceProfile: String =
     (environment["VECTURA_PERF_PROFILE"] ?? "default").lowercased()
@@ -12,17 +16,21 @@ enum PerformanceTestConfig {
 
   static let defaultDimension = 384
   static let realisticDocumentCount =
-    intEnv("VECTURA_PERF_REALISTIC_DOCS", default: 12_000)
+    intEnv("VECTURA_PERF_REALISTIC_DOCS", default: useNLEmbedder ? 2_500 : 12_000)
   static let realisticQueryCount =
-    intEnv("VECTURA_PERF_REALISTIC_QUERIES", default: 600)
+    intEnv("VECTURA_PERF_REALISTIC_QUERIES", default: useNLEmbedder ? 160 : 600)
   static let realisticMixedOperationCount =
-    intEnv("VECTURA_PERF_REALISTIC_MIXED_OPS", default: 1_200)
+    intEnv("VECTURA_PERF_REALISTIC_MIXED_OPS", default: useNLEmbedder ? 240 : 1_200)
   static let realisticConcurrentClients =
-    intEnv("VECTURA_PERF_REALISTIC_CLIENTS", default: 12)
+    intEnv("VECTURA_PERF_REALISTIC_CLIENTS", default: useNLEmbedder ? 4 : 12)
   static let realisticColdRuns =
-    intEnv("VECTURA_PERF_REALISTIC_COLD_RUNS", default: 24)
+    intEnv("VECTURA_PERF_REALISTIC_COLD_RUNS", default: useNLEmbedder ? 6 : 24)
 
-  static func makeEmbedder() -> any VecturaEmbedder {
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+  static func makeEmbedder() async throws -> any VecturaEmbedder {
+    if useNLEmbedder {
+      return try await NLContextualEmbedder(language: .english)
+    }
     return DeterministicEmbedder(dimensionValue: defaultDimension)
   }
 

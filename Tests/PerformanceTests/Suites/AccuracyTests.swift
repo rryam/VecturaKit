@@ -90,7 +90,7 @@ struct AccuracyTests {
     )
     let baselineVectura = try await VecturaKit(
       config: config1,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
 
     // Generate consistent UUIDs for documents
@@ -109,7 +109,7 @@ struct AccuracyTests {
     let mockStorage = MockIndexedStorage()
     let indexedVectura = try await VecturaKit(
       config: config2,
-      embedder: PerformanceTestConfig.makeEmbedder(),
+      embedder: try await PerformanceTestConfig.makeEmbedder(),
       storageProvider: mockStorage
     )
     // Use the same document IDs to ensure comparison is valid
@@ -153,7 +153,7 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-    let embedder = PerformanceTestConfig.makeEmbedder()
+    let embedder = try await PerformanceTestConfig.makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -239,7 +239,7 @@ struct AccuracyTests {
     let generator = TestDataGenerator()
     let documents = generator.generateDocuments(count: documentCount, seed: 12345)
     let queries = generator.generateQueries(count: 10, seed: 54321)
-    let embedder = PerformanceTestConfig.makeEmbedder()
+    let embedder = try await PerformanceTestConfig.makeEmbedder()
 
     // Generate consistent UUIDs for documents
     let documentIds = (0..<documentCount).map { _ in UUID() }
@@ -365,7 +365,7 @@ struct AccuracyTests {
     )
     let baselineVectura = try await VecturaKit(
       config: config1,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
 
     // Generate consistent UUIDs for documents
@@ -384,7 +384,7 @@ struct AccuracyTests {
     let mockStorage = MockIndexedStorage()
     let indexedVectura = try await VecturaKit(
       config: config2,
-      embedder: PerformanceTestConfig.makeEmbedder(),
+      embedder: try await PerformanceTestConfig.makeEmbedder(),
       storageProvider: mockStorage
     )
     // Use the same document IDs to ensure comparison is valid

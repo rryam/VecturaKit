@@ -81,7 +81,7 @@ struct MemoryProfilerSuite {
     )
     let vectura = try await VecturaKit(
       config: config,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
     memorySnapshots.append(("After Init", getCurrentMemoryMB()))
 
@@ -139,7 +139,7 @@ struct MemoryProfilerSuite {
     )
     let vectura = try await VecturaKit(
       config: config,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
     memorySnapshots.append(("After Init", getCurrentMemoryMB()))
 
@@ -202,7 +202,7 @@ struct MemoryProfilerSuite {
       )
       let vectura = try await VecturaKit(
         config: config,
-        embedder: PerformanceTestConfig.makeEmbedder()
+        embedder: try await PerformanceTestConfig.makeEmbedder()
       )
       _ = try await vectura.addDocuments(texts: documents)
 
@@ -227,7 +227,7 @@ struct MemoryProfilerSuite {
       )
       let vectura = try await VecturaKit(
         config: config,
-        embedder: PerformanceTestConfig.makeEmbedder()
+        embedder: try await PerformanceTestConfig.makeEmbedder()
       )
       _ = try await vectura.addDocuments(texts: documents)
 
@@ -276,7 +276,7 @@ struct MemoryProfilerSuite {
     )
     let vectura = try await VecturaKit(
       config: config,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
 
     // Add documents
@@ -337,7 +337,7 @@ struct MemoryProfilerSuite {
       )
       let vectura = try await VecturaKit(
         config: config,
-        embedder: PerformanceTestConfig.makeEmbedder()
+        embedder: try await PerformanceTestConfig.makeEmbedder()
       )
       _ = try await vectura.addDocuments(texts: documents)
 
