@@ -1,10 +1,11 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-VecturaKit ships as a Swift package with libraries `VecturaKit` (core storage + hybrid search), `VecturaNLKit` (NaturalLanguage embeddings), and `VecturaOAIKit` (OpenAI-compatible embeddings), plus CLI target `VecturaOAICLI`. Sample executables live in `Sources/TestOAIExamples` and `Sources/TestNLExamples`. Tests live under `Tests/VecturaKitTests`, `Tests/VecturaNLKitTests`, and `Tests/VecturaOAIKitTests`. `SwiftEmbedder` support lives in [rryam/VecturaEmbeddingsKit](https://github.com/rryam/VecturaEmbeddingsKit), and MLX support lives in [rryam/VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
+VecturaKit ships as a Swift package with libraries `VecturaKit` (core storage + hybrid search), `VecturaNLKit` (NaturalLanguage embeddings), and `VecturaOAIKit` (OpenAI-compatible embeddings), plus CLI targets `VecturaCLI` and `VecturaOAICLI`. Sample executables live in `Sources/TestExamples`, `Sources/TestNLExamples`, and `Sources/TestOAIExamples`. Tests live under `Tests/VecturaKitTests`, `Tests/VecturaNLKitTests`, `Tests/VecturaOAIKitTests`, and `Tests/PerformanceTests`. `SwiftEmbedder` support lives in [rryam/VecturaEmbeddingsKit](https://github.com/rryam/VecturaEmbeddingsKit), and MLX support lives in [rryam/VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
 
 ## Build, Test, and Development Commands
 - `swift build` compiles libraries and executables (add `-c release` for performance validation).
+- `swift run vectura-cli mock --db-name demo-db --directory /tmp/vectura-cli-demo` seeds and exercises the NaturalLanguage CLI path.
 - `swift run vectura-oai-cli mock --db-name demo-db --model <model>` seeds and exercises the OpenAI-compatible engine.
 - `swift test` runs the Swift Testing suites; add `--filter SuiteName/TestName` to narrow scope.
 - `swift package update` refreshes dependency pins before release branches or large upgrades.
@@ -22,6 +23,7 @@ Commits stay imperative and scoped (`Add cosine similarity guard`, `Adjust CLI m
 Before opening a PR (or completing an automated change):
 
 - [ ] `swift build` and `swift test` succeed locally without warnings.
+- [ ] Run `swift run vectura-cli mock --db-name qa-db --directory /tmp/vectura-cli-qa-db` when behavior touches the NaturalLanguage CLI path.
 - [ ] Run `swift run vectura-oai-cli mock --db-name qa-db --model <model>` when behavior touches the OpenAI-compatible CLI.
 - [ ] Persistent storage defaults and dimension negotiation stay intact—verify hybrid search thresholds and expected `VecturaError.dimensionMismatch` behavior.
 - [ ] Public API or CLI flag changes are reflected in `README.md`, `codemagic.yaml`, and this guide.

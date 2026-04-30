@@ -98,7 +98,7 @@ struct RealisticWorkloadSuite {
     )
     return try await VecturaKit(
       config: config,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
   }
 

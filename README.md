@@ -7,7 +7,7 @@ Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** 
 
 The framework offers `VecturaKit` as the core vector database with pluggable embedding providers. Use `OpenAICompatibleEmbedder` for hosted or local `/v1/embeddings` providers, `NLContextualEmbedder` for Apple's NaturalLanguage framework with zero external dependencies, [`SwiftEmbedder`](https://github.com/rryam/VecturaEmbeddingsKit) for `swift-embeddings` models, or [`MLXEmbedder`](https://github.com/rryam/VecturaMLXKit) for Apple's MLX framework acceleration.
 
-It also includes `vectura-oai-cli` for trying OpenAI-compatible embedding providers from the command line.
+It also includes `vectura-cli` for NaturalLanguage-backed local workflows and `vectura-oai-cli` for trying OpenAI-compatible embedding providers from the command line.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
@@ -61,6 +61,7 @@ Explore the following books to understand more about AI and iOS development:
   - [Search Documents](#nl-search-documents)
   - [Document Management](#nl-document-management)
 - [Command Line Interface](#command-line-interface)
+  - [NaturalLanguage CLI Tool (`vectura-cli`)](#naturallanguage-cli-tool-vectura-cli)
   - [OpenAI-Compatible CLI Tool (`vectura-oai-cli`)](#openai-compatible-cli-tool-vectura-oai-cli)
 - [License](#license)
 - [Contributing](#contributing)
@@ -83,7 +84,7 @@ Explore the following books to understand more about AI and iOS development:
 -   **MLX Support:** GPU-accelerated embedding generation available via the separate [VecturaMLXKit](https://github.com/rryam/VecturaMLXKit) package.
 -   **OpenAI-Compatible Support:** Connects to OpenAI-compatible `/v1/embeddings` endpoints exposed by local servers and hosted providers through `OpenAICompatibleEmbedder`.
 -   **NaturalLanguage Support:** Uses Apple's NaturalLanguage framework for contextual embeddings with zero external dependencies through `NLContextualEmbedder`.
--   **CLI Tools:** Includes `vectura-oai-cli` for OpenAI-compatible database management and testing.
+-   **CLI Tools:** Includes `vectura-cli` for NaturalLanguage-backed local workflows and `vectura-oai-cli` for OpenAI-compatible database management and testing.
 
 ## Supported Platforms
 
@@ -633,19 +634,40 @@ try await vectorDB.reset()
 
 ## Command Line Interface
 
-VecturaKit includes an OpenAI-compatible CLI for database management.
+VecturaKit includes command-line tools for NaturalLanguage-backed local workflows and OpenAI-compatible embedding providers.
+
+### NaturalLanguage CLI Tool (`vectura-cli`)
+
+`vectura-cli` uses `VecturaNLKit`, so it can run local mock workflows without a hosted embedding server.
+
+```bash
+vectura-cli add "First document" "Second document" --language english
+vectura-cli search "search query" --language english --threshold 0.7 --num-results 5
+vectura-cli update <document-uuid> "Updated text" --language english
+vectura-cli delete <document-uuid-1> <document-uuid-2> --language english
+vectura-cli reset --language english
+vectura-cli mock --db-name demo-db --directory /tmp/vectura-cli-demo
+```
+
+Common options for `vectura-cli`:
+
+-   `--db-name, -d`: Database name (default: `"vectura-cli-db"`)
+-   `--directory`: Database directory (optional)
+-   `--language`: NaturalLanguage embedding language (default: `english`)
+-   `--threshold, -t`: Minimum similarity threshold (default: `0.7`)
+-   `--num-results, -n`: Number of results to return (default: `10`)
 
 ### OpenAI-Compatible CLI Tool (`vectura-oai-cli`)
 
 Set `VECTURA_OAI_BASE_URL` and `VECTURA_OAI_MODEL`, or pass `--base-url` and `--model` directly.
 
 ```bash
-vectura-oai add "First document" "Second document" --model text-embedding-model
-vectura-oai search "search query" --model text-embedding-model --threshold 0.7 --num-results 5
-vectura-oai update <document-uuid> "Updated text" --model text-embedding-model
-vectura-oai delete <document-uuid-1> <document-uuid-2> --model text-embedding-model
-vectura-oai reset --model text-embedding-model
-vectura-oai mock --model text-embedding-model
+vectura-oai-cli add "First document" "Second document" --model text-embedding-model
+vectura-oai-cli search "search query" --model text-embedding-model --threshold 0.7 --num-results 5
+vectura-oai-cli update <document-uuid> "Updated text" --model text-embedding-model
+vectura-oai-cli delete <document-uuid-1> <document-uuid-2> --model text-embedding-model
+vectura-oai-cli reset --model text-embedding-model
+vectura-oai-cli mock --model text-embedding-model
 ```
 
 Common options for `vectura-oai-cli`:

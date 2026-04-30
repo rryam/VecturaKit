@@ -73,10 +73,10 @@ Tests/PerformanceTests/
 ### Embedder Selection (Speed vs Realism)
 
 By default, performance tests use a deterministic embedder to keep runtimes short and avoid
-downloading CoreML models. To run with real embeddings, set:
+depending on platform embedding model behavior. To run with real NaturalLanguage embeddings, set:
 
 ```bash
-VECTURA_PERF_USE_SWIFT_EMBEDDER=1
+VECTURA_PERF_USE_NL_EMBEDDER=1
 ```
 
 ### Realistic Profile (Harder Benchmark Mode)

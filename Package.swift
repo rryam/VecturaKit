@@ -26,6 +26,10 @@ let package = Package(
       targets: ["VecturaNLKit"]
     ),
     .executable(
+      name: "vectura-cli",
+      targets: ["VecturaCLI"]
+    ),
+    .executable(
       name: "vectura-oai-cli",
       targets: ["VecturaOAICLI"]
     ),
@@ -54,11 +58,26 @@ let package = Package(
       ]
     ),
     .executableTarget(
+      name: "VecturaCLI",
+      dependencies: [
+        "VecturaKit",
+        "VecturaNLKit",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
+    ),
+    .executableTarget(
       name: "VecturaOAICLI",
       dependencies: [
         "VecturaKit",
         "VecturaOAIKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
+    ),
+    .executableTarget(
+      name: "TestExamples",
+      dependencies: [
+        "VecturaKit",
+        "VecturaNLKit",
       ]
     ),
     .executableTarget(
@@ -83,7 +102,10 @@ let package = Package(
     ),
     .testTarget(
       name: "PerformanceTests",
-      dependencies: ["VecturaKit"],
+      dependencies: [
+        "VecturaKit",
+        "VecturaNLKit",
+      ],
       resources: [
         .copy("README.md"),
         .copy("ArchivedResults"),

@@ -84,7 +84,7 @@ struct ParameterTuningSuite {
     )
     let vectura = try await VecturaKit(
       config: config,
-      embedder: PerformanceTestConfig.makeEmbedder()
+      embedder: try await PerformanceTestConfig.makeEmbedder()
     )
     let initTime = await monitor.getElapsed()
     await monitor.updateMemoryUsage()
