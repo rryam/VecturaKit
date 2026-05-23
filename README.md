@@ -1,6 +1,5 @@
 # VecturaKit
 
-
 VecturaKit is a Swift-based vector database designed for on-device apps through local vector storage and retrieval.
 
 Inspired by [Dripfarm's SVDB](https://github.com/Dripfarm/SVDB), **VecturaKit** provides local vector storage, indexing, and hybrid search with pluggable embedding providers.
@@ -18,21 +17,6 @@ It also includes `vectura-cli` for NaturalLanguage-backed local workflows and `v
   <img src="https://img.shields.io/badge/tvOS-18.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 18.0+">
   <img src="https://img.shields.io/badge/visionOS-2.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 2.0+">
 </p>
-
-## Learn More
-
-<p align="center">
-  <a href="https://academy.rudrank.com/product/on-device-ai" target="_blank">
-    <img src="https://img.shields.io/badge/Book-Exploring%20On--Device%20AI-blue?style=for-the-badge&logo=book&logoColor=white" alt="Exploring On-Device AI Book">
-  </a>
-  <a href="https://academy.rudrank.com/product/ai-assisted-coding" target="_blank">
-    <img src="https://img.shields.io/badge/Book-Exploring%20AI--Assisted%20Coding-blue?style=for-the-badge&logo=book&logoColor=white" alt="Exploring AI-Assisted Coding Book">
-  </a>
-</p>
-
-Explore the following books to understand more about AI and iOS development:
-- [Exploring On-Device AI for Apple Platforms Development](https://academy.rudrank.com/product/on-device-ai)
-- [Exploring AI-Assisted Coding for iOS Development](https://academy.rudrank.com/product/ai-assisted-coding)
 
 ## Table of Contents
 
