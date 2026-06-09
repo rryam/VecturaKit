@@ -127,7 +127,7 @@ extension VecturaOAICLI {
                 "To be or not to be, that is the question",
                 "All that glitters is not gold",
                 "A journey of a thousand miles begins with a single step",
-                "Where there is smoke, there is fire",
+                "Where there is smoke, there is fire"
             ]
 
             let ids = try await db.addDocuments(texts: sampleTexts)

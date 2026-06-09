@@ -37,7 +37,7 @@ struct NLContextualEmbedderAdapterTests {
     _ = try await kit.addDocuments(texts: [
       "SwiftUI powers user interfaces on Apple platforms.",
       "Relational databases use tables, indexes, and transactions.",
-      "Vector search finds semantically similar content.",
+      "Vector search finds semantically similar content."
     ])
 
     let queryEmbedding = try await embedder.embed(text: "Apple app development")

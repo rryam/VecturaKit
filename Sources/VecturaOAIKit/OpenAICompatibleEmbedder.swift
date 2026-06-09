@@ -71,11 +71,13 @@ public actor OpenAICompatibleEmbedder: VecturaEmbedder {
 
     let (data, response) = try await OpenAICompatibleRateLimitRetry.data(
       for: request,
-      operation: "embeddings request",
-      logger: logger,
-      retryAttempts: retryAttempts,
-      retryBaseDelaySeconds: retryBaseDelaySeconds,
-      session: session
+      configuration: .init(
+        operation: "embeddings request",
+        logger: logger,
+        retryAttempts: retryAttempts,
+        retryBaseDelaySeconds: retryBaseDelaySeconds,
+        session: session
+      )
     )
 
     guard let httpResponse = response as? HTTPURLResponse,

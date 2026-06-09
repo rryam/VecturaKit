@@ -107,6 +107,75 @@ struct RealisticWorkloadSuite {
   }
 
   @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+  private func measureIngestion(
+    vectura: VecturaKit,
+    documents: [String],
+    documentCount: Int
+  ) async throws -> (ids: [UUID], docsPerSecond: Double) {
+    let ingestionStart = DispatchTime.now().uptimeNanoseconds
+    let ids = try await vectura.addDocuments(texts: documents)
+    let ingestionElapsed = elapsedNs(since: ingestionStart)
+    let docsPerSecond = Double(documentCount) / (Double(ingestionElapsed) / 1_000_000_000.0)
+    return (ids, docsPerSecond)
+  }
+
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+  private func measureColdStarts(
+    directory: URL,
+    databaseName: String,
+    strategy: VecturaConfig.MemoryStrategy,
+    queries: [String],
+    coldRuns: Int
+  ) async throws -> [UInt64] {
+    var latencies: [UInt64] = []
+    latencies.reserveCapacity(coldRuns)
+    for i in 0..<coldRuns {
+      let start = DispatchTime.now().uptimeNanoseconds
+      let coldVectura = try await createVectura(
+        directory: directory,
+        databaseName: databaseName,
+        strategy: strategy
+      )
+      _ = try await coldVectura.search(query: .text(queries[i % queries.count]), numResults: 10)
+      latencies.append(elapsedNs(since: start))
+    }
+    return latencies
+  }
+
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
+  private func measureConcurrentSearches(
+    vectura: VecturaKit,
+    queries: [String],
+    queryCount: Int,
+    concurrentClients: Int
+  ) async throws -> (latencies: [UInt64], elapsedNs: UInt64) {
+    let perClientQueryCount = max(1, queryCount / max(1, concurrentClients))
+    let concurrentStart = DispatchTime.now().uptimeNanoseconds
+    let concurrentLatencies = try await withThrowingTaskGroup(of: [UInt64].self) { group in
+      for client in 0..<concurrentClients {
+        group.addTask {
+          var latencies: [UInt64] = []
+          latencies.reserveCapacity(perClientQueryCount)
+          for i in 0..<perClientQueryCount {
+            let queryIndex = (client * perClientQueryCount + i) % queries.count
+            let start = DispatchTime.now().uptimeNanoseconds
+            _ = try await vectura.search(query: .text(queries[queryIndex]), numResults: 10)
+            latencies.append(self.elapsedNs(since: start))
+          }
+          return latencies
+        }
+      }
+
+      var flattened: [UInt64] = []
+      for try await latencies in group {
+        flattened.append(contentsOf: latencies)
+      }
+      return flattened
+    }
+    return (concurrentLatencies, elapsedNs(since: concurrentStart))
+  }
+
+  @available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, watchOS 11.0, *)
   private func measureRealisticWorkload(
     strategy: VecturaConfig.MemoryStrategy,
     strategyLabel: String
@@ -144,23 +213,19 @@ struct RealisticWorkloadSuite {
       strategy: strategy
     )
 
-    let ingestionStart = DispatchTime.now().uptimeNanoseconds
-    let initialIds = try await vectura.addDocuments(texts: documents)
-    let ingestionElapsed = elapsedNs(since: ingestionStart)
-    let ingestionDocsPerSecond = Double(documentCount) / (Double(ingestionElapsed) / 1_000_000_000.0)
+    let ingestion = try await measureIngestion(
+      vectura: vectura,
+      documents: documents,
+      documentCount: documentCount
+    )
 
-    var coldStartLatencies: [UInt64] = []
-    coldStartLatencies.reserveCapacity(coldRuns)
-    for i in 0..<coldRuns {
-      let start = DispatchTime.now().uptimeNanoseconds
-      let coldVectura = try await createVectura(
-        directory: directory,
-        databaseName: dbName,
-        strategy: strategy
-      )
-      _ = try await coldVectura.search(query: .text(queries[i % queries.count]), numResults: 10)
-      coldStartLatencies.append(elapsedNs(since: start))
-    }
+    let coldStartLatencies = try await measureColdStarts(
+      directory: directory,
+      databaseName: dbName,
+      strategy: strategy,
+      queries: queries,
+      coldRuns: coldRuns
+    )
 
     for i in 0..<10 {
       _ = try await vectura.search(query: .text(queries[i % queries.count]), numResults: 10)
@@ -174,32 +239,14 @@ struct RealisticWorkloadSuite {
       warmLatencies.append(elapsedNs(since: start))
     }
 
-    let perClientQueryCount = max(1, queryCount / max(1, concurrentClients))
-    let concurrentStart = DispatchTime.now().uptimeNanoseconds
-    let concurrentLatencies = try await withThrowingTaskGroup(of: [UInt64].self) { group in
-      for client in 0..<concurrentClients {
-        group.addTask {
-          var latencies: [UInt64] = []
-          latencies.reserveCapacity(perClientQueryCount)
-          for i in 0..<perClientQueryCount {
-            let queryIndex = (client * perClientQueryCount + i) % queries.count
-            let start = DispatchTime.now().uptimeNanoseconds
-            _ = try await vectura.search(query: .text(queries[queryIndex]), numResults: 10)
-            latencies.append(self.elapsedNs(since: start))
-          }
-          return latencies
-        }
-      }
+    let concurrentMeasurements = try await measureConcurrentSearches(
+      vectura: vectura,
+      queries: queries,
+      queryCount: queryCount,
+      concurrentClients: concurrentClients
+    )
 
-      var flattened: [UInt64] = []
-      for try await latencies in group {
-        flattened.append(contentsOf: latencies)
-      }
-      return flattened
-    }
-    let concurrentElapsedNs = elapsedNs(since: concurrentStart)
-
-    var mutableIds = initialIds
+    var mutableIds = ingestion.ids
     var mixedSearchLatencies: [UInt64] = []
     var mixedWriteLatencies: [UInt64] = []
     mixedSearchLatencies.reserveCapacity(mixedOperationCount)
@@ -234,11 +281,11 @@ struct RealisticWorkloadSuite {
       queryCount: queryCount,
       concurrentClients: concurrentClients,
       mixedOperationCount: mixedOperationCount,
-      ingestionDocsPerSecond: ingestionDocsPerSecond,
+      ingestionDocsPerSecond: ingestion.docsPerSecond,
       coldStartLatencies: coldStartLatencies,
       warmLatencies: warmLatencies,
-      concurrentLatencies: concurrentLatencies,
-      concurrentElapsedNs: concurrentElapsedNs,
+      concurrentLatencies: concurrentMeasurements.latencies,
+      concurrentElapsedNs: concurrentMeasurements.elapsedNs,
       mixedSearchLatencies: mixedSearchLatencies,
       mixedWriteLatencies: mixedWriteLatencies
     )

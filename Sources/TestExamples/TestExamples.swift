@@ -41,7 +41,7 @@ struct ValidationScript {
         "VecturaKit combines vector similarity with BM25 text search for hybrid retrieval.",
         "Swift is the primary language for building apps on Apple platforms like iOS and macOS.",
         "Vector databases store embeddings to power semantic search over text.",
-        "On-device search keeps user data private and responsive.",
+        "On-device search keeps user data private and responsive."
       ]
 
       let ids = try await vectorDB.addDocuments(texts: texts)

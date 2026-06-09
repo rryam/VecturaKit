@@ -38,7 +38,7 @@ struct TestOAIExamples {
         let texts = [
             "First document text",
             "Second document text",
-            "Third document text",
+            "Third document text"
         ]
         let documentIDs = try await vectorDB.addDocuments(texts: texts)
         debugPrint("Documents added with IDs: \(documentIDs)")

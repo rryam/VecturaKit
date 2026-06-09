@@ -200,8 +200,9 @@ public struct TestDataGenerator: Sendable {
 
       let punctuation = generator.pick(from: [".", ".", ".", ";", "!", "?"])
       let body = words.joined(separator: " ")
+      let errorCode = generator.nextInt(upperBound: 12)
       let record =
-        "Document \(index): \(topic) \(context) \(domain). \(body)\(punctuation) err=\(generator.nextInt(upperBound: 12))"
+        "Document \(index): \(topic) \(context) \(domain). \(body)\(punctuation) err=\(errorCode)"
       corpus.append(record)
     }
 

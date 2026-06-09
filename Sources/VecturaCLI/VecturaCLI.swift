@@ -25,26 +25,26 @@ struct MockDataset {
       "Apple platforms rely on Swift for app development across iPhone, iPad, Mac, Apple TV, and Vision Pro.",
       "Semantic search combines vector similarity with lexical ranking to improve retrieval quality.",
       "Distributed systems use queues, caches, and retry strategies to keep latency predictable.",
-      "Mobile teams measure p95 latency and crash-free sessions before shipping major releases.",
+      "Mobile teams measure p95 latency and crash-free sessions before shipping major releases."
     ]),
     Category(name: "Science", documents: [
       "Astronomers analyze light from distant galaxies to understand how the universe expands.",
       "Molecular biology studies proteins, RNA, and DNA interactions inside living cells.",
       "Climate scientists model atmospheric warming, ocean circulation, and carbon emissions.",
-      "Robotics blends control systems, perception, and planning for physical automation.",
+      "Robotics blends control systems, perception, and planning for physical automation."
     ]),
     Category(name: "Business", documents: [
       "Product managers align roadmap priorities with customer feedback and technical constraints.",
       "Leadership principles matter when teams need clear decisions during incidents.",
       "Healthy teams write down operating procedures before scaling support rotations.",
-      "Finance organizations track cash flow, revenue quality, and cost efficiency over time.",
+      "Finance organizations track cash flow, revenue quality, and cost efficiency over time."
     ]),
     Category(name: "Creative", documents: [
       "Creative writing workshops encourage revision, feedback, and careful scene construction.",
       "Historical fiction often uses archival research to ground imagined dialogue in real events.",
       "Storytelling works better when conflict, pacing, and character motivation stay coherent.",
-      "Music theory explains harmony, rhythm, melody, and tonal movement across styles.",
-    ]),
+      "Music theory explains harmony, rhythm, melody, and tonal movement across styles."
+    ])
   ])
 }
 
@@ -97,6 +97,15 @@ struct VecturaCLI: AsyncParsableCommand {
     }
   }
 
+  struct DatabaseSetupOptions {
+    let dbName: String
+    let directoryURL: URL?
+    let dimension: Int?
+    let numResults: Int
+    let threshold: Float
+    let language: NLLanguage
+  }
+
   static let configuration = CommandConfiguration(
     commandName: "vectura",
     abstract: "A CLI tool for VecturaKit using NaturalLanguage embeddings",
@@ -108,24 +117,17 @@ struct VecturaCLI: AsyncParsableCommand {
     FileHandle.standardError.write(data)
   }
 
-  static func setupDB(
-    dbName: String,
-    directoryURL: URL?,
-    dimension: Int?,
-    numResults: Int,
-    threshold: Float,
-    language: NLLanguage
-  ) async throws -> VecturaKit {
+  static func setupDB(options: DatabaseSetupOptions) async throws -> VecturaKit {
     let config = try VecturaConfig(
-      name: dbName,
-      directoryURL: directoryURL,
-      dimension: dimension,
+      name: options.dbName,
+      directoryURL: options.directoryURL,
+      dimension: options.dimension,
       searchOptions: VecturaConfig.SearchOptions(
-        defaultNumResults: numResults,
-        minThreshold: threshold
+        defaultNumResults: options.numResults,
+        minThreshold: options.threshold
       )
     )
-    let embedder = try await NLContextualEmbedder(language: language)
+    let embedder = try await NLContextualEmbedder(language: options.language)
     return try await VecturaKit(config: config, embedder: embedder)
   }
 }
@@ -165,14 +167,14 @@ extension VecturaCLI {
         print("  \(category.name): \(category.documents.count)")
       }
 
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: numResults,
         threshold: threshold,
         language: language.language
-      )
+      ))
 
       try await db.reset()
 
@@ -190,7 +192,7 @@ extension VecturaCLI {
         "swift app development",
         "leadership decisions",
         "molecular biology",
-        "creative storytelling",
+        "creative storytelling"
       ]
 
       for query in queries {
@@ -239,14 +241,14 @@ extension VecturaCLI {
     var text: [String]
 
     mutating func run() async throws {
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: 10,
         threshold: 0.7,
         language: language.language
-      )
+      ))
 
       let ids = try await db.addDocuments(texts: text)
       for (id, value) in zip(ids, text) {
@@ -291,14 +293,14 @@ extension VecturaCLI {
         throw ExitCode.failure
       }
 
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: numResults,
         threshold: threshold,
         language: language.language
-      )
+      ))
       let results = try await db.search(
         query: .text(query),
         numResults: numResults,
@@ -341,14 +343,14 @@ extension VecturaCLI {
     var newText: String
 
     mutating func run() async throws {
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: 10,
         threshold: 0.7,
         language: language.language
-      )
+      ))
       try await db.updateDocument(id: id.uuid, newText: newText)
       print("Updated document \(id.uuid)")
     }
@@ -377,14 +379,14 @@ extension VecturaCLI {
     var ids: [DocumentID]
 
     mutating func run() async throws {
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: 10,
         threshold: 0.7,
         language: language.language
-      )
+      ))
       try await db.deleteDocuments(ids: ids.map(\.uuid))
       print("Deleted \(ids.count) documents")
     }
@@ -410,14 +412,14 @@ extension VecturaCLI {
     var language: LanguageOption = .init(language: .english)
 
     mutating func run() async throws {
-      let db = try await VecturaCLI.setupDB(
+      let db = try await VecturaCLI.setupDB(options: .init(
         dbName: dbName,
         directoryURL: directoryURL,
         dimension: dimension,
         numResults: 10,
         threshold: 0.7,
         language: language.language
-      )
+      ))
       try await db.reset()
       print("Database reset successfully")
     }

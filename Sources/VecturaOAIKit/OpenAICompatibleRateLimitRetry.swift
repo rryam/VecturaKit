@@ -2,6 +2,14 @@ import Foundation
 import OSLog
 
 enum OpenAICompatibleRateLimitRetry {
+    struct Configuration {
+        let operation: String
+        let logger: Logger
+        let retryAttempts: Int
+        let retryBaseDelaySeconds: TimeInterval
+        let session: URLSession
+    }
+
     private static let maxRetryDelayNanoseconds: UInt64 = 30_000_000_000
     private static let minimumRetryAttempts = 0
     private static let maximumRetryAttempts = 6
@@ -12,7 +20,7 @@ enum OpenAICompatibleRateLimitRetry {
         let formats = [
             "EEE',' dd MMM yyyy HH':'mm':'ss zzz",
             "EEEE',' dd-MMM-yy HH':'mm':'ss zzz",
-            "EEE MMM d HH':'mm':'ss yyyy",
+            "EEE MMM d HH':'mm':'ss yyyy"
         ]
 
         return formats.map { format in
@@ -26,16 +34,12 @@ enum OpenAICompatibleRateLimitRetry {
 
     static func data(
         for request: URLRequest,
-        operation: String,
-        logger: Logger,
-        retryAttempts: Int,
-        retryBaseDelaySeconds: TimeInterval,
-        session: URLSession
+        configuration: Configuration
     ) async throws -> (Data, URLResponse) {
-        let maxRetries = min(max(retryAttempts, minimumRetryAttempts), maximumRetryAttempts)
+        let maxRetries = min(max(configuration.retryAttempts, minimumRetryAttempts), maximumRetryAttempts)
 
         for attempt in 0...maxRetries {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await configuration.session.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 return (data, response)
@@ -49,16 +53,20 @@ enum OpenAICompatibleRateLimitRetry {
             let delayNanoseconds = retryDelayNanoseconds(
                 retryNumber: retryNumber,
                 retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After"),
-                retryBaseDelaySeconds: retryBaseDelaySeconds
+                retryBaseDelaySeconds: configuration.retryBaseDelaySeconds
             )
 
-            logger.warning(
-                "OpenAI-compatible \(operation, privacy: .public) hit rate limit (retry \(retryNumber)/\(maxRetries)); retrying in \(formattedDelay(delayNanoseconds), privacy: .public)"
+            let delay = formattedDelay(delayNanoseconds)
+            configuration.logger.warning(
+                """
+                OpenAI-compatible \(configuration.operation, privacy: .public) hit rate limit \
+                (retry \(retryNumber)/\(maxRetries)); retrying in \(delay, privacy: .public)
+                """
             )
             try await Task.sleep(nanoseconds: delayNanoseconds)
         }
 
-        return try await session.data(for: request)
+        return try await configuration.session.data(for: request)
     }
 
     private static func retryDelayNanoseconds(
