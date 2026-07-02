@@ -79,6 +79,23 @@ public protocol IndexedVecturaStorage: VecturaStorage {
     prefilterSize: Int
   ) async throws -> [UUID]?
 
+  /// Searches text candidates using a storage-layer text index.
+  ///
+  /// This optional capability lets indexed storage providers answer BM25/text
+  /// queries without forcing `BM25SearchEngine` to load every full document.
+  /// Providers without native text indexing can return `nil`, allowing callers
+  /// to fall back to their existing in-memory behavior.
+  ///
+  /// - Parameters:
+  ///   - query: The text query to search.
+  ///   - topK: Maximum number of ranked text results to return.
+  /// - Returns: Ranked text results, or `nil` if storage-layer text search is unsupported.
+  /// - Throws: Storage errors if text search fails.
+  func searchText(
+    query: String,
+    topK: Int
+  ) async throws -> [VecturaSearchResult]?
+
   /// Loads specific documents by their IDs.
   ///
   /// This is the second stage of indexed search, where only the candidate documents
@@ -88,4 +105,13 @@ public protocol IndexedVecturaStorage: VecturaStorage {
   /// - Returns: Dictionary mapping IDs to their documents (may not include all requested IDs if some don't exist)
   /// - Throws: Storage errors if loading fails
   func loadDocuments(ids: [UUID]) async throws -> [UUID: VecturaDocument]
+}
+
+extension IndexedVecturaStorage {
+  public func searchText(
+    query: String,
+    topK: Int
+  ) async throws -> [VecturaSearchResult]? {
+    nil
+  }
 }

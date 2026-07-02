@@ -65,11 +65,14 @@ public actor BM25SearchEngine: VecturaSearchEngine {
       throw VecturaError.invalidInput("BM25 only supports text queries")
     }
 
-    // Future enhancement: Detect storage-layer text search capability
-    // Example:
-    // if let textSearchable = storage as? TextSearchableStorage {
-    //     return try await textSearchable.searchText(query: queryText, topK: options.numResults)
-    // }
+    if let indexedStorage = storage as? IndexedVecturaStorage,
+      let indexedResults = try await indexedStorage.searchText(
+        query: queryText,
+        topK: options.numResults
+      )
+    {
+      return applyThreshold(options.threshold, to: indexedResults)
+    }
 
     // Rebuild index if needed (first search or after documents changed)
     if index == nil || needsRebuild {
@@ -85,13 +88,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
 
     let results = await index.search(query: queryText, topK: options.numResults)
 
-    // Filter by threshold
-    var filteredResults = results
-    if let threshold = options.threshold {
-      filteredResults = results.filter { $0.score >= threshold }
-    }
-
-    return filteredResults.map { result in
+    let searchResults = results.map { result in
       VecturaSearchResult(
         id: result.document.id,
         text: result.document.text,
@@ -99,6 +96,7 @@ public actor BM25SearchEngine: VecturaSearchEngine {
         createdAt: result.document.createdAt
       )
     }
+    return applyThreshold(options.threshold, to: searchResults)
   }
 
   public func indexDocument(_ document: VecturaDocument) async throws {
@@ -151,5 +149,15 @@ public actor BM25SearchEngine: VecturaSearchEngine {
     get async {
       await index?.documentCount ?? 0
     }
+  }
+
+  private func applyThreshold(
+    _ threshold: Float?,
+    to results: [VecturaSearchResult]
+  ) -> [VecturaSearchResult] {
+    guard let threshold else {
+      return results
+    }
+    return results.filter { $0.score >= threshold }
   }
 }
