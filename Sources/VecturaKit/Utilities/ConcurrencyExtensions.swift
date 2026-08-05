@@ -34,13 +34,17 @@ extension Sequence where Element: Sendable {
     maxConcurrency: Int = 50,
     _ transform: @Sendable @escaping (Element) async throws -> T?
   ) async rethrows -> [T] {
-    try await withThrowingTaskGroup(of: T?.self) { group in
+    // Clamp to at least 1: a non-positive window would seed no tasks and
+    // silently return an empty result instead of processing anything.
+    let concurrencyLimit = Swift.max(1, maxConcurrency)
+
+    return try await withThrowingTaskGroup(of: T?.self) { group in
       var results: [T] = []
       var iterator = makeIterator()
 
-      // Seed initial batch of tasks up to maxConcurrency
+      // Seed initial batch of tasks up to the concurrency limit
       var activeCount = 0
-      while activeCount < maxConcurrency, let element = iterator.next() {
+      while activeCount < concurrencyLimit, let element = iterator.next() {
         group.addTask { try await transform(element) }
         activeCount += 1
       }
@@ -72,13 +76,17 @@ extension Sequence where Element: Sendable {
     maxConcurrency: Int = 50,
     _ transform: @Sendable @escaping (Element) async -> T?
   ) async -> [T] {
-    await withTaskGroup(of: T?.self) { group in
+    // Clamp to at least 1: a non-positive window would seed no tasks and
+    // silently return an empty result instead of processing anything.
+    let concurrencyLimit = Swift.max(1, maxConcurrency)
+
+    return await withTaskGroup(of: T?.self) { group in
       var results: [T] = []
       var iterator = makeIterator()
 
       // Seed initial batch
       var activeCount = 0
-      while activeCount < maxConcurrency, let element = iterator.next() {
+      while activeCount < concurrencyLimit, let element = iterator.next() {
         group.addTask { await transform(element) }
         activeCount += 1
       }
@@ -120,12 +128,16 @@ extension Sequence where Element: Sendable {
     maxConcurrency: Int = 50,
     _ body: @Sendable @escaping (Element) async throws -> Void
   ) async throws {
-    try await withThrowingTaskGroup(of: Void.self) { group in
+    // Clamp to at least 1: a non-positive window would seed no tasks and
+    // silently skip every element's side effect.
+    let concurrencyLimit = Swift.max(1, maxConcurrency)
+
+    return try await withThrowingTaskGroup(of: Void.self) { group in
       var iterator = makeIterator()
 
       // Seed initial batch
       var activeCount = 0
-      while activeCount < maxConcurrency, let element = iterator.next() {
+      while activeCount < concurrencyLimit, let element = iterator.next() {
         group.addTask { try await body(element) }
         activeCount += 1
       }
