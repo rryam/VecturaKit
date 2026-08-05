@@ -86,7 +86,7 @@ To integrate VecturaKit into your project using Swift Package Manager, add the f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.1.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.3.0"),
 ],
 ```
 
@@ -107,7 +107,7 @@ For MLX support, also add the separate [VecturaMLXKit](https://github.com/rryam/
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.1.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.3.0"),
     .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "3.0.2"),
 ],
 ```
@@ -459,7 +459,7 @@ For GPU-accelerated embeddings using Apple's MLX framework, see the separate [Ve
 
 ```swift
 // Add both packages to your dependencies:
-.package(url: "https://github.com/rryam/VecturaKit.git", from: "6.1.0"),
+.package(url: "https://github.com/rryam/VecturaKit.git", from: "6.3.0"),
 .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "3.0.2"),
 ```
 
