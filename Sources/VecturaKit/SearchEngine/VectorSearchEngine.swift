@@ -145,7 +145,8 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     options: SearchOptions
   ) async throws -> [VecturaSearchResult] {
     let candidateMultiplier = getCandidateMultiplier()
-    let prefilterSize = options.numResults * candidateMultiplier
+    let (multiplied, overflow) = options.numResults.multipliedReportingOverflow(by: candidateMultiplier)
+    let prefilterSize = overflow ? Int.max : multiplied
 
     // Try storage-layer vector search first
     let candidateIds: [UUID]
@@ -260,11 +261,13 @@ public struct VectorSearchEngine: VecturaSearchEngine {
   }
 
   private func getCandidateMultiplier() -> Int {
+    // Clamp to 1: VecturaConfig validates these, but VectorSearchEngine can be
+    // constructed directly with an unvalidated strategy.
     switch strategy {
     case .indexed(let multiplier, _, _):
-      return multiplier
+      return max(1, multiplier)
     case .automatic(_, let multiplier, _, _):
-      return multiplier
+      return max(1, multiplier)
     case .fullMemory:
       return 10  // Default multiplier if somehow used in fullMemory mode
     }
@@ -286,16 +289,18 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     candidateIds: [UUID],
     storage: IndexedVecturaStorage
   ) async throws -> [UUID: VecturaDocument] {
-    // Extract batch parameters from strategy
+    // Extract batch parameters from strategy, clamped to 1: VecturaConfig
+    // validates these, but VectorSearchEngine can be constructed directly with
+    // an unvalidated strategy, and a zero batch size would trap in stride(by:).
     let batchSize: Int
     let maxConcurrentBatches: Int
     switch strategy {
     case .indexed(_, let extractedBatchSize, let extractedMaxConcurrent):
-      batchSize = extractedBatchSize
-      maxConcurrentBatches = extractedMaxConcurrent
+      batchSize = max(1, extractedBatchSize)
+      maxConcurrentBatches = max(1, extractedMaxConcurrent)
     case .automatic(_, _, let extractedBatchSize, let extractedMaxConcurrent):
-      batchSize = extractedBatchSize
-      maxConcurrentBatches = extractedMaxConcurrent
+      batchSize = max(1, extractedBatchSize)
+      maxConcurrentBatches = max(1, extractedMaxConcurrent)
     case .fullMemory:
       batchSize = VecturaConfig.MemoryStrategy.defaultBatchSize
       maxConcurrentBatches = VecturaConfig.MemoryStrategy.defaultMaxConcurrentBatches

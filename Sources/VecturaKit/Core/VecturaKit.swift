@@ -107,19 +107,23 @@ public actor VecturaKit {
     let (documentIds, documentsToSave) = try prepareDocuments(texts: texts, ids: ids, embeddings: embeddings)
     let existingDocumentsById = try await loadExistingDocumentsForRollback(documentIds: documentIds, ids: ids)
 
-    try await storageProvider.saveDocuments(documentsToSave)
-
     var indexedDocumentIDs: [UUID] = []
     indexedDocumentIDs.reserveCapacity(documentsToSave.count)
 
+    // The save must be inside the rollback scope: a batch save can fail after
+    // writing some of its documents, and those writes may have overwritten
+    // existing ones. Without the rollback the old content is gone even though
+    // the call reports failure.
     do {
+      try await storageProvider.saveDocuments(documentsToSave)
+
       for doc in documentsToSave {
         try await searchEngine.indexDocument(doc)
         indexedDocumentIDs.append(doc.id)
       }
     } catch {
-      Self.logger.error("Indexing failed after saving documents: \(error.localizedDescription)")
-      try await rollbackIndexingFailure(
+      Self.logger.error("Failed to add documents: \(error.localizedDescription)")
+      try await rollbackFailedAdd(
         documentsToSave: documentsToSave,
         indexedDocumentIDs: indexedDocumentIDs,
         existingDocumentsById: existingDocumentsById
@@ -360,8 +364,16 @@ public actor VecturaKit {
       }
     }
 
-    if let ids = ids, ids.count != texts.count {
-      throw VecturaError.invalidInput("Number of IDs must match number of texts")
+    if let ids = ids {
+      guard ids.count == texts.count else {
+        throw VecturaError.invalidInput("Number of IDs must match number of texts")
+      }
+      // Two documents sharing an ID collapse into one on disk, so the call
+      // would report more documents added than actually exist, and which text
+      // survives depends on write ordering.
+      guard Set(ids).count == ids.count else {
+        throw VecturaError.invalidInput("IDs must be unique within a single batch")
+      }
     }
   }
 
@@ -427,8 +439,11 @@ public actor VecturaKit {
     }
   }
 
-  /// Rolls back indexing failure by restoring or deleting documents
-  private func rollbackIndexingFailure(
+  /// Rolls back a failed add by restoring or deleting documents.
+  ///
+  /// Handles failures from both the batch save and the indexing loop, so
+  /// `indexedDocumentIDs` may legitimately be empty.
+  private func rollbackFailedAdd(
     documentsToSave: [VecturaDocument],
     indexedDocumentIDs: [UUID],
     existingDocumentsById: [UUID: VecturaDocument]
