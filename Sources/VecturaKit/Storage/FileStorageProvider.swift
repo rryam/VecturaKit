@@ -25,6 +25,14 @@ public actor FileStorageProvider {
   /// Whether the in-memory cache currently represents the complete dataset.
   private var cacheIsFullyLoaded = false
 
+  /// Monotonic counter bumped on every save/update/delete.
+  ///
+  /// A full load from disk suspends the actor while reading files, so mutations
+  /// can interleave with it. Comparing this counter before and after the load
+  /// detects that case; a stale snapshot must not be installed as the complete
+  /// cache (it could drop a just-saved document or resurrect a just-deleted one).
+  private var mutationGeneration: UInt64 = 0
+
   /// Whether caching is enabled
   private let cacheEnabled: Bool
 
@@ -66,9 +74,13 @@ extension FileStorageProvider: VecturaStorage {
       return Array(cache.values)
     }
 
+    let generationAtLoadStart = mutationGeneration
     let documents = try await loadDocumentsFromStorage()
 
-    if cacheEnabled {
+    // Only install the snapshot as the complete cache if no save/delete
+    // interleaved with the disk read; otherwise the snapshot is stale and the
+    // per-entry cache updates made by those mutations are newer.
+    if cacheEnabled && mutationGeneration == generationAtLoadStart {
       replaceCache(with: documents, fullyLoaded: true)
     }
 
@@ -94,6 +106,7 @@ extension FileStorageProvider: VecturaStorage {
   public func saveDocument(_ document: VecturaDocument) async throws {
     try await saveDocumentToStorage(document)
 
+    mutationGeneration &+= 1
     if cacheEnabled {
       cache[document.id] = document
     }
@@ -103,6 +116,7 @@ extension FileStorageProvider: VecturaStorage {
   public func deleteDocument(withID id: UUID) async throws {
     try await deleteDocumentFromStorage(withID: id)
 
+    mutationGeneration &+= 1
     if cacheEnabled {
       cache.removeValue(forKey: id)
     }
@@ -112,6 +126,7 @@ extension FileStorageProvider: VecturaStorage {
   public func updateDocument(_ document: VecturaDocument) async throws {
     try await saveDocumentToStorage(document)
 
+    mutationGeneration &+= 1
     if cacheEnabled {
       cache[document.id] = document
     }
@@ -152,6 +167,10 @@ extension FileStorageProvider: VecturaStorage {
       }
     }
 
+    // The concurrent writes above mutated disk (fully or partially), so any
+    // full load that overlapped them must not install its snapshot as complete.
+    mutationGeneration &+= 1
+
     if cacheEnabled {
       if failures.isEmpty {
         for outcome in outcomes {
@@ -159,8 +178,14 @@ extension FileStorageProvider: VecturaStorage {
         }
       } else {
         do {
+          let generationAtRefreshStart = mutationGeneration
           let refreshed = try await loadDocumentsFromStorage()
-          replaceCache(with: refreshed, fullyLoaded: true)
+          if mutationGeneration == generationAtRefreshStart {
+            replaceCache(with: refreshed, fullyLoaded: true)
+          } else {
+            cache.removeAll()
+            cacheIsFullyLoaded = false
+          }
         } catch {
           cache.removeAll()
           cacheIsFullyLoaded = false

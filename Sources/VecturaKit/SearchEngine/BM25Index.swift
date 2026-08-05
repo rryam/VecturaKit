@@ -223,7 +223,14 @@ public actor BM25Index {
 
     for term in queryTermFrequencies.keys {
       let df = Float(documentFrequencies[term] ?? 0)
-      let idfArgument = (documentCount - df + 0.5) / (df + 0.5)
+      // Lucene-style non-negative IDF. The textbook form,
+      // log((N - df + 0.5) / (df + 0.5)), goes negative once a term appears in
+      // more than half the corpus and hits exactly zero at half — which the
+      // `score > 0` filter below then turns into "no results at all". That made
+      // small corpora (where any matched term is common by definition)
+      // unsearchable. The 1 + ... form is monotonically decreasing in df and
+      // strictly positive for every df >= 0.
+      let idfArgument = 1 + (documentCount - df + 0.5) / (df + 0.5)
       queryIDFs[term] = log(max(idfArgument, 1e-9))
     }
 

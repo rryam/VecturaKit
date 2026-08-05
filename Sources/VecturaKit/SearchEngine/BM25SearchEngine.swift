@@ -41,6 +41,20 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   private let k1: Float
   private let b: Float
 
+  /// Bumped on every mutation (add / remove / unload).
+  ///
+  /// A rebuild suspends at `storage.loadDocuments()`, so mutations can land
+  /// while its snapshot is already fixed. Comparing this counter across the
+  /// await identifies a snapshot that no longer reflects current state.
+  private var mutationGeneration: UInt64 = 0
+
+  /// The `mutationGeneration` the currently installed index reflects.
+  ///
+  /// Two overlapping rebuilds can resume in either order; without this, the
+  /// slower one would clobber a newer index with its older snapshot and the
+  /// documents added in between would be lost until the next unload.
+  private var indexGeneration: UInt64 = 0
+
   /// Initialize BM25 search engine
   ///
   /// - Parameters:
@@ -65,21 +79,46 @@ public actor BM25SearchEngine: VecturaSearchEngine {
       throw VecturaError.invalidInput("BM25 only supports text queries")
     }
 
-    if let indexedStorage = storage as? IndexedVecturaStorage,
+    if let indexedStorage = storage as? IndexedVecturaStorage {
       let indexedResults = try await indexedStorage.searchText(
         query: queryText,
         topK: options.numResults
       )
-    {
-      return applyThreshold(options.threshold, to: indexedResults)
+      if let indexedResults {
+        return applyThreshold(options.threshold, to: indexedResults)
+      }
     }
 
-    // Rebuild index if needed (first search or after documents changed)
+    // Rebuild the index if needed (first search, or documents changed).
+    //
+    // Clear the dirty flag before awaiting storage so that a mutation
+    // interleaving during the load can re-mark it, and record the generation
+    // this snapshot corresponds to so a slower concurrent rebuild cannot
+    // install an older snapshot over a newer index.
     if index == nil || needsRebuild {
-      let documents = try await storage.loadDocuments()
-      // BM25Index handles conversion to lightweight BM25Document internally
-      index = BM25Index(documents: documents, k1: k1, b: b)
       needsRebuild = false
+      let generationAtLoadStart = mutationGeneration
+
+      let documents: [VecturaDocument]
+      do {
+        documents = try await storage.loadDocuments()
+      } catch {
+        needsRebuild = true
+        throw error
+      }
+
+      // Install only if this snapshot is at least as fresh as what is already
+      // installed. BM25Index handles conversion to lightweight BM25Document.
+      if index == nil || indexGeneration <= generationAtLoadStart {
+        index = BM25Index(documents: documents, k1: k1, b: b)
+        indexGeneration = generationAtLoadStart
+
+        // A mutation landed mid-load, so this snapshot may be missing it.
+        // It still answers the current query; mark dirty to rebuild next time.
+        if mutationGeneration != generationAtLoadStart {
+          needsRebuild = true
+        }
+      }
     }
 
     guard let index = index else {
@@ -100,6 +139,8 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   }
 
   public func indexDocument(_ document: VecturaDocument) async throws {
+    mutationGeneration &+= 1
+
     if let index = index {
       // Index handles conversion to lightweight BM25Document
       await index.addDocument(document)
@@ -110,6 +151,8 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   }
 
   public func removeDocument(id: UUID) async throws {
+    mutationGeneration &+= 1
+
     if let index = index {
       // Index exists: remove incrementally
       await index.removeDocument(id)
@@ -132,9 +175,15 @@ public actor BM25SearchEngine: VecturaSearchEngine {
   /// await bm25Engine.unloadIndex()
   /// ```
   public func unloadIndex() async {
-    await index?.unload()
+    // Detach and mark dirty *before* awaiting the unload. Awaiting first would
+    // leave a non-nil but emptied index visible to a search that interleaves
+    // here, which would skip the rebuild and return no results.
+    let unloadedIndex = index
     index = nil
     needsRebuild = true
+    mutationGeneration &+= 1
+
+    await unloadedIndex?.unload()
   }
 
   /// Returns whether the index is currently loaded in memory

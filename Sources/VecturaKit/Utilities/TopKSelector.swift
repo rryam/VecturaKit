@@ -16,7 +16,9 @@ struct TopKSelector<Element> {
     precondition(maxCount > 0, "maxCount must be greater than zero")
     self.maxCount = maxCount
     self.isHigherRanked = isHigherRanked
-    self.heap.reserveCapacity(maxCount)
+    // Cap the eager reservation: callers may pass Int.max as "no limit", and
+    // reserving that much would abort. The heap still grows on demand.
+    self.heap.reserveCapacity(min(maxCount, 4096))
   }
 
   mutating func insert(_ element: Element) {

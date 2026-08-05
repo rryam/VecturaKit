@@ -95,9 +95,12 @@ public struct HybridSearchEngine: VecturaSearchEngine {
       )
     }
 
-    // Execute vector and text search concurrently
+    // Execute vector and text search concurrently, fetching more candidates
+    // than requested so hybrid ranking has a wider pool. Saturate instead of
+    // trapping when a caller passes numResults close to Int.max ("give me all").
+    let (doubled, overflow) = options.numResults.multipliedReportingOverflow(by: 2)
     let extendedOptions = try SearchOptions(
-      numResults: options.numResults * 2,  // Get more candidates
+      numResults: overflow ? Int.max : doubled,
       threshold: nil  // Don't apply threshold in individual searches
     )
 
