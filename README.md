@@ -695,5 +695,3 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 - [Issues](https://github.com/rryam/VecturaKit/issues)
 - [Discussions](https://github.com/rryam/VecturaKit/discussions)
 - [Twitter](https://x.com/rudrankriyam)
-
-[![Star History Chart](https://api.star-history.com/svg?repos=rryam/VecturaKit&type=Date)](https://star-history.com/#rryam/VecturaKit&Date)
