@@ -25,7 +25,8 @@ definitions:
       script: |
         #!/bin/zsh
 
-        # Run core tests (excluding PerformanceTests)
+        # Run core tests (excluding PerformanceTests).
+        # Includes provider-independent QueryEmbeddingTests and EmbeddingSpaceTests.
         swift test --no-parallel \
           --skip PerformanceTests
     - &run_vectura_cli_smoke

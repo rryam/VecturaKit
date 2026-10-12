@@ -85,7 +85,7 @@ public struct HybridSearchEngine: VecturaSearchEngine {
     switch query {
     case .text(let text):
       queryText = text
-      queryVector = try await vectorEngine.embedder.embed(text: text)
+      queryVector = try await vectorEngine.embedder.embedQuery(text: text)
     case .vector:
       // Pure vector query, fallback to vector search
       return try await vectorEngine.search(

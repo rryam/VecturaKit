@@ -31,7 +31,7 @@ public struct VectorSearchEngine: VecturaSearchEngine {
     case .vector(let vec):
       queryVector = vec
     case .text(let text):
-      queryVector = try await embedder.embed(text: text)
+      queryVector = try await embedder.embedQuery(text: text)
     }
 
     // Choose search strategy based on configuration and storage capabilities

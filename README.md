@@ -386,6 +386,31 @@ let documentId = try await vectorDB.addDocument(text: "Sample text")
 implementations. Custom providers can override them for more efficient single-document
 lookups when their backend supports it.
 
+### Query Embeddings and Stored Vector Compatibility
+
+Providers can override `VecturaEmbedder.embedQuery(text:)` when retrieval queries need different
+formatting or processing from indexed documents. Vector and hybrid text search call this hook;
+add/update still use the existing document embedding methods. The default query implementation
+calls `embed(text:)`, preserving existing providers' single-text behavior. Numeric vector queries
+bypass embedding. Custom search engines must use the query hook themselves.
+
+An embedder can opt into default file-storage compatibility checks with a stable, nonempty
+`embeddingSpaceIdentifier`. Include every setting that defines compatible stored vectors, such as
+model revision, precision, dimensions and document/query formatting. VecturaKit does not derive or
+verify this identity from model artifacts. Untagged providers retain their existing behavior.
+
+Default file storage checks `.vectura-embedding-space` when opened. Reopening a tagged store
+requires the same identity, including after reset. A different or undeclared identity is rejected;
+a nonempty untagged store cannot be silently adopted. Use a new database and re-embed when the
+embedding space changes. Tagged providers also reject a conflicting configured dimension at
+initialization. The marker is not counted as a document.
+
+The check is **initialization-only**. Exclusive marker creation prevents competing initializers
+from replacing the claimed identity; it does not coordinate active providers/processes sharing a
+directory or prevent writes through an older untagged instance. Use one active storage owner per
+directory. Custom storage providers must enforce their own compatibility policy; the core does
+not add metadata or automatic identity checks to them.
+
 ### Custom Search Engine
 
 VecturaKit supports custom search engine implementations by conforming to the `VecturaSearchEngine` protocol. This allows you to implement specialized search algorithms (pure vector, pure text, custom hybrid, or other ranking methods).

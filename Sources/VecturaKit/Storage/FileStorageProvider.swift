@@ -48,12 +48,52 @@ public actor FileStorageProvider {
   /// - Parameters:
   ///   - storageDirectory: The directory URL where documents will be saved and loaded.
   ///   - cacheEnabled: Whether to enable in-memory caching (default: true)
-  public init(storageDirectory: URL, cacheEnabled: Bool = true) throws {
+  ///   - embeddingSpaceIdentifier: Stable, nonempty identity checked when this store opens; nil is untagged.
+  ///
+  /// Tagged stores require the same identifier on reopen, even after reset. Nonempty legacy stores
+  /// cannot be silently adopted. This initialization check does not coordinate simultaneously open
+  /// providers/processes sharing a directory or protect writes made by an older untagged instance.
+  /// Use one active storage owner per directory.
+  public init(
+    storageDirectory: URL,
+    cacheEnabled: Bool = true,
+    embeddingSpaceIdentifier: String? = nil
+  ) throws {
     self.storageDirectory = storageDirectory
     self.cacheEnabled = cacheEnabled
 
     // Ensure the storage directory exists
     try ensureStorageDirectoryExists()
+    try Self.validateEmbeddingSpace(directory: storageDirectory, identifier: embeddingSpaceIdentifier)
+  }
+
+  private static func validateEmbeddingSpace(directory: URL, identifier: String?) throws {
+    let metadataURL = directory.appendingPathComponent(".vectura-embedding-space")
+    if let identifier, identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      throw VecturaError.invalidInput("Embedding-space identifier cannot be empty or whitespace-only")
+    }
+    if FileManager.default.fileExists(atPath: metadataURL.path) {
+      let stored = try String(contentsOf: metadataURL, encoding: .utf8)
+      guard stored == identifier else {
+        throw VecturaError.invalidInput("Incompatible embedding space; use a new database and re-embed documents")
+      }
+      return
+    }
+    guard let identifier else { return }
+    let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+    guard !files.contains(where: { $0.pathExtension.lowercased() == "json" }) else {
+      throw VecturaError.invalidInput("Existing vectors have no embedding identity; re-embed into a new database")
+    }
+    do {
+      // Exclusive creation prevents a concurrent initializer from replacing the winning identity.
+      // A partial write fails closed on subsequent opens rather than admitting incompatible vectors.
+      try Data(identifier.utf8).write(to: metadataURL, options: .withoutOverwriting)
+    } catch CocoaError.fileWriteFileExists {
+      let stored = try String(contentsOf: metadataURL, encoding: .utf8)
+      guard stored == identifier else {
+        throw VecturaError.invalidInput("Incompatible embedding space; use a new database and re-embed documents")
+      }
+    }
   }
 }
 

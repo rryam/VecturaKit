@@ -48,9 +48,16 @@ public actor VecturaKit {
     self.config = config
     self.embedder = embedder
 
-    // Determine dimension: prefer config if specified, otherwise use embedder
+    let embeddingSpaceIdentifier = embedder.embeddingSpaceIdentifier
+    // Legacy providers retain explicit dimension overrides; tagged providers validate them on open.
     if let configDimension = config.dimension {
       self.dimension = configDimension
+      if embeddingSpaceIdentifier != nil {
+        let embedderDimension = try await embedder.dimension
+        guard configDimension == embedderDimension else {
+          throw VecturaError.dimensionMismatch(expected: embedderDimension, got: configDimension)
+        }
+      }
     } else {
       self.dimension = try await embedder.dimension
     }
@@ -61,7 +68,11 @@ public actor VecturaKit {
     } else {
       // Create storage directory only when using default FileStorageProvider
       let storageDirectory = try Self.createStorageDirectory(config: config)
-      self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory, cacheEnabled: true)
+      self.storageProvider = try FileStorageProvider(
+        storageDirectory: storageDirectory,
+        cacheEnabled: true,
+        embeddingSpaceIdentifier: embeddingSpaceIdentifier
+      )
     }
 
     // Initialize search engine (use custom or create default)
