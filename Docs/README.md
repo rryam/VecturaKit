@@ -174,3 +174,5 @@ See [full test results](./TEST_RESULTS_SUMMARY.md) for detailed benchmarks.
 
 **Last Updated:** 2025-10-30
 **Documentation Version:** 2.0
+
+- [EmbeddingGemma 2 text indexing and image queries](EMBEDDING_GEMMA_2.md): local server setup, verified precision choices and tests.

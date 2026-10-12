@@ -3,6 +3,11 @@
 ## Project Structure & Module Organization
 VecturaKit ships as a Swift package with libraries `VecturaKit` (core storage + hybrid search), `VecturaNLKit` (NaturalLanguage embeddings), and `VecturaOAIKit` (OpenAI-compatible embeddings), plus CLI targets `VecturaCLI` and `VecturaOAICLI`. Sample executables live in `Sources/TestExamples`, `Sources/TestNLExamples`, and `Sources/TestOAIExamples`. Tests live under `Tests/VecturaKitTests`, `Tests/VecturaNLKitTests`, `Tests/VecturaOAIKitTests`, and `Tests/PerformanceTests`. `SwiftEmbedder` support lives in [rryam/VecturaEmbeddingsKit](https://github.com/rryam/VecturaEmbeddingsKit), and MLX support lives in [rryam/VecturaMLXKit](https://github.com/rryam/VecturaMLXKit).
 
+`EmbeddingGemma2Embedder` in `VecturaOAIKit` uses a caller-owned llama.cpp server for text indexing
+and opt-in image-to-text queries with EmbeddingGemma 2 Q8_0/BF16 inference. See [the setup and test gates](Docs/EMBEDDING_GEMMA_2.md).
+New retrieval providers can override `VecturaEmbedder.embedQuery(text:)`; existing providers inherit
+single-text behavior. `embeddingSpaceIdentifier` opts default file storage into compatibility guards.
+
 ## Build, Test, and Development Commands
 - `swift build` compiles libraries and executables (add `-c release` for performance validation).
 - `swift run vectura-cli mock --db-name demo-db --directory /tmp/vectura-cli-demo` seeds and exercises the NaturalLanguage CLI path.

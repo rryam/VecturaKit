@@ -43,6 +43,19 @@ definitions:
           --num-results 3
 
         rm -rf "$VECTURA_TMP_DB"
+    - &run_gemma2_integration
+      name: EmbeddingGemma 2 Inference (Optional)
+      script: |
+        #!/bin/zsh
+
+        # Requires an externally provisioned matching llama-server; never downloads weights.
+        if [[ "${RUN_GEMMA2_INTEGRATION}" != "1" && "${RUN_GEMMA2_IMAGE_INTEGRATION}" != "1" ]]; then
+          echo "Skipping real EmbeddingGemma 2 inference; HTTP fixture tests ran in the core suite."
+          exit 0
+        fi
+        export VECTURA_GEMMA2_INTEGRATION=1
+        export VECTURA_GEMMA2_IMAGE_INTEGRATION="${RUN_GEMMA2_IMAGE_INTEGRATION:-0}"
+        swift test --no-parallel --filter EmbeddingGemma2IntegrationTests
     - &run_realistic_perf_tests
       name: Run Realistic Performance Tests (Optional)
       script: |
@@ -85,4 +98,5 @@ workflows:
       - *build_framework
       - *run_tests
       - *run_vectura_cli_smoke
+      - *run_gemma2_integration
       - *run_realistic_perf_tests

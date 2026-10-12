@@ -9,6 +9,13 @@ public protocol VecturaEmbedder: Sendable {
   /// The dimensionality of the embedding vectors produced by this embedder.
   var dimension: Int { get async throws }
 
+  /// Stable identity of the embedding space, including model, precision, prompts and dimensions.
+  /// Default file storage uses this opt-in identity to reject incompatible persisted vectors.
+  var embeddingSpaceIdentifier: String? { get }
+
+  /// Generates an embedding for a retrieval query, which may require a distinct prompt.
+  func embedQuery(text: String) async throws -> [Float]
+
   /// Generates embeddings for multiple texts in batch.
   ///
   /// - Parameter texts: The text strings to embed.
@@ -25,6 +32,13 @@ public protocol VecturaEmbedder: Sendable {
 // MARK: - Default Implementation
 
 public extension VecturaEmbedder {
+
+  var embeddingSpaceIdentifier: String? { nil }
+
+  /// Preserves existing providers' single-text behavior for queries.
+  func embedQuery(text: String) async throws -> [Float] {
+    try await embed(text: text)
+  }
 
   /// Default implementation of single-text embedding using batch embedding.
   func embed(text: String) async throws -> [Float] {

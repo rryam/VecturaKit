@@ -55,13 +55,24 @@ public actor VecturaKit {
       self.dimension = try await embedder.dimension
     }
 
+    if embedder.embeddingSpaceIdentifier != nil {
+      let embedderDimension = try await embedder.dimension
+      guard self.dimension == embedderDimension else {
+        throw VecturaError.dimensionMismatch(expected: embedderDimension, got: self.dimension)
+      }
+    }
+
     // Use custom storage provider if provided, otherwise create FileStorageProvider
     if let customProvider = storageProvider {
       self.storageProvider = customProvider
     } else {
       // Create storage directory only when using default FileStorageProvider
       let storageDirectory = try Self.createStorageDirectory(config: config)
-      self.storageProvider = try FileStorageProvider(storageDirectory: storageDirectory, cacheEnabled: true)
+      self.storageProvider = try FileStorageProvider(
+        storageDirectory: storageDirectory,
+        cacheEnabled: true,
+        embeddingSpaceIdentifier: embedder.embeddingSpaceIdentifier
+      )
     }
 
     // Initialize search engine (use custom or create default)

@@ -501,6 +501,27 @@ The embedder:
 - Retries HTTP 429 responses and honors `Retry-After` when present
 - Detects embedding dimension automatically on first use
 
+### EmbeddingGemma 2 with a local llama.cpp server
+
+`EmbeddingGemma2Embedder` in `VecturaOAIKit` supports text indexing and optional image queries with explicit **Q8_0 or BF16**
+GGUF artifact selection and **128/256/512/768** Matryoshka output dimensions. It formats documents
+and queries separately, validates server model aliases, normalizes outputs, and guards default
+persisted databases against embedding-space changes. The caller manages the matching server.
+
+```swift
+let model = try EmbeddingGemma2Configuration(precision: .q8Zero, dimensions: .d256)
+let embedder = try EmbeddingGemma2Embedder(configuration: model)
+let vectorDB = try await VecturaKit(
+  config: VecturaConfig(name: "gemma2-q8-256"), embedder: embedder
+)
+```
+
+See [EmbeddingGemma 2 setup, artifact sizes, compatibility and tests](Docs/EMBEDDING_GEMMA_2.md).
+To find stored text using an image, enable `enableImageQueries: true`, load the matching projector,
+then pass `try await embedder.embedImageQuery(data: imageBytes, format: .png)` to
+`vectorDB.search(query: .vector(imageVector))`. Only text documents are indexed; query images are not stored.
+Original 300M, media ingestion and in-process MLX are outside this provider.
+
 ## NaturalLanguage Integration
 
 VecturaKit supports Apple's NaturalLanguage framework through the `NLContextualEmbedder` for contextual embeddings with zero external dependencies.
